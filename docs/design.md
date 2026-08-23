@@ -1,0 +1,145 @@
+# Moon — the phone satellite
+
+Written 2026-08-23 at kickoff. Moon is an iPhone app that does what one of Fun
+Time's satellite players does — an endless, silent, auto-advancing run of the AI
+library's clips with four gestures — on a phone, away from home, off travel
+wifi. No OSR2, no voice, no dashboard. The decisions below were made against the
+research in this session (Fun Time's satellite/dispatch code, the library as it
+sits in pCloud, the pCloud HTTP API, the Highdeas iOS project); change them with
+The owner, not alone.
+
+## What it is
+
+- **Source of clips**: the library's *originals* — `1_sorted/<source>/<orientation>/<stem>.mp4`
+  (~2.2 MB median H.264, 5 s median) — not the Topaz upscales in `2_outbox`
+  (~256 MB median HEVC) that the desktop satellites play. The owner asked for "the
+  non-upscaled ones"; on disk those are `1_sorted` (he named `2_outbox`, which is
+  the upscale tree — the mapping between the two is total and bidirectional, so
+  nothing is lost: every original has exactly one `2_outbox/upscaled_by_orientation/<orientation>/<source>/<stem>_topaz.mp4`,
+  and stems are unique library-wide).
+- **Transport**: the pCloud HTTP API straight from the phone (`api.pcloud.com`,
+  the account is US-region). The owner logs in *inside the app* (username +
+  password → `userinfo?getauth=1` → the `auth` token goes into the Keychain; the
+  password is never stored), or pastes a token. The app lists the library once
+  with one recursive `listfolder`, which also hands back each clip's size,
+  duration, codec and dimensions for free — no probing.
+- **Playback**: a clip is *always* fetched whole into an on-device cache before
+  it is handed to AVPlayer. Never progressive streaming: 90% of the originals put
+  `moov` after `mdat`, which would cost a tail round-trip before the first frame,
+  and a whole 2 MB file is under two seconds even at the 1.2 MB/s measured off
+  the pCloud mount. From the cache, start is instant and a transition is gapless.
+- **Gestures** (single tap, fires immediately): left third → previous; right
+  third → next; top-middle → weird; bottom-middle → lock (favorite); double tap
+  in the middle → the controls sheet. Same meanings as the desktop satellite's
+  arrow keys.
+- **Controls sheet** (checkboxes): Landscape library (off = portrait); F-mode
+  (favorites only — on a satellite those are the same switch, `modes.py:253`);
+  Shorts only; Latest (newest first, else weighted shuffle); Loop clip (repeat
+  each clip instead of advancing); plus Settings (login, library path, cache
+  size, "download everything").
+
+## Fidelity to the desktop satellite (what each gesture really does)
+
+From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
+
+- **Next / Previous**: playlist-index steps that wrap; previous is the list
+  neighbour, not a history stack. Any nav releases a lock.
+- **Lock** (down): toggles. Locking = repeat-one on the current clip AND add it
+  to the favorites AND count a `lock` watch event. Unlocking = stop repeating
+  AND advance. Unlocking never unfavorites.
+- **Weird** (up): two-step demotion. If the clip is a favorite → just remove
+  it from the favorites and advance ("Unfavorited"). Otherwise → drop it from
+  the playlist, advance, and move its *upscale* into `2_outbox/kinda_weird/`
+  ("Marked weird"), which is what arms Evolver's purge of the original and its
+  sidecar on the desktop's next run. Moon does the same move through the pCloud
+  API (`renamefile`), so a weird on the phone is a weird everywhere — exactly
+  as irreversible as on the desktop. It never deletes the original itself.
+- **Auto-advance**: a clip plays once and the next one rolls on; only a lock
+  loops it. The "Loop clip" checkbox is Moon's addition for when one wants
+  every clip to loop until tapped.
+- **Ordering**: Shuffle = the desktop's watch-weighted Efraimidis–Spirakis
+  shuffle with probabilistic inclusion (`watch_stats.py`: weight =
+  2^clamp((completions + 3·locks − skips)/3, −3, 3)); Latest = newest modified
+  first, unweighted. A filter change keeps the on-screen clip playing if it
+  survives the rebuild (`session.replace_playlist`), and a filter that matches
+  nothing leaves the current playlist in place instead of blanking the screen.
+- **Not reproduced in v1**: seed/action loops, the act filter, the HUD map
+  (all need the 1 341 metadata sidecars); the desktop's group-collapse of the
+  browse (one clip per subject) for the same reason. Indexing the sidecars is
+  the one prerequisite for all of them and is the obvious next step.
+
+## Shared state with the desktop
+
+The desktop's `favs.csv` and `watch_stats.json` live in the fun_time checkout
+on the PC, which is *not* in pCloud, and `watch_stats.json` prunes any key that
+is not a path on the writing machine. So Moon does not write either file. It
+keeps its own stores on the phone (favorites, weird marks, watch counts), keyed
+by the library-relative original path, and appends every event to a journal
+(`moon-journal.jsonl`, one JSON object per line: `{"t": unix seconds, "event":
+"favorite|unfavorite|weird|lock|completion|skip", "path": "<library-relative
+original path>"}`) that it uploads to a pCloud folder outside the library
+(`/Moon` by default; configurable). Merging that journal into the desktop's
+stores is a later, desktop-side step. If a `favs.csv` is dropped into that same
+folder, Moon imports it: the second `=HYPERLINK(...)` argument of each row is a
+Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
+
+## Performance design (the whole point)
+
+1. **Local index, built once.** One recursive `listfolder` (≈2 MB of JSON with
+   `filtermeta`, seconds) becomes a `Catalog` persisted on the phone. Every
+   playlist rebuild is an in-memory operation on that index — no network on a
+   checkbox tap. The index refreshes in the background on launch.
+2. **Index-time exclusions.** Files over 25 MB (the 22 legacy HEVC upscales that
+   sit in `1_sorted` and would take minutes to fetch) are excluded by size, a
+   setting. Orientation comes from the folder, never from pixel dimensions (21
+   clips are square).
+3. **Whole-file cache, keyed by file, not by index.** Cached clips survive any
+   reshuffle. Lives in Application Support, excluded from backup, with an LRU
+   cap (default 2 GB). "Download everything" prefetches the whole current
+   library (~3.8 GB for the non-outlier originals) so nothing ever waits.
+4. **Deep, two-sided prefetch window.** The playlist is deterministic, so both
+   the future and the past are knowable: the prefetcher keeps N clips ahead
+   (default 12) and M behind (default 3) resident, fetching nearest-first with
+   three parallel downloads, and re-plans on every index change, filter change
+   or reshuffle (cancelling what fell out of the window). A locked clip is free
+   time for the window to sprint ahead.
+5. **Pre-built player items.** The engine keeps AVPlayerItems ready for the
+   neighbours, so next/previous from cache is a swap, not a load; auto-advance
+   is an AVQueuePlayer roll-on.
+6. **Link caching.** `getfilelink` URLs expire; they are cached until then and
+   refreshed lazily, and an expired-link failure means "re-link and retry", not
+   "file gone".
+
+## Module boundaries (the coupling gates enforce these)
+
+- `MoonKit/` — pure Foundation, no UIKit/AVFoundation/SwiftUI imports (gate:
+  count must be 0). Everything decidable without a device lives here and is
+  TDD'd: `LibraryPaths` (rendition mapping, orientation/source parsing),
+  `Catalog` + `Clip` (the index and its builder from pCloud listings),
+  `PCloudAPI` (request building + response decoding, error mapping),
+  `Playlist`/`BrowseOptions` (filters, ordering, weighted shuffle), `Session`
+  (index, step, discard, lock, replacePlaylist), `WatchStats` + `WatchTracker`,
+  `Favorites` (+ favs.csv import), `PrefetchPlanner` (window → fetch order and
+  eviction), `TapZones`, `Journal`, `LinkCache`.
+- `Moon/` — the app: SwiftUI views, `PlayerEngine` (AVFoundation), `Downloader`
+  (URLSession), `ClipCache` (disk), `PCloudClient` (transport), `Keychain`,
+  `AppModel` (the one `ObservableObject`, owns the Kit state). Views hold no
+  domain state; they read the model and post intents.
+- No module shares mutable state with another: the Kit types are value types or
+  single-owner classes handed in by the model; the app's actors own their own
+  storage and talk through async methods.
+
+## Verification
+
+- `cd MoonKit && swift test` — the Kit, headless, on the Mac. Zero failures,
+  zero skips, before every commit.
+- `tools/gates.py` — the coupling/purity gates, numbers with a target of 0,
+  fail the build. Runs in CI and from `tools/check.sh`.
+- `tools/fake_pcloud.py` — a local stand-in for the pCloud API that serves the
+  library straight off the pCloud Drive mount (`listfolder`, `getfilelink`,
+  `renamefile` into a scratch folder, `uploadfile`), so the whole app can be
+  driven end-to-end in the Simulator with no credentials and no writes to the
+  real library.
+- The phone: `./install.sh` with the iPhone plugged in and unlocked (same
+  flow as Highdeas' `ios/resign.sh`; the wildcard team profile already covers
+  any bundle id under the team). Until that has run, nothing is on the phone.

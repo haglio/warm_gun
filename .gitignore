@@ -1,0 +1,26 @@
+# Xcode / SwiftPM build output
+build/
+DerivedData/
+.build/
+**/.build/
+xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+.swiftpm/
+**/.swiftpm/
+
+# Python tooling caches (the sanitize guard and the gates are Python)
+__pycache__/
+*.py[cod]
+
+# Private overlays — real values live here and never get published. Each has a
+# committed *.example.* template that documents its shape.
+#   the real blocklist is itself a catalogue of excluded terms, the library paths
+#   it is harvested from name the machine, and the harvest stamp is per-machine
+/sanitize/*.local.txt
+
+# pCloud conflict copies (the Haglio trees sync via pCloud). Never our files; an
+# untracked one dirties main and blocks merges. '[' escaped to match literally.
+*\[conflicted*
+
+.DS_Store
