@@ -23,6 +23,10 @@ actor PCloudClient {
     private let origin: URL
     private let auth: String
     private let session: URLSession
+    /// For calls whose FIRST BYTE is slow by nature — getzip assembles more
+    /// than a thousand files server-side before anything streams — where the
+    /// ordinary 30-second request timeout reads as failure.
+    private let patientSession: URLSession
 
     /// `apiHost` is either a bare pCloud host (`api.pcloud.com`, reached over
     /// https) or a full origin such as `http://localhost:8765` for the local
@@ -37,6 +41,11 @@ actor PCloudClient {
         config.timeoutIntervalForResource = 600
         config.waitsForConnectivity = true
         session = URLSession(configuration: config)
+        let patient = URLSessionConfiguration.default
+        patient.timeoutIntervalForRequest = 300
+        patient.timeoutIntervalForResource = 900
+        patient.waitsForConnectivity = true
+        patientSession = URLSession(configuration: patient)
     }
 
     static func login(apiHost: String, username: String, password: String, code: String? = nil) async throws -> LoginResponse {
@@ -109,10 +118,10 @@ actor PCloudClient {
     /// A whole raw body for a request whose response is not the JSON envelope
     /// — getzip streams an archive. The request's own auth placeholder is
     /// ignored; this client's token rides instead.
-    func downloadRaw(_ request: PCloudRequest) async throws -> Data {
+    func downloadRaw(_ request: PCloudRequest, patientFirstByte: Bool = false) async throws -> Data {
         let authed = PCloudRequest(method: request.method,
                                    query: request.query.map { $0.name == "auth" ? URLQueryItem(name: "auth", value: auth) : $0 })
-        let (data, response) = try await session.data(from: authed.url(origin: origin))
+        let (data, response) = try await (patientFirstByte ? patientSession : session).data(from: authed.url(origin: origin))
         try Self.check(response)
         return data
     }

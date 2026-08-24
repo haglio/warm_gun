@@ -8,6 +8,10 @@ import Foundation
 public enum ZipArchive {
     public struct Failure: Error, Equatable, Sendable {
         public let reason: String
+
+        public init(reason: String) {
+            self.reason = reason
+        }
     }
 
     /// Every file entry, in central-directory order. `inflate` receives the

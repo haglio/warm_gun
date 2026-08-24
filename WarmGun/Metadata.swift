@@ -7,14 +7,28 @@ import WarmGunKit
 /// group index is built from. The zip walking lives in the Kit; only the raw
 /// DEFLATE step is here, because it needs Apple's Compression framework.
 enum MetadataFetcher {
-    static func fetchSidecars(client: PCloudClient, libraryPath: String) async throws -> [String: Sidecar] {
+    /// The zip in one call when the server will give it, one file at a time
+    /// when it will not — either way the corpus arrives. `progress` narrates
+    /// for the status line the sheet shows.
+    static func fetchSidecars(client: PCloudClient, libraryPath: String,
+                              progress: @escaping @Sendable (String) -> Void) async throws -> [String: Sidecar] {
         guard let metadataPath = LibraryPaths.metadataAIPath(forLibrary: libraryPath) else { return [:] }
-        // getzip takes a tree (folderid), never a path — list the folder
-        // shallowly first to learn its id.
-        guard let folderID = try await client.folderSkeleton(path: metadataPath, recursive: false).folderid else {
-            return [:]
+        do {
+            progress("fetching the metadata archive…")
+            return try await fetchViaZip(client: client, metadataPath: metadataPath)
+        } catch {
+            // getzip has already failed against the real server once (it takes
+            // a folderid, not a path) — never trust it as the only road.
+            progress("archive failed (\(error.localizedDescription)) — fetching sidecars singly…")
+            return try await fetchSingly(client: client, metadataPath: metadataPath, progress: progress)
         }
-        let body = try await client.downloadRaw(PCloudAPI.getZip(folderID: folderID, auth: ""))
+    }
+
+    private static func fetchViaZip(client: PCloudClient, metadataPath: String) async throws -> [String: Sidecar] {
+        guard let folderID = try await client.folderSkeleton(path: metadataPath, recursive: false).folderid else {
+            throw ZipArchive.Failure(reason: "metadata folder has no id")
+        }
+        let body = try await client.downloadRaw(PCloudAPI.getZip(folderID: folderID, auth: ""), patientFirstByte: true)
         if body.first == UInt8(ascii: "{") {
             // pCloud answers errors as JSON even where a zip was asked for.
             _ = try PCloudAPI.decode(EmptyPayload.self, from: body)
@@ -25,6 +39,43 @@ enum MetadataFetcher {
             guard let original = LibraryPaths.originalPath(forSidecarEntry: entry.name),
                   let sidecar = try? decoder.decode(Sidecar.self, from: entry.data) else { continue }
             sidecars[original] = sidecar
+        }
+        return sidecars
+    }
+
+    private static func fetchSingly(client: PCloudClient, metadataPath: String,
+                                    progress: @escaping @Sendable (String) -> Void) async throws -> [String: Sidecar] {
+        let files = try await client.listLibrary(path: metadataPath)
+            .filter { $0.path.hasSuffix(".json") }
+        let decoder = JSONDecoder()
+        var sidecars: [String: Sidecar] = [:]
+        var fetched = 0
+        try await withThrowingTaskGroup(of: (String, Data)?.self) { group in
+            var iterator = files.makeIterator()
+            var inFlight = 0
+            func addNext(_ group: inout ThrowingTaskGroup<(String, Data)?, Error>) {
+                guard let file = iterator.next() else { return }
+                inFlight += 1
+                group.addTask {
+                    guard let url = try await client.fileLink(fileID: file.fileID).url else { return nil }
+                    let tmp = try await client.download(url)
+                    defer { try? FileManager.default.removeItem(at: tmp) }
+                    return (file.path, try Data(contentsOf: tmp))
+                }
+            }
+            for _ in 0..<6 { addNext(&group) }
+            while inFlight > 0 {
+                guard let result = try await group.next() else { break }
+                inFlight -= 1
+                fetched += 1
+                if fetched % 100 == 0 { progress("fetching sidecars \(fetched)/\(files.count)…") }
+                if let (path, data) = result,
+                   let original = LibraryPaths.originalPath(forSidecarEntry: path),
+                   let sidecar = try? decoder.decode(Sidecar.self, from: data) {
+                    sidecars[original] = sidecar
+                }
+                addNext(&group)
+            }
         }
         return sidecars
     }

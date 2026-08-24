@@ -35,12 +35,9 @@ struct ControlsSheet: View {
                         loopButton("Seed", .seed, enabled: model.seedLoopAvailable)
                         loopButton("Action", .action, enabled: model.actionLoopAvailable)
                     }
-                    if model.seedLoopAvailable == false && model.actionLoopAvailable == false,
-                       let problem = model.metadataProblem {
-                        Text("Metadata index unavailable: \(problem)")
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
+                    Text("Metadata: \(model.metadataStatus)")
+                        .font(.footnote)
+                        .foregroundStyle(model.metadataFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
                 }
                 Section {
                     Button("Settings") { showingSettings = true }

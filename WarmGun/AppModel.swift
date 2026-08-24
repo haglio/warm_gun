@@ -40,8 +40,10 @@ final class AppModel: ObservableObject {
     /// segment out rather than letting a press dead-end.
     @Published private(set) var seedLoopAvailable = false
     @Published private(set) var actionLoopAvailable = false
-    /// Why the loops have nothing to stand on, when the index fetch failed.
-    @Published private(set) var metadataProblem: String?
+    /// The metadata pipeline's state, in words the sheet always shows — one
+    /// glance answers "why is everything greyed out".
+    @Published private(set) var metadataStatus = "not fetched yet"
+    @Published private(set) var metadataFailed = false
     /// Clip lengths measured off the cached files, path-keyed — the real
     /// pCloud listing carries no durations, so the phone learns them itself.
     private var measuredSeconds: [String: Double] = [:]
@@ -385,17 +387,27 @@ final class AppModel: ObservableObject {
         let libraryPath = settings.libraryPath
         Task {
             do {
-                let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath)
-                guard !sidecars.isEmpty else { return }
+                let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath) { note in
+                    Task { @MainActor [weak self] in self?.metadataStatus = note }
+                }
+                guard !sidecars.isEmpty else {
+                    metadataStatus = "the metadata folder came back empty"
+                    metadataFailed = true
+                    return
+                }
+                let matching = sidecars.keys.filter { clipsByPath[$0] != nil }.count
                 groupIndex = GroupIndex(sidecars: sidecars)
-                metadataProblem = nil
+                metadataFailed = matching == 0
+                metadataStatus = matching == 0
+                    ? "\(sidecars.count) sidecars fetched but none match the catalog"
+                    : "indexed \(sidecars.count) sidecars (\(matching) in the catalog)"
                 recomputeLoopAvailability()
                 if let data = try? JSONEncoder().encode(sidecars) {
                     try? data.write(to: sidecarsURL, options: .atomic)
                 }
             } catch {
-                metadataProblem = error.localizedDescription
-                lastProblem = "Metadata: \(error.localizedDescription)"
+                metadataStatus = error.localizedDescription
+                metadataFailed = true
             }
         }
     }
