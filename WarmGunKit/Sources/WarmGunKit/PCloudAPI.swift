@@ -145,6 +145,18 @@ public enum PCloudAPI {
         ])
     }
 
+    /// The folder skeleton alone — no files — which is all library discovery
+    /// needs and a fraction of the full listing's size.
+    public static func listFolders(path: String, auth: String) -> PCloudRequest {
+        PCloudRequest(method: "listfolder", query: [
+            URLQueryItem(name: "path", value: path),
+            URLQueryItem(name: "recursive", value: "1"),
+            URLQueryItem(name: "nofiles", value: "1"),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+            URLQueryItem(name: "auth", value: auth),
+        ])
+    }
+
     /// A short-lived direct download URL. Keyed by file id, not path, because
     /// the weird gesture renames files out from under any path we cached.
     public static func fileLink(fileID: Int64, auth: String) -> PCloudRequest {

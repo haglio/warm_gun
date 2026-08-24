@@ -93,7 +93,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Library")
                 } footer: {
-                    Text("The pCloud folder that holds 1_sorted and 2_outbox. Warm Gun plays the originals under 1_sorted.")
+                    Text("Found automatically after login — the one folder holding 1_sorted and 2_outbox. Override only if the library moves; Warm Gun plays the originals under 1_sorted.")
                 }
 
                 Section {

@@ -25,12 +25,10 @@ from PIL import Image, ImageDraw, ImageFilter
 PINK = (200, 80, 160)   # sampled from fun_time/icon.ico
 BLACK = (0, 0, 0)
 
-# The two letters, drawn over one another the way the F and the T are: both are
-# stroke skeletons that share the left spine and the bottom bar, so the union
-# stays sparse enough to read. W is the whole frame — outer legs, center post,
-# bottom — with its two counters open at the top; G is the left half, its top
-# bar stopping short of the right leg (the notch that separates them) and its
-# tongue rising through the middle.
+# The two letters, LITERALLY overlaid — the union of a whole W and a whole G on
+# the same grid, exactly as the original is the union of a whole F and a whole
+# T. Both letters wear Fun Time's maximally chunky square face (every bar the
+# full width, every post the full height).
 W = [
     "#...#",
     "#...#",
@@ -39,17 +37,17 @@ W = [
     "#####",
 ]
 G = [
-    "###..",
+    "#####",
     "#....",
-    "#.#..",
-    "#.#..",
-    "###..",
+    "#..##",
+    "#...#",
+    "#####",
 ]
 
 S = 2048            # working scale; shipped at 1024
-MARGIN = 0.16       # a touch wider than Fun Time's 0.12: the grid's corners are
-                    # filled here, and iOS's corner mask must not shave them
-RADIUS = 0.24       # corner rounding, as a fraction of one cell — Fun Time's
+MARGIN = 0.121      # measured off fun_time/icon.ico: the glyph spans 194 of 256
+RADIUS = 0.15       # measured off the ico corner alpha map (~6px of 256) — far
+                    # squarer than it reads at a glance
 OUT = Path(__file__).resolve().parent.parent / "WarmGun" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon.png"
 
 

@@ -91,12 +91,29 @@ final class AppModel: ObservableObject {
         cacheBytes = await cache.totalBytes()
         loadPersistedState()
         guard let token = Keychain.token() else { phase = .needsLogin; return }
-        guard !settings.libraryPath.isEmpty else { phase = .needsLibrary; return }
         do {
             try connect(token: token)
         } catch {
             phase = .failed(error.localizedDescription)
             return
+        }
+        if settings.libraryPath.isEmpty {
+            // Nobody should have to TELL the app where the library is: it is
+            // the one folder in the account holding both pipeline stages, so
+            // one folders-only listing finds it. The Settings field remains as
+            // an override for the day the account grows a second skeleton.
+            phase = .indexing
+            do {
+                guard let client, let found = LibraryPaths.discoverLibrary(root: try await client.folderSkeleton(path: "/")) else {
+                    lastProblem = "No folder holding both 1_sorted and 2_outbox found in this account"
+                    phase = .needsLibrary
+                    return
+                }
+                settings.libraryPath = found
+            } catch {
+                phase = .failed(error.localizedDescription)
+                return
+            }
         }
         if catalog == nil {
             await index()

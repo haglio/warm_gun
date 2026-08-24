@@ -51,6 +51,41 @@ public enum LibraryPaths {
         return "\(upscaledRoot)/\(o.orientation.rawValue)/\(o.source)/\(o.stem)\(upscaleSuffix).mp4"
     }
 
+    /// The pCloud path of the library, found by its skeleton: the one folder
+    /// holding both pipeline stages, `1_sorted` and `2_outbox`. The real path
+    /// names are private to the account and never appear in code — discovery
+    /// is what makes the library path a non-setting. Among several candidates
+    /// (a parked copy under an underscore-prefixed folder, say), the live tree
+    /// wins: no underscore component first, then the shallower, then the
+    /// lexicographically first, so the answer is one value however the
+    /// listing is ordered.
+    public static func discoverLibrary(root: PCloudEntry) -> String? {
+        var candidates: [String] = []
+        collectLibraryCandidates(root, at: "", into: &candidates)
+        func parked(_ path: String) -> Bool {
+            path.split(separator: "/").contains { $0.hasPrefix("_") }
+        }
+        func depth(_ path: String) -> Int {
+            path.split(separator: "/").count
+        }
+        return candidates.min { a, b in
+            (parked(a) ? 1 : 0, depth(a), a) < (parked(b) ? 1 : 0, depth(b), b)
+        }
+    }
+
+    private static func collectLibraryCandidates(_ entry: PCloudEntry, at path: String,
+                                                 into candidates: inout [String]) {
+        guard entry.isfolder else { return }
+        let children = entry.contents ?? []
+        let names = Set(children.filter(\.isfolder).map(\.name))
+        if names.contains("1_sorted") && names.contains("2_outbox") {
+            candidates.append(path.isEmpty ? "/" : path)
+        }
+        for child in children where child.isfolder {
+            collectLibraryCandidates(child, at: path + "/" + child.name, into: &candidates)
+        }
+    }
+
     /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
     /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
     /// The stem alone identifies a clip: they are unique library-wide.

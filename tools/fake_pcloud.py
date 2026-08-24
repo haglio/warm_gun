@@ -102,7 +102,7 @@ class Store:
         self.cache_file.write_text(json.dumps(self.probe_cache))
         self.moves_file.write_text(json.dumps(self.moved))
 
-    def entry(self, path: Path, recursive: bool) -> dict | None:
+    def entry(self, path: Path, recursive: bool, nofiles: bool = False) -> dict | None:
         pc = self.pcloud_path(path)
         if pc in self.moved:
             return None
@@ -116,7 +116,9 @@ class Store:
                 for child in sorted(path.iterdir()):
                     if child.name.startswith("."):
                         continue
-                    e = self.entry(child, recursive)
+                    if nofiles and not child.is_dir():
+                        continue
+                    e = self.entry(child, recursive, nofiles)
                     if e is not None:
                         children.append(e)
                 folder["contents"] = children
@@ -170,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
             target = self.store.resolve(q.get("path", "/"))
             if target is None or not target.is_dir():
                 return self.reply({"result": 2005, "error": "Directory does not exist."})
-            entry = self.store.entry(target, q.get("recursive") == "1")
+            entry = self.store.entry(target, q.get("recursive") == "1", q.get("nofiles") == "1")
             self.store.save_caches()
             return self.reply({"result": 0, "metadata": entry})
         if method == "getfilelink":

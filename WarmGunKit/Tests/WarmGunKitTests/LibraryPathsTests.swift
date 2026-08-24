@@ -40,3 +40,41 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.weirdDir == "2_outbox/kinda_weird")
     }
 }
+
+extension LibraryPathsTests {
+    private static func folder(_ name: String, _ contents: [PCloudEntry] = []) -> PCloudEntry {
+        PCloudEntry(name: name, isfolder: true, contents: contents)
+    }
+
+    @Test func findsTheLibraryByItsSkeletonWithoutBeingToldWhereItLives() {
+        // The library is the one folder holding both pipeline stages. Its real
+        // path names are private and live only in the account, never in code —
+        // discovery is what makes the path a non-setting.
+        let root = Self.folder("/", [
+            Self.folder("alpha", [
+                Self.folder("videos", [
+                    Self.folder("videos", [
+                        Self.folder("2D", [
+                            Self.folder("AI", [Self.folder("1_sorted"), Self.folder("2_outbox")]),
+                        ]),
+                    ]),
+                    // The metadata mirror carries 2_outbox alone — no original
+                    // stage, not the library.
+                    Self.folder("metadata", [Self.folder("2D", [Self.folder("AI", [Self.folder("2_outbox")])])]),
+                ]),
+            ]),
+        ])
+        #expect(LibraryPaths.discoverLibrary(root: root) == "/alpha/videos/videos/2D/AI")
+    }
+
+    @Test func anArchivedCopyLosesToTheLiveTree() {
+        // Parked trees ride under underscore-prefixed folders by convention;
+        // ties break on depth, then on the path itself, so the answer is one
+        // value however the listing is ordered.
+        let live = Self.folder("lib", [Self.folder("1_sorted"), Self.folder("2_outbox")])
+        let parked = Self.folder("_old", [Self.folder("lib", [Self.folder("1_sorted"), Self.folder("2_outbox")])])
+        let root = Self.folder("/", [parked, live])
+        #expect(LibraryPaths.discoverLibrary(root: root) == "/lib")
+        #expect(LibraryPaths.discoverLibrary(root: Self.folder("/", [Self.folder("empty")])) == nil)
+    }
+}

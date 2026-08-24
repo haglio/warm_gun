@@ -462,3 +462,17 @@ extension PCloudAPITests {
         #expect(push.query == [URLQueryItem(name: "token", value: "tfa-tok-1")])
     }
 }
+
+extension PCloudAPITests {
+    @Test func asksForTheFolderSkeletonAloneWhenHuntingForTheLibrary() {
+        let request = PCloudAPI.listFolders(path: "/", auth: "token-abc")
+        #expect(request.method == "listfolder")
+        #expect(request.query == [
+            URLQueryItem(name: "path", value: "/"),
+            URLQueryItem(name: "recursive", value: "1"),
+            URLQueryItem(name: "nofiles", value: "1"),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+            URLQueryItem(name: "auth", value: "token-abc"),
+        ])
+    }
+}
