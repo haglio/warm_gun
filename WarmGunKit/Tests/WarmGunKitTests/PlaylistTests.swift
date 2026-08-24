@@ -1,0 +1,295 @@
+import Foundation
+import Testing
+@testable import WarmGunKit
+
+/// The build is the one place every browse switch meets the index, so these
+/// tests read as little libraries put through the controls sheet.
+@Suite struct PlaylistTests {
+    /// Every fixture path, source and stem here is invented; the real library
+    /// never appears in this repo.
+    static func file(_ path: String, size: Int64 = 2_000_000,
+                     seconds: Double? = 5.0, modifiedAt: Double = 1_000) -> LibraryFile {
+        LibraryFile(path: path, fileID: 1, size: size, modified: Date(timeIntervalSince1970: modifiedAt),
+                    duration: seconds, videoCodec: "h264", width: 752, height: 960)
+    }
+
+    @Test func anEmptyCatalogBuildsAnEmptyPlaylist() {
+        var rng = PlaylistSeededRNG(seed: 1)
+
+        let playlist = PlaylistBuilder.build(catalog: Catalog(files: []), options: BrowseOptions(),
+                                             favoriteStems: [], weird: [], stats: WatchStats(), rng: &rng)
+
+        #expect(playlist.isEmpty)
+    }
+}
+
+extension PlaylistTests {
+    /// The Landscape checkbox picks a whole library, not a subset of one: the
+    /// two orientations never mix on screen, and the folder is the authority
+    /// because 21 clips in the library are square.
+    @Test func onlyTheChosenOrientationEverPlays() {
+        var rng = PlaylistSeededRNG(seed: 1)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
+            Self.file("1_sorted/beta/landscape/clip-two.mp4"),
+            Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
+        ])
+
+        let portrait = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(orientation: .portrait),
+                                             favoriteStems: [], weird: [], stats: WatchStats(), rng: &rng)
+        let landscape = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(orientation: .landscape),
+                                              favoriteStems: [], weird: [], stats: WatchStats(), rng: &rng)
+
+        #expect(portrait.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/gamma/portrait/clip-three.mp4"])
+        #expect(landscape == ["1_sorted/beta/landscape/clip-two.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    /// A weird mark is the hard removal the weighting is the soft version of:
+    /// the clip is gone from every later build, not merely made rarer, and it
+    /// stays gone until the next index refresh drops it from the catalog too.
+    @Test func aClipMarkedWeirdNeverComesBack() {
+        var rng = PlaylistSeededRNG(seed: 2)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
+            Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
+        ])
+
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+                                             weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
+                                             stats: WatchStats(), rng: &rng)
+
+        #expect(playlist == ["1_sorted/alpha/portrait/clip-one.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    /// A handful of legacy HEVC upscales sit in the originals tree at hundreds
+    /// of megabytes each, and the phone fetches a clip whole before it plays —
+    /// so a file over the cap is minutes of black screen and is left out.
+    /// A file exactly at the cap still plays: the cap is what is allowed.
+    @Test func aClipOverTheSizeCapIsLeftOutAndOneExactlyAtItPlays() {
+        var rng = PlaylistSeededRNG(seed: 3)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-one.mp4", size: 2_000_000),
+            Self.file("1_sorted/alpha/portrait/clip-two.mp4", size: 25_000_001),
+            Self.file("1_sorted/alpha/portrait/clip-three.mp4", size: 25_000_000),
+        ])
+
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+                                             weird: [], stats: WatchStats(), rng: &rng)
+
+        #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-three.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    /// F-mode browses the favorites alone. Favorites are held by stem, not by
+    /// path, because that is all the desktop's `favs.csv` carries — and stems
+    /// are unique library-wide, so the stem names the clip exactly.
+    @Test func fModeBrowsesOnlyTheFavoritesAndKnowsThemByStem() {
+        var rng = PlaylistSeededRNG(seed: 4)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
+            Self.file("1_sorted/beta/portrait/clip-two.mp4"),
+            Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
+        ])
+
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(favoritesOnly: true),
+                                             favoriteStems: ["clip-two", "clip-absent"], weird: [],
+                                             stats: WatchStats(), rng: &rng)
+
+        #expect(playlist == ["1_sorted/beta/portrait/clip-two.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    /// Shorts is a length filter, and a clip whose duration the listing never
+    /// reported cannot be shown to be short — so it sits the build out, the
+    /// same way Nau's length filter drops what it cannot measure rather than
+    /// guessing. The bound is inclusive.
+    @Test func shortsKeepsClipsUpToTheBoundAndDropsOnesOfUnknownLength() {
+        var rng = PlaylistSeededRNG(seed: 5)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-one.mp4", seconds: 4.0),
+            Self.file("1_sorted/alpha/portrait/clip-two.mp4", seconds: 10.0),
+            Self.file("1_sorted/alpha/portrait/clip-three.mp4", seconds: 10.5),
+            Self.file("1_sorted/alpha/portrait/clip-four.mp4", seconds: nil),
+        ])
+
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(shortsOnly: true),
+                                             favoriteStems: [], weird: [], stats: WatchStats(), rng: &rng)
+
+        #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-two.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    /// Latest is a review order: newest first, and deliberately unweighted, so a
+    /// clip that has been skipped away from a dozen times still surfaces when it
+    /// is new. Clips filed in the same second fall back to their path, so the
+    /// order is one order and not whatever the index happened to hold.
+    @Test func latestIsNewestFirstTiedOnPathAndCarriesNoWeighting() {
+        var rng = PlaylistSeededRNG(seed: 6)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-old.mp4", modifiedAt: 1_000),
+            Self.file("1_sorted/gamma/portrait/clip-tied-b.mp4", modifiedAt: 2_000),
+            Self.file("1_sorted/beta/portrait/clip-tied-a.mp4", modifiedAt: 2_000),
+            Self.file("1_sorted/alpha/portrait/clip-new.mp4", modifiedAt: 3_000),
+        ])
+        let stats = WatchStats(entries: ["1_sorted/alpha/portrait/clip-new.mp4": WatchEntry(skips: 99)])
+
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(latest: true),
+                                             favoriteStems: [], weird: [], stats: stats, rng: &rng)
+
+        #expect(playlist == [
+            "1_sorted/alpha/portrait/clip-new.mp4",
+            "1_sorted/beta/portrait/clip-tied-a.mp4",
+            "1_sorted/gamma/portrait/clip-tied-b.mp4",
+            "1_sorted/alpha/portrait/clip-old.mp4",
+        ])
+    }
+}
+
+extension PlaylistTests {
+    /// Shuffle thins rather than removes: a clip skipped away from again and
+    /// again sits most builds out — the soft counterpart of the weird gesture —
+    /// while a clip at neutral weight or above is in every single build.
+    @Test func shuffleLeavesAChronicallySkippedClipOutOfMostBuilds() {
+        var rng = PlaylistSeededRNG(seed: 8)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
+            Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
+        ])
+        let stats = WatchStats(entries: ["1_sorted/alpha/portrait/clip-two.mp4": WatchEntry(skips: 9)])
+
+        let builds = (0..<200).map { _ in
+            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+                                  weird: [], stats: stats, rng: &rng)
+        }
+
+        #expect(builds.allSatisfy { $0.contains("1_sorted/alpha/portrait/clip-one.mp4") })
+        let skipped = builds.filter { $0.contains("1_sorted/alpha/portrait/clip-two.mp4") }.count
+        #expect(skipped > 5 && skipped < 60)
+    }
+}
+
+extension PlaylistTests {
+    /// The prefetcher fetches ahead *and* behind, which only works because the
+    /// run is knowable in advance: one seed is one playlist, every time. It is
+    /// still a shuffle — another seed gives another order.
+    @Test func oneSeedAlwaysBuildsTheSamePlaylistAndAnotherSeedDoesNot() {
+        let catalog = Catalog(files: (0..<24).map { Self.file("1_sorted/alpha/portrait/clip-\($0).mp4") })
+        func build(seed: UInt64) -> [String] {
+            var rng = PlaylistSeededRNG(seed: seed)
+            return PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+                                         weird: [], stats: WatchStats(), rng: &rng)
+        }
+
+        #expect(build(seed: 11) == build(seed: 11))
+        #expect(build(seed: 11) != build(seed: 12))
+        #expect(build(seed: 11).sorted() == catalog.clips.map(\.path).sorted())
+        #expect(build(seed: 11) != catalog.clips.map(\.path))
+    }
+}
+
+extension PlaylistTests {
+    /// Every switch narrows the same list, so with them all on only a clip that
+    /// clears all five plays. Each of the others here fails exactly one test,
+    /// which is what makes relaxing one switch bring back exactly one clip.
+    @Test func theFiltersCompose() {
+        var rng = PlaylistSeededRNG(seed: 9)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/landscape/clip-one.mp4"),
+            Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
+            Self.file("1_sorted/beta/portrait/clip-three.mp4", size: 30_000_000),
+            Self.file("1_sorted/beta/portrait/clip-four.mp4"),
+            Self.file("1_sorted/gamma/portrait/clip-five.mp4", seconds: 30.0),
+            Self.file("1_sorted/gamma/portrait/clip-six.mp4", seconds: 6.0),
+        ])
+        let favorites: Set<String> = ["clip-one", "clip-two", "clip-three", "clip-five", "clip-six"]
+        var options = BrowseOptions(orientation: .portrait, favoritesOnly: true, shortsOnly: true)
+
+        let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: favorites,
+                                           weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
+                                           stats: WatchStats(), rng: &rng)
+        #expect(strict == ["1_sorted/gamma/portrait/clip-six.mp4"])
+
+        options.favoritesOnly = false
+        let relaxed = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: favorites,
+                                            weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
+                                            stats: WatchStats(), rng: &rng)
+        #expect(relaxed.sorted() == ["1_sorted/beta/portrait/clip-four.mp4", "1_sorted/gamma/portrait/clip-six.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    /// The counts have to reach the ordering, not only the inclusion draw:
+    /// a loved clip is what the run opens on, most of the time.
+    @Test func aLovedClipOpensTheRunFarMoreOftenThanANeutralOne() {
+        var rng = PlaylistSeededRNG(seed: 10)
+        let catalog = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/clip-plain.mp4"),
+            Self.file("1_sorted/alpha/portrait/clip-loved.mp4"),
+        ])
+        let stats = WatchStats(entries: ["1_sorted/alpha/portrait/clip-loved.mp4": WatchEntry(completions: 9)])
+
+        let lovedFirst = (0..<200).filter { _ in
+            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+                                  weird: [], stats: stats, rng: &rng).first == "1_sorted/alpha/portrait/clip-loved.mp4"
+        }.count
+
+        #expect(lovedFirst > 150)
+    }
+}
+
+extension PlaylistTests {
+    /// The controls sheet is where it was left: the switches are saved between
+    /// launches, so the whole record has to survive a JSON round trip.
+    @Test func theBrowseSwitchesSurviveAJSONRoundTrip() throws {
+        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, shortsOnly: true,
+                                    shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
+
+        let data = try JSONEncoder().encode(options)
+
+        #expect(try JSONDecoder().decode(BrowseOptions.self, from: data) == options)
+    }
+}
+
+extension PlaylistTests {
+    @Test func aPersistedBrowseFromBeforeANewSwitchStillDecodes() throws {
+        // Settings are persisted and reloaded across app updates: a blob written
+        // before a switch existed must decode with that switch at its default,
+        // not throw away every saved control at once.
+        let old = Data(#"{"orientation":"landscape","favoritesOnly":true}"#.utf8)
+        let options = try JSONDecoder().decode(BrowseOptions.self, from: old)
+        #expect(options.orientation == .landscape)
+        #expect(options.favoritesOnly)
+        #expect(options.shortsMaxSeconds == 10)
+        #expect(options.maxBytes == 25_000_000)
+    }
+}
+
+extension PlaylistTests {
+    @Test func theSizeCeilingAndShortsThresholdAreTheOptionsNotConstants() {
+        var rng = PlaylistSeededRNG(seed: 9)
+        let catalog = Catalog(files: [
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 5_000_000, seconds: 8),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-large.mp4", size: 20_000_000, seconds: 12),
+        ])
+
+        var sized = BrowseOptions()
+        sized.maxBytes = 10_000_000
+        #expect(PlaylistBuilder.build(catalog: catalog, options: sized, favoriteStems: [],
+                                      weird: [], stats: WatchStats(), rng: &rng)
+                == ["1_sorted/alpha/portrait/clip-small.mp4"])
+
+        var shorts = BrowseOptions()
+        shorts.shortsOnly = true
+        shorts.shortsMaxSeconds = 9
+        #expect(PlaylistBuilder.build(catalog: catalog, options: shorts, favoriteStems: [],
+                                      weird: [], stats: WatchStats(), rng: &rng)
+                == ["1_sorted/alpha/portrait/clip-small.mp4"])
+    }
+}

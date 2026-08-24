@@ -6,16 +6,16 @@
 import PackageDescription
 
 let package = Package(
-    name: "MoonKit",
+    name: "WarmGunKit",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
-        .library(name: "MoonKit", targets: ["MoonKit"]),
+        .library(name: "WarmGunKit", targets: ["WarmGunKit"]),
     ],
     targets: [
-        .target(name: "MoonKit", swiftSettings: [.swiftLanguageMode(.v5)]),
+        .target(name: "WarmGunKit", swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(
-            name: "MoonKitTests",
-            dependencies: ["MoonKit"],
+            name: "WarmGunKitTests",
+            dependencies: ["WarmGunKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

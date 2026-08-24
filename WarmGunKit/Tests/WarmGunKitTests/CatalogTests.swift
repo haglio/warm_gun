@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MoonKit
+@testable import WarmGunKit
 
 @Suite struct CatalogTests {
     static func file(_ path: String, id: Int64 = 1, size: Int64 = 2_000_000, seconds: Double? = 5.0) -> LibraryFile {

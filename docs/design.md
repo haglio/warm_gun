@@ -1,6 +1,6 @@
-# Moon — the phone satellite
+# Warm Gun — the phone satellite
 
-Written 2026-08-23 at kickoff. Moon is an iPhone app that does what one of Fun
+Written 2026-08-23 at kickoff. Warm Gun is an iPhone app that does what one of Fun
 Time's satellite players does — an endless, silent, auto-advancing run of the AI
 library's clips with four gestures — on a phone, away from home, off travel
 wifi. No OSR2, no voice, no dashboard. The decisions below were made against the
@@ -51,11 +51,15 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   it from the favorites and advance ("Unfavorited"). Otherwise → drop it from
   the playlist, advance, and move its *upscale* into `2_outbox/kinda_weird/`
   ("Marked weird"), which is what arms Evolver's purge of the original and its
-  sidecar on the desktop's next run. Moon does the same move through the pCloud
+  sidecar on the desktop's next run. Warm Gun does the same move through the pCloud
   API (`renamefile`), so a weird on the phone is a weird everywhere — exactly
   as irreversible as on the desktop. It never deletes the original itself.
+  One accepted divergence: pCloud's `renamefile` replaces a same-named
+  incumbent where the desktop's `move_to_weird` walks `__dup1`, `__dup2`…
+  — harmless because stems are unique library-wide and re-marking the same
+  clip renames the same file onto itself.
 - **Auto-advance**: a clip plays once and the next one rolls on; only a lock
-  loops it. The "Loop clip" checkbox is Moon's addition for when one wants
+  loops it. The "Loop clip" checkbox is Warm Gun's addition for when one wants
   every clip to loop until tapped.
 - **Ordering**: Shuffle = the desktop's watch-weighted Efraimidis–Spirakis
   shuffle with probabilistic inclusion (`watch_stats.py`: weight =
@@ -72,15 +76,15 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 
 The desktop's `favs.csv` and `watch_stats.json` live in the fun_time checkout
 on the PC, which is *not* in pCloud, and `watch_stats.json` prunes any key that
-is not a path on the writing machine. So Moon does not write either file. It
+is not a path on the writing machine. So Warm Gun does not write either file. It
 keeps its own stores on the phone (favorites, weird marks, watch counts), keyed
 by the library-relative original path, and appends every event to a journal
-(`moon-journal.jsonl`, one JSON object per line: `{"t": unix seconds, "event":
+(`warm-gun-journal.jsonl`, one JSON object per line: `{"t": unix seconds, "event":
 "favorite|unfavorite|weird|lock|completion|skip", "path": "<library-relative
 original path>"}`) that it uploads to a pCloud folder outside the library
-(`/Moon` by default; configurable). Merging that journal into the desktop's
+(`/WarmGun` by default; configurable). Merging that journal into the desktop's
 stores is a later, desktop-side step. If a `favs.csv` is dropped into that same
-folder, Moon imports it: the second `=HYPERLINK(...)` argument of each row is a
+folder, Warm Gun imports it: the second `=HYPERLINK(...)` argument of each row is a
 Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
 
 ## Performance design (the whole point)
@@ -112,7 +116,7 @@ Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
 
 ## Module boundaries (the coupling gates enforce these)
 
-- `MoonKit/` — pure Foundation, no UIKit/AVFoundation/SwiftUI imports (gate:
+- `WarmGunKit/` — pure Foundation, no UIKit/AVFoundation/SwiftUI imports (gate:
   count must be 0). Everything decidable without a device lives here and is
   TDD'd: `LibraryPaths` (rendition mapping, orientation/source parsing),
   `Catalog` + `Clip` (the index and its builder from pCloud listings),
@@ -121,7 +125,7 @@ Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
   (index, step, discard, lock, replacePlaylist), `WatchStats` + `WatchTracker`,
   `Favorites` (+ favs.csv import), `PrefetchPlanner` (window → fetch order and
   eviction), `TapZones`, `Journal`, `LinkCache`.
-- `Moon/` — the app: SwiftUI views, `PlayerEngine` (AVFoundation), `Downloader`
+- `WarmGun/` — the app: SwiftUI views, `PlayerEngine` (AVFoundation), `Downloader`
   (URLSession), `ClipCache` (disk), `PCloudClient` (transport), `Keychain`,
   `AppModel` (the one `ObservableObject`, owns the Kit state). Views hold no
   domain state; they read the model and post intents.
@@ -131,7 +135,7 @@ Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
 
 ## Verification
 
-- `cd MoonKit && swift test` — the Kit, headless, on the Mac. Zero failures,
+- `cd WarmGunKit && swift test` — the Kit, headless, on the Mac. Zero failures,
   zero skips, before every commit.
 - `tools/gates.py` — the coupling/purity gates, numbers with a target of 0,
   fail the build. Runs in CI and from `tools/check.sh`.
@@ -140,6 +144,11 @@ Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
   `renamefile` into a scratch folder, `uploadfile`), so the whole app can be
   driven end-to-end in the Simulator with no credentials and no writes to the
   real library.
+- The Simulator flow needs no credentials: the simulator-only `WARMGUN_TOKEN`
+  launch variable stands in for the Keychain, so the whole app boots straight
+  into playback against the fake server (verified 2026-08-24: index, prefetch,
+  playback, auto-advance, watch journal upload, all against the real library
+  files read-only through the fake).
 - The phone: `./install.sh` with the iPhone plugged in and unlocked (same
   flow as Highdeas' `ios/resign.sh`; the wildcard team profile already covers
   any bundle id under the team). Until that has run, nothing is on the phone.

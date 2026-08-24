@@ -1,0 +1,27 @@
+name: merge gate
+
+# The required check for landing: the Kit suite headless on macOS, then the
+# coupling gates. The sanitize guard runs locally through the git hooks — a
+# public checkout has no blocklist overlay, so the guard exits quietly here and
+# is not what this gate is for.
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+  push:
+    branches: [main]
+
+concurrency:
+  group: merge-gate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  kit-and-gates:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kit suite
+        run: cd WarmGunKit && swift test
+      - name: Coupling gates
+        run: python3 tools/gates.py

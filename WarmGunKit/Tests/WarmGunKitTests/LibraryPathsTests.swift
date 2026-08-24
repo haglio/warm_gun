@@ -1,5 +1,5 @@
 import Testing
-@testable import MoonKit
+@testable import WarmGunKit
 
 @Suite struct LibraryPathsTests {
     @Test func parsesAnOriginalPathIntoSourceOrientationAndStem() {
@@ -32,5 +32,11 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/1_sorted/beta/landscape/a_b_c.mp4") == nil)
+    }
+}
+
+extension LibraryPathsTests {
+    @Test func namesTheFolderTheWeirdGestureMovesAnUpscaleInto() {
+        #expect(LibraryPaths.weirdDir == "2_outbox/kinda_weird")
     }
 }
