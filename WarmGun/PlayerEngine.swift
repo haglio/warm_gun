@@ -63,7 +63,7 @@ final class PlayerEngine {
 
     /// Shows `current`, with `next` ready behind it. Re-showing the clip already
     /// on screen only refreshes what is staged — it never restarts the picture.
-    func show(current: URL, next: URL?, loop: Bool) {
+    func show(current: URL, next: URL?, loop: Bool, autoplay: Bool = true) {
         self.loop = loop
         if currentURL != current {
             player.removeAllItems()
@@ -73,7 +73,11 @@ final class PlayerEngine {
             stagedURL = nil
         }
         stage(next)
-        player.play()
+        if autoplay { player.play() }
+    }
+
+    func pause() {
+        player.pause()
     }
 
     /// The session has moved somewhere the cache cannot serve yet: keep the

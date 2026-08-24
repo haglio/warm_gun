@@ -33,6 +33,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var weird: Set<String> = []
     @Published private(set) var stats = WatchStats()
     @Published private(set) var notice: Notice?
+    @Published private(set) var paused = false
     @Published private(set) var waitingFor: String?
     @Published private(set) var cached: Set<String> = []
     @Published private(set) var cacheBytes: Int64 = 0
@@ -60,7 +61,7 @@ final class AppModel: ObservableObject {
     /// The clip actually on the glass — not `session.current`, which runs
     /// ahead of the screen whenever a download is still in flight. Every watch
     /// sample and journal line is labeled with this, never with the session.
-    private var showing: String?
+    @Published private(set) var showing: String?
     private var planGeneration = 0
     private var consecutiveFailureSkips = 0
     private var persistTask: Task<Void, Never>?
@@ -87,6 +88,9 @@ final class AppModel: ObservableObject {
     // MARK: - lifecycle
 
     func start() async {
+        // F-mode is shelved until the desktop's favorites reach the phone —
+        // the switch is gone from the sheet, so nothing may leave it stuck on.
+        settings.browse.favoritesOnly = false
         cached = await cache.cachedPaths()
         cacheBytes = await cache.totalBytes()
         loadPersistedState()
@@ -339,9 +343,15 @@ final class AppModel: ObservableObject {
             return
         }
         if startAtTop {
-            session = Session(playlist: playlist)
+            // Starting on a clip that is already on disk makes the switch
+            // instant; the shuffle does not mind which entry opens it.
+            session = Session(playlist: playlist, index: playlist.firstIndex(where: cached.contains) ?? 0)
         } else {
             session.replacePlaylist(playlist)
+            if let current = session.current, !cached.contains(current),
+               let nearby = playlist.first(where: cached.contains) {
+                session.playFile(nearby)
+            }
         }
         sync()
     }
@@ -360,14 +370,37 @@ final class AppModel: ObservableObject {
 
     func next() {
         tracker.noteUserNav(now: Date())
+        paused = false
         session.step(1)
         sync()
     }
 
     func previous() {
         tracker.noteUserNav(now: Date())
+        paused = false
         session.step(-1)
         sync()
+    }
+
+    /// A single tap in the middle. Navigation always unpauses — a tap that
+    /// asks for a different clip is a tap that wants playback.
+    func togglePause() {
+        paused.toggle()
+        if paused {
+            engine.pause()
+        } else {
+            engine.resume()
+        }
+    }
+
+    /// The phone was turned: the browse follows the screen, portrait clips
+    /// upright and landscape clips wide, with no switch to remember.
+    func deviceRotated(landscape: Bool) {
+        let orientation: Orientation = landscape ? .landscape : .portrait
+        guard settings.browse.orientation != orientation else { return }
+        var browse = settings.browse
+        browse.orientation = orientation
+        update(browse: browse)
     }
 
     /// Lock = repeat this clip, and it is a favorite from now on. Unlock moves
@@ -513,7 +546,7 @@ final class AppModel: ObservableObject {
             var nextURL: URL?
             if let staged { nextURL = await cache.fileURL(for: staged) }
             await cache.markUsed(current)
-            engine.show(current: currentURL, next: nextURL, loop: loop)
+            engine.show(current: currentURL, next: nextURL, loop: loop, autoplay: !self.paused)
         }
         persistSoon()
     }

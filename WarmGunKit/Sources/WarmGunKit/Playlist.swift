@@ -1,5 +1,24 @@
 import Foundation
 
+/// The kinds of clip the controls sheet lets the browse narrow to. Every clip
+/// classifies as exactly one: genau loops are named by their source folder
+/// (the desktop delivers them from origenerator's genau lane), shorts are by
+/// running time, and the rest — unknown durations included — are full length.
+/// Act-based types (the desktop's filter vocabulary) arrive with the metadata
+/// sidecar index, and their names are library content — they will come from a
+/// git-ignored overlay the way the desktop's do, never from this enum.
+public enum ClipType: String, Codable, CaseIterable, Sendable {
+    case genau
+    case short
+    case fullLength
+
+    public static func classify(_ clip: Clip, shortsMaxSeconds: Double) -> ClipType {
+        if clip.source.localizedCaseInsensitiveContains("genau") { return .genau }
+        if let duration = clip.duration, duration <= shortsMaxSeconds { return .short }
+        return .fullLength
+    }
+}
+
 /// Every switch on the controls sheet, in one value.
 ///
 /// A plain record with nothing derived in it, so the app can persist it and hand
@@ -8,7 +27,7 @@ import Foundation
 public struct BrowseOptions: Codable, Equatable, Sendable {
     public var orientation: Orientation
     public var favoritesOnly: Bool
-    public var shortsOnly: Bool
+    public var types: Set<ClipType>
     public var shortsMaxSeconds: Double
     public var latest: Bool
     /// The size ceiling that keeps the legacy HEVC files sitting in the
@@ -17,27 +36,49 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
     public var maxBytes: Int64
 
     public init(orientation: Orientation = .portrait, favoritesOnly: Bool = false,
-                shortsOnly: Bool = false, shortsMaxSeconds: Double = 10,
+                types: Set<ClipType> = Set(ClipType.allCases), shortsMaxSeconds: Double = 10,
                 latest: Bool = false, maxBytes: Int64 = 25_000_000) {
         self.orientation = orientation
         self.favoritesOnly = favoritesOnly
-        self.shortsOnly = shortsOnly
+        self.types = types
         self.shortsMaxSeconds = shortsMaxSeconds
         self.latest = latest
         self.maxBytes = maxBytes
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case orientation, favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, maxBytes
+    }
+
     /// A blob persisted before a switch existed decodes with that switch at its
-    /// default — an app update must never cost the saved controls.
+    /// default — an app update must never cost the saved controls. The retired
+    /// "shorts only" switch migrates into the type checkboxes it became.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = BrowseOptions()
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? defaults.orientation
         favoritesOnly = try c.decodeIfPresent(Bool.self, forKey: .favoritesOnly) ?? defaults.favoritesOnly
-        shortsOnly = try c.decodeIfPresent(Bool.self, forKey: .shortsOnly) ?? defaults.shortsOnly
+        if let saved = try c.decodeIfPresent(Set<ClipType>.self, forKey: .types) {
+            types = saved
+        } else if try c.decodeIfPresent(Bool.self, forKey: .shortsOnly) == true {
+            types = [.short]
+        } else {
+            types = defaults.types
+        }
         shortsMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .shortsMaxSeconds) ?? defaults.shortsMaxSeconds
         latest = try c.decodeIfPresent(Bool.self, forKey: .latest) ?? defaults.latest
         maxBytes = try c.decodeIfPresent(Int64.self, forKey: .maxBytes) ?? defaults.maxBytes
+    }
+
+    /// The retired key never rides out again.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(orientation, forKey: .orientation)
+        try c.encode(favoritesOnly, forKey: .favoritesOnly)
+        try c.encode(types, forKey: .types)
+        try c.encode(shortsMaxSeconds, forKey: .shortsMaxSeconds)
+        try c.encode(latest, forKey: .latest)
+        try c.encode(maxBytes, forKey: .maxBytes)
     }
 }
 
@@ -77,14 +118,12 @@ public enum PlaylistBuilder {
     /// The switches, all of which only ever narrow, so their order among
     /// themselves cannot matter. Favorites are matched by stem because that is
     /// all the desktop's `favs.csv` carries, and stems are unique library-wide.
-    /// A clip whose duration the listing never reported cannot be shown to be
-    /// short, so Shorts drops it rather than guessing.
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
                                         _ favoriteStems: Set<String>, _ weird: Set<String>) -> Bool {
         clip.orientation == options.orientation
             && !weird.contains(clip.path)
             && clip.size <= options.maxBytes
             && (!options.favoritesOnly || favoriteStems.contains(clip.stem))
-            && (!options.shortsOnly || (clip.duration ?? .infinity) <= options.shortsMaxSeconds)
+            && options.types.contains(ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds))
     }
 }

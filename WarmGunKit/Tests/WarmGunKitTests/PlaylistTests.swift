@@ -118,7 +118,7 @@ extension PlaylistTests {
             Self.file("1_sorted/alpha/portrait/clip-four.mp4", seconds: nil),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(shortsOnly: true),
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(types: [.short]),
                                              favoriteStems: [], weird: [], stats: WatchStats(), rng: &rng)
 
         #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-two.mp4"])
@@ -209,7 +209,7 @@ extension PlaylistTests {
             Self.file("1_sorted/gamma/portrait/clip-six.mp4", seconds: 6.0),
         ])
         let favorites: Set<String> = ["clip-one", "clip-two", "clip-three", "clip-five", "clip-six"]
-        var options = BrowseOptions(orientation: .portrait, favoritesOnly: true, shortsOnly: true)
+        var options = BrowseOptions(orientation: .portrait, favoritesOnly: true, types: [.short])
 
         let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: favorites,
                                            weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
@@ -248,7 +248,7 @@ extension PlaylistTests {
     /// The controls sheet is where it was left: the switches are saved between
     /// launches, so the whole record has to survive a JSON round trip.
     @Test func theBrowseSwitchesSurviveAJSONRoundTrip() throws {
-        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, shortsOnly: true,
+        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genau],
                                     shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
 
         let data = try JSONEncoder().encode(options)
@@ -286,10 +286,57 @@ extension PlaylistTests {
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
 
         var shorts = BrowseOptions()
-        shorts.shortsOnly = true
+        shorts.types = [.short]
         shorts.shortsMaxSeconds = 9
         #expect(PlaylistBuilder.build(catalog: catalog, options: shorts, favoriteStems: [],
                                       weird: [], stats: WatchStats(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
+    }
+}
+
+extension PlaylistTests {
+    @Test func everyClipFallsIntoExactlyOneType() {
+        // Genau loops are named by their source folder (the desktop delivers
+        // them from origenerator's genau lane); shorts are by running time; the
+        // rest — unknown durations included — are full length. Act-based types
+        // wait on the metadata sidecar index and classify nowhere yet.
+        let genau = PlaylistTests.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4)
+        let short = PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 8)
+        let long = PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)
+        let unknown = PlaylistTests.file("1_sorted/alpha/portrait/clip-d.mp4", seconds: nil)
+        let clips = Catalog(files: [genau, short, long, unknown]).clips
+        #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genau)
+        #expect(ClipType.classify(clips[1], shortsMaxSeconds: 10) == .short)
+        #expect(ClipType.classify(clips[2], shortsMaxSeconds: 10) == .fullLength)
+        #expect(ClipType.classify(clips[3], shortsMaxSeconds: 10) == .fullLength)
+    }
+
+    @Test func theTypeCheckboxesNarrowTheBuild() {
+        var rng = PlaylistSeededRNG(seed: 5)
+        let catalog = Catalog(files: [
+            PlaylistTests.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 8),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40),
+        ])
+        var options = BrowseOptions()
+        options.types = [.short]
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                      weird: [], stats: WatchStats(), rng: &rng)
+                == ["1_sorted/alpha/portrait/clip-b.mp4"])
+        options.types = [.genau, .fullLength]
+        let both = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                         weird: [], stats: WatchStats(), rng: &rng)
+        #expect(Set(both) == ["1_sorted/alpha_genau/portrait/clip-a.mp4",
+                              "1_sorted/alpha/portrait/clip-c.mp4"])
+    }
+
+    @Test func aPersistedShortsOnlyBrowseMigratesToTheTypeCheckboxes() throws {
+        // The sheet used to have one "shorts only" switch; a blob persisted
+        // with it on must come back as the shorts checkbox alone, and one
+        // without it as every type.
+        let old = Data(#"{"orientation":"portrait","shortsOnly":true}"#.utf8)
+        #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).types == [.short])
+        let plain = Data(#"{"orientation":"portrait"}"#.utf8)
+        #expect(try JSONDecoder().decode(BrowseOptions.self, from: plain).types == Set(ClipType.allCases))
     }
 }

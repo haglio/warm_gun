@@ -11,14 +11,28 @@ struct ControlsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Browse") {
-                    Toggle("Landscape library", isOn: binding(\.orientation, on: .landscape, off: .portrait))
-                    Toggle("F-mode — favorites only", isOn: binding(\.favoritesOnly))
-                    Toggle("Shorts only (≤ \(Int(model.settings.browse.shortsMaxSeconds)) s)", isOn: binding(\.shortsOnly))
-                    Toggle("Latest first (else shuffle)", isOn: binding(\.latest))
-                    Toggle("Loop each clip", isOn: Binding(
+                Section {
+                    Toggle("Genau loops", isOn: typeBinding(.genau))
+                    Toggle("Shorts (≤ \(Int(model.settings.browse.shortsMaxSeconds)) s)", isOn: typeBinding(.short))
+                    Toggle("Full length", isOn: typeBinding(.fullLength))
+                } header: {
+                    Text("Types")
+                } footer: {
+                    Text("The library follows how you hold the phone — portrait clips upright, landscape clips wide. Act-based types come with the metadata index.")
+                }
+                Section("Order") {
+                    Picker("Order", selection: binding(\.latest)) {
+                        Text("Shuffle").tag(false)
+                        Text("Latest").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    Picker("Loop", selection: Binding(
                         get: { model.settings.loopClip },
-                        set: { model.update(loopClip: $0) }))
+                        set: { model.update(loopClip: $0) })) {
+                        Text("Loop all").tag(false)
+                        Text("Loop 1").tag(true)
+                    }
+                    .pickerStyle(.segmented)
                 }
                 Section("Now") {
                     LabeledContent("Clip", value: "\(model.session.playlist.isEmpty ? 0 : model.session.index + 1) of \(model.session.playlist.count)")
@@ -69,11 +83,17 @@ struct ControlsSheet: View {
                 })
     }
 
-    private func binding(_ key: WritableKeyPath<BrowseOptions, Orientation>, on: Orientation, off: Orientation) -> Binding<Bool> {
-        Binding(get: { model.settings.browse[keyPath: key] == on },
+    /// A type's checkbox: membership in the browse's type set. Unchecking the
+    /// last one would mean "play nothing", so the last checked type stays.
+    private func typeBinding(_ type: ClipType) -> Binding<Bool> {
+        Binding(get: { model.settings.browse.types.contains(type) },
                 set: { value in
                     var browse = model.settings.browse
-                    browse[keyPath: key] = value ? on : off
+                    if value {
+                        browse.types.insert(type)
+                    } else if !browse.types.subtracting([type]).isEmpty {
+                        browse.types.remove(type)
+                    }
                     model.update(browse: browse)
                 })
     }
