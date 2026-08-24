@@ -77,6 +77,11 @@ final class AppModel: ObservableObject {
     private var clipsByPath: [String: Clip] = [:]
     private var rng = SystemRandomNumberGenerator()
     private var journalDirty = false
+    /// A browse/filter change whose new clip is not on disk yet must VISIBLY
+    /// take effect: the old picture clears to the spinner instead of looping
+    /// on as if the switch did nothing. Nav stalls keep the old picture — a
+    /// fast tap run reads better over motion than over black.
+    private var clearOnNextWait = false
     private var noticeTask: Task<Void, Never>?
 
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: ClipCache? = nil) {
@@ -368,6 +373,7 @@ final class AppModel: ObservableObject {
             if session.playlist.isEmpty { sync() }
             return
         }
+        let before = session.current
         if startAtTop {
             // The top means the top: Latest must open on the newest clip, and
             // a fresh shuffle on its own first draw — never on whatever
@@ -380,6 +386,7 @@ final class AppModel: ObservableObject {
                 session.playFile(nearby)
             }
         }
+        clearOnNextWait = session.current != before
         sync()
     }
 
@@ -560,13 +567,20 @@ final class AppModel: ObservableObject {
             return
         }
         guard cached.contains(current) else {
-            // The last picture keeps looping under the spinner, but nothing may
-            // stay queued behind it: a stale roll-on would advance a session
-            // that has already moved somewhere else.
-            engine.holdCurrent()
+            if clearOnNextWait {
+                // The browse just changed: the switch must be seen to land.
+                engine.clear()
+                showing = nil
+            } else {
+                // A nav stall: the last picture keeps looping under the pill,
+                // but nothing may stay queued behind it — a stale roll-on
+                // would advance a session that has already moved elsewhere.
+                engine.holdCurrent()
+            }
             waitingFor = current
             return
         }
+        clearOnNextWait = false
         waitingFor = nil
         showing = current
         let staged = session.staged.flatMap { cached.contains($0) ? $0 : nil }
