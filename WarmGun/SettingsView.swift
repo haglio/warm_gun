@@ -12,6 +12,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var username = ""
     @State private var password = ""
+    @State private var verificationCode = ""
     @State private var libraryPath = ""
     @State private var loggingIn = false
 
@@ -27,6 +28,11 @@ struct SettingsView: View {
                             .autocorrectionDisabled()
                         SecureField("pCloud password", text: $password)
                             .textContentType(.password)
+                        if model.loginWantsCode {
+                            TextField("Verification code", text: $verificationCode)
+                                .textContentType(.oneTimeCode)
+                                .keyboardType(.numberPad)
+                        }
                         TextField("API host", text: $model.settings.apiHost)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
@@ -35,8 +41,9 @@ struct SettingsView: View {
                             Task {
                                 // The password survives a failure for another
                                 // try; only success clears it.
-                                if await model.login(username: username, password: password) {
+                                if await model.login(username: username, password: password, code: verificationCode) {
                                     password = ""
+                                    verificationCode = ""
                                 }
                                 loggingIn = false
                             }

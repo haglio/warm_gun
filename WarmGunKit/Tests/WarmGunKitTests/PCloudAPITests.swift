@@ -397,3 +397,16 @@ extension PCloudAPITests {
         #expect(error.localizedDescription == "pCloud: Log in failed. (code 2000)")
     }
 }
+
+extension PCloudAPITests {
+    @Test func aLoginCanCarryTheVerificationCodeTheServerAskedFor() {
+        // Error 1022 ("Please provide 'code'.") is pCloud asking for a second
+        // factor — an authenticator or emailed code. The retry is the same
+        // login with `code` riding along; without a code the query is unchanged.
+        let plain = PCloudAPI.login(username: "gunner@example.test", password: "pw")
+        #expect(plain == PCloudAPI.login(username: "gunner@example.test", password: "pw", code: nil))
+        let coded = PCloudAPI.login(username: "gunner@example.test", password: "pw", code: "123456")
+        #expect(coded.query.contains(URLQueryItem(name: "code", value: "123456")))
+        #expect(coded.method == "userinfo")
+    }
+}

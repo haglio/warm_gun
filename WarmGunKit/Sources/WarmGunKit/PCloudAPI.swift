@@ -68,9 +68,12 @@ public struct PCloudRequest: Equatable, Sendable {
 /// have to be taught to parse.
 public enum PCloudAPI {
     /// The one call that takes a password. The token it returns is what the
-    /// Keychain keeps; the password is used here and forgotten.
-    public static func login(username: String, password: String) -> PCloudRequest {
-        PCloudRequest(method: "userinfo", query: [
+    /// Keychain keeps; the password is used here and forgotten. `code` is the
+    /// second factor pCloud sometimes demands (error 1022, "Please provide
+    /// 'code'.") — an authenticator or emailed verification code, retried as
+    /// the same login with the code riding along.
+    public static func login(username: String, password: String, code: String? = nil) -> PCloudRequest {
+        var query = [
             URLQueryItem(name: "getauth", value: "1"),
             URLQueryItem(name: "username", value: username),
             URLQueryItem(name: "password", value: password),
@@ -79,7 +82,11 @@ public enum PCloudAPI {
             URLQueryItem(name: "authexpire", value: "63072000"),
             URLQueryItem(name: "device", value: "WarmGun"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
-        ])
+        ]
+        if let code {
+            query.append(URLQueryItem(name: "code", value: code))
+        }
+        return PCloudRequest(method: "userinfo", query: query)
     }
 
     /// Does the token still work? The one call the app makes on launch before

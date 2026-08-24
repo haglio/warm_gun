@@ -38,6 +38,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var cacheBytes: Int64 = 0
     @Published private(set) var backlog: (remaining: Int, total: Int)?
     @Published private(set) var lastProblem: String?
+    /// pCloud answered the password with "provide a code" (1022) or "invalid
+    /// code" (2012): the login form must grow a verification-code field.
+    @Published private(set) var loginWantsCode = false
 
     private let engine = PlayerEngine()
     /// The one AVFoundation object the view layer needs — the player the video
@@ -102,19 +105,27 @@ final class AppModel: ObservableObject {
 
     /// True on success, so the form knows whether to clear the password or
     /// keep it for another try. Any failure lands in `lastProblem` verbatim.
-    func login(username: String, password: String) async -> Bool {
+    func login(username: String, password: String, code: String? = nil) async -> Bool {
         do {
-            let response = try await PCloudClient.login(apiHost: settings.apiHost, username: username, password: password)
+            let response = try await PCloudClient.login(apiHost: settings.apiHost, username: username, password: password,
+                                                        code: (code?.isEmpty ?? true) ? nil : code)
             Keychain.store(token: response.auth)
             guard Keychain.token() != nil else {
                 lastProblem = "The Keychain refused to store the token"
                 return false
             }
             lastProblem = nil
+            loginWantsCode = false
             await start()
             return true
         } catch {
             lastProblem = error.localizedDescription
+            if let pcloud = error as? PCloudError, pcloud.code == 1022 || pcloud.code == 2012 {
+                loginWantsCode = true
+                lastProblem = pcloud.code == 1022
+                    ? "This account wants a verification code — check your authenticator app (or email/SMS from pCloud) and enter it below."
+                    : "pCloud refused that verification code — try a fresh one."
+            }
             return false
         }
     }

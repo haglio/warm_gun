@@ -39,9 +39,9 @@ actor PCloudClient {
         session = URLSession(configuration: config)
     }
 
-    static func login(apiHost: String, username: String, password: String) async throws -> LoginResponse {
+    static func login(apiHost: String, username: String, password: String, code: String? = nil) async throws -> LoginResponse {
         let client = try PCloudClient(apiHost: apiHost, auth: "")
-        return try await client.call(PCloudAPI.login(username: username, password: password), as: LoginResponse.self)
+        return try await client.call(PCloudAPI.login(username: username, password: password, code: code), as: LoginResponse.self)
     }
 
     func userInfo() async throws -> UserInfoResponse {
