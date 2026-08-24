@@ -41,6 +41,8 @@ import Testing
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
         #expect(index.actionMembers(of: "1_sorted/a/portrait/three.mp4")
                 == ["1_sorted/a/portrait/three.mp4"])
+        #expect(!index.isEmpty)
+        #expect(GroupIndex(sidecars: [:]).isEmpty)
     }
 
     @Test func seedFamiliesHoldTheActFixedAndLetTheSeedVary() {

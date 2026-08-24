@@ -75,8 +75,9 @@ struct PlayerView: View {
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .sheet(isPresented: $showingControls) {
+            // Everything on the sheet must be visible without a scroll.
             ControlsSheet()
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
         }
     }
 

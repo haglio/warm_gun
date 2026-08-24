@@ -36,6 +36,12 @@ final class AppModel: ObservableObject {
     /// clip's seed family / action group — the desktop satellite's axes.
     enum LoopMode: String { case all, single, seed, action }
     @Published private(set) var loopMode: LoopMode = .all
+    /// Whether the CURRENT clip has a group to loop — the sheet greys the
+    /// segment out rather than letting a press dead-end.
+    @Published private(set) var seedLoopAvailable = false
+    @Published private(set) var actionLoopAvailable = false
+    /// Why the loops have nothing to stand on, when the index fetch failed.
+    @Published private(set) var metadataProblem: String?
     /// Clip lengths measured off the cached files, path-keyed — the real
     /// pCloud listing carries no durations, so the phone learns them itself.
     private var measuredSeconds: [String: Double] = [:]
@@ -382,10 +388,13 @@ final class AppModel: ObservableObject {
                 let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath)
                 guard !sidecars.isEmpty else { return }
                 groupIndex = GroupIndex(sidecars: sidecars)
+                metadataProblem = nil
+                recomputeLoopAvailability()
                 if let data = try? JSONEncoder().encode(sidecars) {
                     try? data.write(to: sidecarsURL, options: .atomic)
                 }
             } catch {
+                metadataProblem = error.localizedDescription
                 lastProblem = "Metadata: \(error.localizedDescription)"
             }
         }
@@ -610,6 +619,7 @@ final class AppModel: ObservableObject {
             .filter { clipsByPath[$0].map { $0.size <= streamThresholdBytes } ?? true }
         let clips = clipsByPath
         Task { await prefetcher.replan(plan, clips: clips, generation: generation) }
+        recomputeLoopAvailability()
         guard let current = session.current else {
             engine.clear()
             showing = nil
@@ -735,6 +745,16 @@ final class AppModel: ObservableObject {
             measuredSeconds[path] = duration
             persistSoon()
         }
+    }
+
+    private func recomputeLoopAvailability() {
+        guard let current = session.current, !groupIndex.isEmpty else {
+            seedLoopAvailable = false
+            actionLoopAvailable = false
+            return
+        }
+        seedLoopAvailable = groupIndex.seedMembers(of: current).count > 1
+        actionLoopAvailable = groupIndex.actionMembers(of: current).count > 1
     }
 
     private func flash(_ text: String, favorite: Bool) {

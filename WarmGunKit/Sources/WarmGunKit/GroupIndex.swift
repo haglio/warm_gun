@@ -31,6 +31,10 @@ public struct GroupIndex: Sendable, Equatable {
     private var actionMembersByKey: [String: [String]] = [:]
     private var seedMembersByKey: [String: [String]] = [:]
 
+    /// True until any sidecar has been indexed — the UI's cue that the loops
+    /// have nothing to stand on yet.
+    public var isEmpty: Bool { actByPath.isEmpty }
+
     public init(sidecars: [String: Sidecar]) {
         for (path, sidecar) in sidecars {
             actByPath[path] = Self.normText(sidecar.video?["action"])
