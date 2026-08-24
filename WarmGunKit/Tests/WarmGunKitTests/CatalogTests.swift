@@ -42,3 +42,40 @@ extension CatalogTests {
         #expect(catalog.clips[1].orientation == .portrait)
     }
 }
+
+extension CatalogTests {
+    @Test func nonAIScenesJoinTheCatalogAndTheirUpscaleVariantsDoNot() {
+        // The non-AI tree holds each scene once as an original and again as a
+        // huge processed upscale; the phone plays originals only.
+        func file(_ path: String, width: Int? = nil, height: Int? = nil) -> LibraryFile {
+            LibraryFile(path: path, fileID: 1, size: 300_000_000,
+                        modified: Date(timeIntervalSince1970: 0), duration: nil,
+                        videoCodec: nil, width: width, height: height)
+        }
+        let catalog = Catalog(files: [
+            file("non_AI/alpha/scene-one.mp4", width: 1920, height: 1080),
+            file("non_AI/alpha/tall-one.mp4", width: 1080, height: 1920),
+            file("non_AI/alpha/processed/scene-one_apo8_iris2.mp4"),
+            file("non_AI/alpha/scene-two_topaz.mp4"),
+            file("non_AI/beta/deeper/scene-three.mp4"),
+        ])
+        #expect(catalog.clips.map(\.path) == ["non_AI/alpha/scene-one.mp4",
+                                              "non_AI/alpha/tall-one.mp4",
+                                              "non_AI/beta/deeper/scene-three.mp4"])
+        #expect(catalog.clips[0].source == "non_AI")
+        #expect(catalog.clips[0].orientation == .landscape)
+        #expect(catalog.clips[1].orientation == .portrait)
+        #expect(catalog.clips[2].stem == "scene-three")
+    }
+}
+
+extension CatalogTests {
+    @Test func aListingJoinsTheCatalogNamespaceUnderItsPrefix() {
+        let file = LibraryFile(path: "loop-one.mp4", fileID: 3, size: 9, modified: Date(timeIntervalSince1970: 5),
+                               duration: 2.0, videoCodec: "h264", width: 10, height: 20)
+        let prefixed = file.prefixed("genau/clips/")
+        #expect(prefixed.path == "genau/clips/loop-one.mp4")
+        #expect(prefixed.fileID == 3)
+        #expect(prefixed.modified == Date(timeIntervalSince1970: 5))
+    }
+}

@@ -11,10 +11,16 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     case genau
     case short
     case fullLength
+    /// Act-specific scenes. Which folders hold them — and what the checkbox
+    /// is called — is library vocabulary, defined only by the overlay.
+    case acts
 
     public static func classify(_ clip: Clip, shortsMaxSeconds: Double,
-                                measuredSeconds: Double? = nil) -> ClipType {
+                                measuredSeconds: Double? = nil,
+                                overlay: ContentOverlay = .empty) -> ClipType {
+        if let lane = overlay.lane(for: clip.path) { return lane.type }
         if clip.source.localizedCaseInsensitiveContains("genau") { return .genau }
+        if clip.source == "non_AI" { return .fullLength }
         if let seconds = measuredSeconds ?? clip.duration {
             return seconds <= shortsMaxSeconds ? .short : .fullLength
         }
@@ -110,8 +116,9 @@ public enum PlaylistBuilder {
     public static func build(catalog: Catalog, options: BrowseOptions, favoriteStems: Set<String>,
                              weird: Set<String>, stats: WatchStats,
                              measuredSeconds: [String: Double] = [:],
+                             overlay: ContentOverlay = .empty,
                              rng: inout some RandomNumberGenerator) -> [String] {
-        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird, measuredSeconds[$0.path]) }
+        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird, measuredSeconds[$0.path], overlay) }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
             // order is total and a rebuild never reshuffles what did not change.
@@ -130,13 +137,18 @@ public enum PlaylistBuilder {
     /// all the desktop's `favs.csv` carries, and stems are unique library-wide.
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
                                         _ favoriteStems: Set<String>, _ weird: Set<String>,
-                                        _ measured: Double?) -> Bool {
-        let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds, measuredSeconds: measured)
-        // A genau loop has no orientation of its own — it plays whichever way
-        // the phone is held.
-        return (clip.orientation == options.orientation || type == .genau)
+                                        _ measured: Double?, _ overlay: ContentOverlay) -> Bool {
+        let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
+                                     measuredSeconds: measured, overlay: overlay)
+        // A lane's orientation outranks the pixels; a genau loop has no
+        // orientation of its own and plays whichever way the phone is held.
+        let orientation = overlay.lane(for: clip.path)?.orientation ?? clip.orientation
+        // The size ceiling exists to keep the legacy monsters out of the AI
+        // originals; a real scene is big by nature and passes on principle.
+        let gated = clip.path.hasPrefix("1_sorted/")
+        return (orientation == options.orientation || type == .genau)
             && !weird.contains(clip.path)
-            && clip.size <= options.maxBytes
+            && (!gated || clip.size <= options.maxBytes)
             && (!options.favoritesOnly || favoriteStems.contains(clip.stem))
             && options.types.contains(type)
     }

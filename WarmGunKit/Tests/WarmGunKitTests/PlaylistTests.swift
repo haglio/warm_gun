@@ -380,3 +380,58 @@ extension PlaylistTests {
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
     }
 }
+
+extension PlaylistTests {
+    private static func nonAI(_ path: String, size: Int64 = 300_000_000,
+                              width: Int? = 1920, height: Int? = 1080) -> LibraryFile {
+        LibraryFile(path: path, fileID: 7, size: size, modified: Date(timeIntervalSince1970: 0),
+                    duration: nil, videoCodec: nil, width: width, height: height)
+    }
+
+    @Test func theOverlayNamesTheLanesTheRepoCannot() {
+        // The non-AI buckets' folder names are library content, so which
+        // bucket is which TYPE comes from a git-ignored overlay: a lane maps a
+        // path prefix to a type and, where the folder dictates one, an
+        // orientation. Everything unmatched under non_AI is a full-length
+        // scene.
+        let overlay = ContentOverlay(lanes: [
+            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .acts, orientation: .landscape, label: "Special"),
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait, label: nil),
+        ])
+        let special = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4")]).clips[0]
+        let tall = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
+        let plain = Catalog(files: [Self.nonAI("non_AI/beta/scene-three.mp4")]).clips[0]
+        #expect(ClipType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .acts)
+        #expect(ClipType.classify(plain, shortsMaxSeconds: 10, overlay: overlay) == .fullLength)
+        #expect(overlay.lane(for: tall.path)?.orientation == .portrait)
+        #expect(overlay.actsLabel == "Special")
+
+        var rng = PlaylistSeededRNG(seed: 13)
+        var options = BrowseOptions(orientation: .landscape)
+        options.types = [.acts]
+        let catalog = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4"),
+                                      Self.nonAI("non_AI/beta/scene-three.mp4")])
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                      weird: [], stats: WatchStats(), overlay: overlay, rng: &rng)
+                == ["non_AI/alpha/special/scene-one.mp4"])
+    }
+
+    @Test func theLaneOrientationOutranksThePixelsAndTheSizeGateSparesTheScenes() {
+        // A portrait-lane scene follows its lane whatever its pixels say, and
+        // the size ceiling exists to keep legacy monsters out of the AI
+        // originals — a 300 MB real scene must not be filtered by it.
+        let overlay = ContentOverlay(lanes: [
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait, label: nil),
+        ])
+        var rng = PlaylistSeededRNG(seed: 17)
+        let catalog = Catalog(files: [
+            Self.nonAI("non_AI/tall/scene-two.mp4"),   // 1920x1080 pixels, portrait lane
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-huge.mp4", size: 300_000_000, seconds: 40),
+        ])
+        var options = BrowseOptions(orientation: .portrait)
+        options.types = [.fullLength]
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                      weird: [], stats: WatchStats(), overlay: overlay, rng: &rng)
+                == ["non_AI/tall/scene-two.mp4"])
+    }
+}

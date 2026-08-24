@@ -40,7 +40,6 @@ final class AppModel: ObservableObject {
     @Published private(set) var waitingFor: String?
     @Published private(set) var cached: Set<String> = []
     @Published private(set) var cacheBytes: Int64 = 0
-    @Published private(set) var backlog: (remaining: Int, total: Int)?
     @Published private(set) var lastProblem: String?
     /// pCloud answered the password with "provide a code" (1022) or "invalid
     /// code" (2012): the login form must grow a verification-code field.
@@ -57,6 +56,13 @@ final class AppModel: ObservableObject {
     var player: AVPlayer { engine.player }
     private let cache: ClipCache
     private let stateDirectory: URL
+    /// The lanes the repo cannot name (see ContentOverlay): bundled from the
+    /// git-ignored content.local.json, empty when the bundle carries none.
+    let overlay: ContentOverlay
+    /// A clip past this size streams straight off its pCloud link instead of
+    /// being fetched whole — a real scene runs to hundreds of megabytes, and
+    /// most carry their index up front, so playback starts in seconds.
+    private let streamThresholdBytes: Int64 = 25_000_000
     private var client: PCloudClient?
     private var prefetcher: Prefetcher?
     private var eventPump: Task<Void, Never>?
@@ -74,11 +80,19 @@ final class AppModel: ObservableObject {
     private var noticeTask: Task<Void, Never>?
 
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: ClipCache? = nil) {
+        if let url = Bundle.main.url(forResource: "content.local", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let loaded = try? JSONDecoder().decode(ContentOverlay.self, from: data) {
+            overlay = loaded
+        } else {
+            overlay = .empty
+        }
         self.stateDirectory = stateDirectory
         self.cache = cache ?? ClipCache(directory: ClipCache.defaultDirectory)
         settings = Settings.load()
         try? FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
         engine.onAdvanced = { [weak self] url in self?.advanced(to: url) }
+        engine.onFinished = { [weak self] in self?.finished() }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
     }
@@ -287,12 +301,6 @@ final class AppModel: ObservableObject {
                     lastProblem = "pCloud unreachable — holding here and retrying"
                 }
             }
-        case .backlog(let remaining, let total, let failures):
-            backlog = total == 0 ? nil : (remaining, total)
-            if total == 0 { cacheBytes = await cache.totalBytes() }
-            if remaining == 0 && failures > 0 {
-                lastProblem = "\(failures) clip\(failures == 1 ? "" : "s") could not be downloaded"
-            }
         case .evicted(let paths):
             cached.subtract(paths)
             cacheBytes = await cache.totalBytes()
@@ -311,11 +319,13 @@ final class AppModel: ObservableObject {
             // missing folder is fine; the source simply contributes nothing.
             if let genauPath = LibraryPaths.genauClipsPath(forLibrary: settings.libraryPath),
                let loops = try? await client.listLibrary(path: genauPath) {
-                files += loops.map { loop in
-                    LibraryFile(path: LibraryPaths.genauPrefix + loop.path, fileID: loop.fileID,
-                                size: loop.size, modified: loop.modified, duration: loop.duration,
-                                videoCodec: loop.videoCodec, width: loop.width, height: loop.height)
-                }
+                files += loops.map { $0.prefixed(LibraryPaths.genauPrefix) }
+            }
+            // The real scenes — "full length" in Fun Time's sense is the
+            // non-AI library, the AI folder's sibling.
+            if let nonAIPath = LibraryPaths.nonAIPath(forLibrary: settings.libraryPath),
+               let scenes = try? await client.listLibrary(path: nonAIPath) {
+                files += scenes.map { $0.prefixed(LibraryPaths.nonAIPrefix) }
             }
             let fresh = Catalog(files: files)
             let changed = fresh != catalog
@@ -351,7 +361,8 @@ final class AppModel: ObservableObject {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
                                              favoriteStems: favorites.stems, weird: weird,
-                                             stats: stats, measuredSeconds: measuredSeconds, rng: &rng)
+                                             stats: stats, measuredSeconds: measuredSeconds,
+                                             overlay: overlay, rng: &rng)
         if playlist.isEmpty {
             if !session.playlist.isEmpty { flash("Nothing matches", favorite: false) }
             if session.playlist.isEmpty { sync() }
@@ -487,9 +498,6 @@ final class AppModel: ObservableObject {
     func update(browse: BrowseOptions) {
         let orderChanged = browse.latest != settings.browse.latest
         settings.browse = browse
-        // "Download this browse" pinned the OLD browse; spending slots on it
-        // after the switch would starve the window the user is now watching.
-        Task { await prefetcher?.cancelBacklog() }
         rebuild(startAtTop: orderChanged)
     }
 
@@ -501,21 +509,6 @@ final class AppModel: ObservableObject {
     func update(cacheCapMB: Int) {
         settings.cacheCapMB = cacheCapMB
         Task { await prefetcher?.setCap(bytes: settings.cacheCapBytes) }
-    }
-
-    /// Prefetch the whole current browse, raising the cache cap to hold it.
-    func downloadEverything() {
-        guard let prefetcher else { return }
-        let paths = session.playlist
-        let needed = paths.compactMap { clipsByPath[$0]?.size }.reduce(0, +)
-        let capMB = Int((Double(needed) * 1.1) / 1_000_000) + 1
-        if capMB > settings.cacheCapMB { update(cacheCapMB: capMB) }
-        let clips = clipsByPath
-        Task { await prefetcher.downloadAll(paths, clips: clips) }
-    }
-
-    func cancelDownloadEverything() {
-        Task { await prefetcher?.cancelBacklog() }
     }
 
     func clearCache() {
@@ -535,8 +528,10 @@ final class AppModel: ObservableObject {
         guard let prefetcher else { return }
         planGeneration += 1
         let generation = planGeneration
+        // The scenes too big to cache whole are not planned — they stream.
         let plan = PrefetchPlanner.plan(playlist: session.playlist, index: session.index,
                                         ahead: settings.prefetchAhead, behind: settings.prefetchBehind)
+            .filter { clipsByPath[$0].map { $0.size <= streamThresholdBytes } ?? true }
         let clips = clipsByPath
         Task { await prefetcher.replan(plan, clips: clips, generation: generation) }
         guard let current = session.current else {
@@ -546,6 +541,24 @@ final class AppModel: ObservableObject {
             return
         }
         let loop = session.locked || settings.loopClip
+        if let clip = clipsByPath[current], clip.size > streamThresholdBytes, !cached.contains(current) {
+            // Stream a scene straight off its link: playback starts on the
+            // first ranges, nothing lands in the cache, nothing is staged
+            // behind it (the next clip syncs when this one finishes).
+            waitingFor = nil
+            showing = current
+            Task {
+                do {
+                    let url = try await prefetcher.streamURL(for: clip)
+                    engine.show(current: url, next: nil, loop: loop, autoplay: !self.paused)
+                } catch {
+                    lastProblem = error.localizedDescription
+                    flash("Scene won't stream", favorite: false)
+                }
+            }
+            persistSoon()
+            return
+        }
         guard cached.contains(current) else {
             // The last picture keeps looping under the spinner, but nothing may
             // stay queued behind it: a stale roll-on would advance a session
@@ -574,6 +587,14 @@ final class AppModel: ObservableObject {
         if let staged = session.staged, url.lastPathComponent == ClipCache.fileName(for: staged) {
             session.advance()
         }
+        sync()
+    }
+
+    /// The clip played out with nothing staged behind it — a streamed scene,
+    /// or a cached clip whose neighbour has not landed yet. The session moves
+    /// on; the picture replays or holds until the next clip is ready.
+    private func finished() {
+        session.advance()
         sync()
     }
 

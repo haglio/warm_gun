@@ -99,6 +99,17 @@ public enum LibraryPaths {
     /// The prefix the app files genau loops under in its own catalog paths.
     public static let genauPrefix = "genau/clips/"
 
+    /// The non-AI library — the real scenes — beside the AI folder: "full
+    /// length" in Fun Time's sense IS this tree, `2D/non_AI`.
+    public static func nonAIPath(forLibrary libraryPath: String) -> String? {
+        let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
+        guard parts.count >= 2 else { return nil }
+        return "/" + (parts.dropLast(1) + ["non_AI"]).joined(separator: "/")
+    }
+
+    /// The prefix the app files non-AI scenes under in its own catalog paths.
+    public static let nonAIPrefix = "non_AI/"
+
     /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
     /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
     /// The stem alone identifies a clip: they are unique library-wide.

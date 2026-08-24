@@ -25,6 +25,15 @@ public struct LibraryFile: Equatable, Sendable {
     }
 }
 
+public extension LibraryFile {
+    /// The same file, filed under an app-side prefix — how the genau and
+    /// non-AI listings join the one catalog namespace.
+    func prefixed(_ prefix: String) -> LibraryFile {
+        LibraryFile(path: prefix + path, fileID: fileID, size: size, modified: modified,
+                    duration: duration, videoCodec: videoCodec, width: width, height: height)
+    }
+}
+
 /// A playable original, identified everywhere by its library-relative path.
 public struct Clip: Codable, Hashable, Identifiable, Sendable {
     public var id: String { path }
@@ -46,6 +55,23 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
             source = original.source
             orientation = original.orientation
             stem = original.stem
+        } else if file.path.hasPrefix(LibraryPaths.nonAIPrefix) {
+            // A real scene. Each exists as an original and often again as a
+            // huge processed upscale; the phone plays originals only, so the
+            // variants (a `processed` folder, a Topaz/iris suffix) stay out.
+            let inner = file.path.dropFirst(LibraryPaths.nonAIPrefix.count)
+            let components = inner.split(separator: "/").map(String.init)
+            guard let name = components.last, !components.dropLast().contains("processed") else { return nil }
+            guard let dot = name.lastIndex(of: "."), dot != name.startIndex else { return nil }
+            let bare = String(name[..<dot])
+            guard !bare.hasSuffix(LibraryPaths.upscaleSuffix), !bare.hasSuffix("_apo8_iris2") else { return nil }
+            source = "non_AI"
+            if let w = file.width, let h = file.height {
+                orientation = h >= w ? .portrait : .landscape
+            } else {
+                orientation = .landscape
+            }
+            stem = bare
         } else if file.path.hasPrefix(LibraryPaths.genauPrefix) {
             // A genau loop: no orientation folder — its pixels decide when the
             // listing has them, and portrait stands in when it does not (the

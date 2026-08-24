@@ -19,6 +19,9 @@ final class PlayerEngine {
     var onAdvanced: ((URL) -> Void)?
     /// Called with the fraction played, a few times a second.
     var onProgress: ((Double) -> Void)?
+    /// Called when the clip played out with nothing staged behind it and no
+    /// loop holding it — the session's cue to move on.
+    var onFinished: (() -> Void)?
     /// Called when a clip cannot be played at all — a truncated download, a
     /// container AVFoundation refuses. Without this an unplayable file would
     /// freeze the endless run silently and forever.
@@ -134,6 +137,7 @@ final class PlayerEngine {
     /// detached item, which is harmless.
     private func itemEnded(_ item: AVPlayerItem) {
         guard loop || stagedURL == nil else { return }
+        if !loop { onFinished?() }
         item.seek(to: .zero, completionHandler: nil)
         player.play()
     }

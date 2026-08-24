@@ -12,8 +12,11 @@ struct ControlsSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Genau loops", isOn: typeBinding(.genau))
-                    Toggle("Shorts (≤ \(Int(model.settings.browse.shortsMaxSeconds)) s)", isOn: typeBinding(.short))
+                    Toggle("Genau clips", isOn: typeBinding(.genau))
+                    Toggle("Shorts", isOn: typeBinding(.short))
+                    if let actsLabel = model.overlay.actsLabel {
+                        Toggle(actsLabel, isOn: typeBinding(.acts))
+                    }
                     Toggle("Full length", isOn: typeBinding(.fullLength))
                 } header: {
                     Text("Types")

@@ -8,8 +8,6 @@ import SwiftUI
 struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showingControls = false
-    @State private var showingZones = false
-    @State private var zonesTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geometry in
@@ -23,12 +21,6 @@ struct PlayerView: View {
                     model.togglePause()
                 }
                 .ignoresSafeArea()
-                if showingZones {
-                    ZoneOverlay()
-                        .ignoresSafeArea()
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
                 // The big spinner only when there is nothing on the glass at
                 // all; over a playing picture a fetch is a small pill, not a
                 // shroud.
@@ -68,31 +60,14 @@ struct PlayerView: View {
             }
             .onAppear {
                 model.deviceRotated(landscape: geometry.size.width > geometry.size.height)
-                flashZones()
             }
         }
         .animation(.easeOut(duration: 0.2), value: model.notice)
-        .animation(.easeOut(duration: 0.3), value: showingZones)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .sheet(isPresented: $showingControls) {
             ControlsSheet()
                 .presentationDetents([.medium, .large])
-        }
-        .onChange(of: showingControls) { _, open in
-            if !open { flashZones() }
-        }
-    }
-
-    /// The zones drawn for a moment — on arrival and whenever the sheet
-    /// closes — so the hand can learn where they are without a manual.
-    private func flashZones() {
-        zonesTask?.cancel()
-        showingZones = true
-        zonesTask = Task {
-            try? await Task.sleep(for: .seconds(2.5))
-            guard !Task.isCancelled else { return }
-            showingZones = false
         }
     }
 
@@ -154,41 +129,6 @@ private struct TapLayer: View {
 
     private func action(at point: CGPoint, in size: CGSize) -> TapAction {
         TapZones.action(x: point.x, y: point.y, width: size.width, height: size.height)
-    }
-}
-
-/// The tap map, drawn where the taps land: tinted thirds with their names.
-private struct ZoneOverlay: View {
-    var body: some View {
-        // Its own reader, inside the safe-area expansion, so the map is drawn
-        // in exactly the space the taps are measured in.
-        GeometryReader { geometry in
-            let size = geometry.size
-            zones(size: size)
-        }
-    }
-
-    private func zones(size: CGSize) -> some View {
-        let w = size.width / 3
-        let h = size.height / 3
-        return ZStack {
-            zone("PREVIOUS", x: 0, y: 0, width: w, height: size.height, tint: .blue)
-            zone("NEXT", x: 2 * w, y: 0, width: w, height: size.height, tint: .blue)
-            zone("WEIRD", x: w, y: 0, width: w, height: h, tint: .red)
-            zone("PAUSE ·· CONTROLS", x: w, y: h, width: w, height: h, tint: .gray)
-            zone("LOCK ★", x: w, y: 2 * h, width: w, height: h, tint: .green)
-        }
-    }
-
-    private func zone(_ label: String, x: CGFloat, y: CGFloat,
-                      width: CGFloat, height: CGFloat, tint: Color) -> some View {
-        Text(label)
-            .font(.caption.weight(.bold))
-            .foregroundStyle(.white.opacity(0.9))
-            .frame(width: width, height: height)
-            .background(tint.opacity(0.18))
-            .overlay(Rectangle().strokeBorder(.white.opacity(0.35), lineWidth: 1))
-            .position(x: x + width / 2, y: y + height / 2)
     }
 }
 

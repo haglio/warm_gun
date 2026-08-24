@@ -6,9 +6,8 @@ import WarmGunKit
 /// Given a plan (nearest clips first, see `PrefetchPlanner`), it downloads
 /// what is missing a few at a time, drops downloads that fell out of the plan,
 /// and evicts the least recently used cached clips that the plan does not
-/// protect once the cache is over its cap. A separate backlog behind the plan
-/// serves "download everything": it only ever draws from spare download slots,
-/// and the plan preempts it — the window around the playhead always wins.
+/// protect once the cache is over its cap. The scenes too big to cache whole
+/// are not planned at all — they stream, and this hands out their links.
 actor Prefetcher {
     enum Event: Sendable {
         /// `path` is on disk and playable-sized.
@@ -16,8 +15,6 @@ actor Prefetcher {
         /// One attempt on `path` failed; `attempts` is the consecutive count,
         /// and `loginRequired` says the token itself was refused.
         case failed(String, String, attempts: Int, loginRequired: Bool)
-        /// The backlog moved: `failures` counts clips it had to give up on.
-        case backlog(remaining: Int, total: Int, failures: Int)
         /// The cap was enforced; these paths left the disk.
         case evicted([String])
     }
@@ -25,7 +22,6 @@ actor Prefetcher {
     private struct Flight {
         let task: Task<Void, Never>
         let token: UUID
-        let planned: Bool
     }
 
     private let client: PCloudClient
@@ -34,9 +30,6 @@ actor Prefetcher {
     private var clips: [String: Clip] = [:]
     private var plan: [String] = []
     private var planGeneration = 0
-    private var backlog: [String] = []
-    private var backlogTotal = 0
-    private var backlogFailures = 0
     private var inFlight: [String: Flight] = [:]
     private var failures: [String: (attempts: Int, last: Date)] = [:]
     private var capBytes: Int64
@@ -66,39 +59,18 @@ actor Prefetcher {
         planGeneration = generation
         self.clips.merge(clips) { _, new in new }
         plan = order
-        let wanted = Set(order).union(backlog)
+        let wanted = Set(order)
         for (path, flight) in inFlight where !wanted.contains(path) {
             flight.task.cancel()
             inFlight[path] = nil
         }
-        // The head of the plan is the clip the screen is waiting for. If every
-        // slot is spent on the backlog, take one back — a tap must never queue
-        // behind "download everything".
-        if let head = order.first, inFlight[head] == nil, inFlight.count >= parallelism,
-           let sacrifice = inFlight.first(where: { !$0.value.planned }) {
-            sacrifice.value.task.cancel()
-            inFlight[sacrifice.key] = nil
-        }
         await pump()
     }
 
-    /// Queue every clip not yet cached, behind the window. Re-issuing replaces
-    /// the backlog rather than doubling it.
-    func downloadAll(_ paths: [String], clips: [String: Clip]) async {
-        self.clips.merge(clips) { _, new in new }
-        let cached = await cache.cachedPaths()
-        backlog = paths.filter { !cached.contains($0) }
-        backlogTotal = backlog.count
-        backlogFailures = 0
-        continuation.yield(.backlog(remaining: backlog.count, total: backlogTotal, failures: 0))
-        await pump()
-    }
-
-    func cancelBacklog() {
-        backlog = []
-        backlogTotal = 0
-        backlogFailures = 0
-        continuation.yield(.backlog(remaining: 0, total: 0, failures: 0))
+    /// A short-lived direct URL for a clip that streams instead of caching —
+    /// the same link cache and expiry rules the downloads use.
+    func streamURL(for clip: Clip) async throws -> URL {
+        try await link(for: clip)
     }
 
     private func pump() async {
@@ -106,7 +78,7 @@ actor Prefetcher {
         let cached = await cache.cachedPaths()
         let now = Date()
         var cooling = false
-        for (path, planned) in candidates() where inFlight.count < parallelism {
+        for path in plan where inFlight.count < parallelism {
             guard !cached.contains(path), inFlight[path] == nil, let clip = clips[path] else { continue }
             // A path that just failed sits out a beat instead of hammering the
             // same broken link in a tight loop; the delayed pump below retries.
@@ -116,7 +88,7 @@ actor Prefetcher {
             }
             let token = UUID()
             let task = Task { [weak self] in _ = await self?.fetch(clip, token: token) }
-            inFlight[path] = Flight(task: task, token: token, planned: planned)
+            inFlight[path] = Flight(task: task, token: token)
         }
         if cooling && inFlight.isEmpty {
             Task { [weak self] in
@@ -126,21 +98,15 @@ actor Prefetcher {
         }
     }
 
-    private func candidates() -> [(String, Bool)] {
-        plan.map { ($0, true) } + backlog.map { ($0, false) }
-    }
-
     private func fetch(_ clip: Clip, token: UUID) async {
         defer {
             // Only this flight's own registration — replan may have cancelled
             // it and pump may already have a replacement in the slot.
             if inFlight[clip.path]?.token == token { inFlight[clip.path] = nil }
         }
-        var succeeded = false
         do {
             try await fetchOnce(clip, retryOnStaleLink: true)
             failures[clip.path] = nil
-            succeeded = true
             continuation.yield(.ready(clip.path))
             await evict()
         } catch is CancellationError {
@@ -155,15 +121,6 @@ actor Prefetcher {
             let loginRequired = (error as? PCloudError)?.isLoginRequired ?? false
             continuation.yield(.failed(clip.path, error.localizedDescription,
                                        attempts: attempts, loginRequired: loginRequired))
-            if backlog.contains(clip.path) && attempts >= 3 {
-                backlog.removeAll { $0 == clip.path }
-                backlogFailures += 1
-            }
-        }
-        if succeeded { backlog.removeAll { $0 == clip.path } }
-        if backlogTotal > 0 {
-            continuation.yield(.backlog(remaining: backlog.count, total: backlogTotal, failures: backlogFailures))
-            if backlog.isEmpty { backlogTotal = 0; backlogFailures = 0 }
         }
         await pump()
     }
@@ -210,8 +167,7 @@ actor Prefetcher {
 
     private func evict() async {
         let cached = await cache.cachedFiles()
-        let keep = Set(plan).union(backlog.isEmpty ? [] : Set(cached.map(\.path)))
-        let doomed = PrefetchPlanner.evictions(cached: cached, keep: keep, capBytes: capBytes)
+        let doomed = PrefetchPlanner.evictions(cached: cached, keep: Set(plan), capBytes: capBytes)
         if !doomed.isEmpty {
             await cache.remove(doomed)
             continuation.yield(.evicted(doomed))

@@ -18,6 +18,9 @@ __pycache__/
 #   the real blocklist is itself a catalogue of excluded terms, the library paths
 #   it is harvested from name the machine, and the harvest stamp is per-machine
 /sanitize/*.local.txt
+#   real content overlay — the non-AI lane folder names are library content;
+#   bundled into the app at build time, documented by content.example.json
+/WarmGun/content.local.json
 
 # pCloud conflict copies (the Haglio trees sync via pCloud). Never our files; an
 # untracked one dirties main and blocks merges. '[' escaped to match literally.
