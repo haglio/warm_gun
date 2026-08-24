@@ -40,10 +40,7 @@ final class AppModel: ObservableObject {
     /// segment out rather than letting a press dead-end.
     @Published private(set) var seedLoopAvailable = false
     @Published private(set) var actionLoopAvailable = false
-    /// The metadata pipeline's state, in words the sheet always shows — one
-    /// glance answers "why is everything greyed out".
-    @Published private(set) var metadataStatus = "not fetched yet"
-    @Published private(set) var metadataFailed = false
+
     /// Clip lengths measured off the cached files, path-keyed — the real
     /// pCloud listing carries no durations, so the phone learns them itself.
     private var measuredSeconds: [String: Double] = [:]
@@ -119,6 +116,20 @@ final class AppModel: ObservableObject {
         engine.onAdvanced = { [weak self] url in self?.advanced(to: url) }
         engine.onFinished = { [weak self] in self?.finished() }
         engine.onBuffering = { [weak self] stalled in self?.buffering(stalled) }
+        // The library follows the physical rotation. The view's geometry hook
+        // also reports this, but the device notification arrives even when a
+        // layout pass does not, so both roads lead here.
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                switch UIDevice.current.orientation {
+                case .portrait, .portraitUpsideDown: self?.deviceRotated(landscape: false)
+                case .landscapeLeft, .landscapeRight: self?.deviceRotated(landscape: true)
+                default: break  // face up/down says nothing about the screen
+                }
+            }
+        }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
     }
@@ -396,34 +407,23 @@ final class AppModel: ObservableObject {
                 let fingerprint = MetadataFetcher.fingerprint(of: listing)
                 let stored = UserDefaults.standard.string(forKey: "warm-gun.metadata-fingerprint")
                 if fingerprint == stored, !groupIndex.isEmpty {
-                    metadataStatus = "indexed \(listing.count) sidecars (unchanged)"
-                    metadataFailed = false
                     recomputeLoopAvailability()
                     return
                 }
                 let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath,
-                                                                       listing: listing) { note in
-                    Task { @MainActor [weak self] in self?.metadataStatus = note }
-                }
+                                                                       listing: listing) { _ in }
                 guard !sidecars.isEmpty else {
-                    metadataStatus = "the metadata folder came back empty"
-                    metadataFailed = true
+                    lastProblem = "Metadata: the metadata folder came back empty"
                     return
                 }
-                let matching = sidecars.keys.filter { clipsByPath[$0] != nil }.count
                 groupIndex = GroupIndex(sidecars: sidecars)
-                metadataFailed = matching == 0
-                metadataStatus = matching == 0
-                    ? "\(sidecars.count) sidecars fetched but none match the catalog"
-                    : "indexed \(sidecars.count) sidecars (\(matching) in the catalog)"
                 recomputeLoopAvailability()
                 if let data = try? JSONEncoder().encode(sidecars) {
                     try? data.write(to: sidecarsURL, options: .atomic)
                     UserDefaults.standard.set(fingerprint, forKey: "warm-gun.metadata-fingerprint")
                 }
             } catch {
-                metadataStatus = error.localizedDescription
-                metadataFailed = true
+                lastProblem = "Metadata: \(error.localizedDescription)"
             }
         }
     }

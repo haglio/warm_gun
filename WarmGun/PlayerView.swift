@@ -154,18 +154,11 @@ private struct ControlsOverlay: View {
                 }
             }
             corner(.bottomLeading) {
-                VStack(alignment: .leading, spacing: 6) {
-                    cluster {
-                        loopChip("All", .all)
-                        loopChip("1", .single)
-                        loopChip("Seed", .seed, enabled: model.seedLoopAvailable)
-                        loopChip("Action", .action, enabled: model.actionLoopAvailable)
-                    }
-                    Text("Metadata: \(model.metadataStatus)")
-                        .font(.caption2)
-                        .foregroundStyle(model.metadataFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.white.opacity(0.55)))
-                        .lineLimit(2)
-                        .frame(maxWidth: 220, alignment: .leading)
+                cluster {
+                    loopChip("All", .all)
+                    loopChip("1", .single)
+                    loopChip("Seed", .seed, enabled: model.seedLoopAvailable)
+                    loopChip("Action", .action, enabled: model.actionLoopAvailable)
                 }
             }
             corner(.bottomTrailing) {
@@ -216,31 +209,39 @@ private struct ControlsOverlay: View {
     }
 
     private func chip(_ label: String, on binding: Binding<Bool>) -> some View {
-        Button(label) {
+        Button {
             onAnyInteraction()
             binding.wrappedValue.toggle()
+        } label: {
+            Text(label)
+                .frame(minWidth: 84, minHeight: 34)
         }
         .buttonStyle(.plain)
         .font(.subheadline.weight(binding.wrappedValue ? .bold : .regular))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(binding.wrappedValue ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
         .foregroundStyle(.white)
+        .contentShape(Capsule())
     }
 
     private func loopChip(_ label: String, _ mode: AppModel.LoopMode, enabled: Bool = true) -> some View {
         let selected = model.loopMode == mode
-        return Button(label) {
+        return Button {
             onAnyInteraction()
             model.setLoop(mode)
+        } label: {
+            Text(label)
+                .frame(minWidth: 84, minHeight: 34)
         }
         .buttonStyle(.plain)
         .font(.subheadline.weight(selected ? .bold : .regular))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(selected ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
         .foregroundStyle(enabled ? AnyShapeStyle(.white) : AnyShapeStyle(.white.opacity(0.3)))
         .disabled(!enabled)
+        .contentShape(Capsule())
     }
 
     private func iconButton(_ systemName: String, large: Bool = false, action: @escaping () -> Void) -> some View {
@@ -254,15 +255,15 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Membership of one type in the browse — the last checked type stays, so
-    /// the browse can never be emptied by unchecking.
+    /// Membership of one type in the browse. Unchecking everything is allowed
+    /// — the screen just says nothing matches until a type comes back.
     private func typeBinding(_ type: ClipType) -> Binding<Bool> {
         Binding(get: { model.settings.browse.types.contains(type) },
                 set: { value in
                     var browse = model.settings.browse
                     if value {
                         browse.types.insert(type)
-                    } else if !browse.types.subtracting([type]).isEmpty {
+                    } else {
                         browse.types.remove(type)
                     }
                     model.update(browse: browse)
