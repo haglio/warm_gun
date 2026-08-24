@@ -17,14 +17,14 @@ struct PlayerView: View {
                 Color.black.ignoresSafeArea()
                 VideoSurface(player: model.player)
                     .ignoresSafeArea()
-                TapLayer(size: geometry.size) { action in
+                TapLayer { action in
                     if action == .center { showingControls = true } else { model.tap(action) }
                 } onPause: {
                     model.togglePause()
                 }
                 .ignoresSafeArea()
                 if showingZones {
-                    ZoneOverlay(size: geometry.size)
+                    ZoneOverlay()
                         .ignoresSafeArea()
                         .allowsHitTesting(false)
                         .transition(.opacity)
@@ -112,54 +112,66 @@ struct PlayerView: View {
 /// there is pause and two are the controls, and the pause can afford the
 /// double-tap window that tells them apart.
 private struct TapLayer: View {
-    let size: CGSize
     let onAction: (TapAction) -> Void
     let onPause: () -> Void
     @State private var pendingPause: Task<Void, Never>?
 
     var body: some View {
-        Color.clear
-            .contentShape(Rectangle())
-            .gesture(
-                SpatialTapGesture(count: 2)
-                    .onEnded { tap in
-                        guard action(at: tap.location) == .center else { return }
-                        pendingPause?.cancel()
-                        pendingPause = nil
-                        onAction(.center)
-                    }
-            )
-            .simultaneousGesture(
-                SpatialTapGesture()
-                    .onEnded { tap in
-                        let action = action(at: tap.location)
-                        if action == .center {
+        // Measured INSIDE the safe-area-ignoring expansion: the outer
+        // geometry is the safe-area frame, which in landscape is pushed off
+        // the notch — zones computed from it land visibly left of where the
+        // fingers expect them. In here, size and tap share one space.
+        GeometryReader { geometry in
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    SpatialTapGesture(count: 2)
+                        .onEnded { tap in
+                            guard action(at: tap.location, in: geometry.size) == .center else { return }
                             pendingPause?.cancel()
-                            pendingPause = Task {
-                                try? await Task.sleep(for: .milliseconds(280))
-                                guard !Task.isCancelled else { return }
-                                onPause()
-                            }
-                        } else {
-                            onAction(action)
+                            pendingPause = nil
+                            onAction(.center)
                         }
-                    }
-            )
+                )
+                .simultaneousGesture(
+                    SpatialTapGesture()
+                        .onEnded { tap in
+                            let action = action(at: tap.location, in: geometry.size)
+                            if action == .center {
+                                pendingPause?.cancel()
+                                pendingPause = Task {
+                                    try? await Task.sleep(for: .milliseconds(280))
+                                    guard !Task.isCancelled else { return }
+                                    onPause()
+                                }
+                            } else {
+                                onAction(action)
+                            }
+                        }
+                )
+        }
     }
 
-    private func action(at point: CGPoint) -> TapAction {
+    private func action(at point: CGPoint, in size: CGSize) -> TapAction {
         TapZones.action(x: point.x, y: point.y, width: size.width, height: size.height)
     }
 }
 
 /// The tap map, drawn where the taps land: tinted thirds with their names.
 private struct ZoneOverlay: View {
-    let size: CGSize
-
     var body: some View {
+        // Its own reader, inside the safe-area expansion, so the map is drawn
+        // in exactly the space the taps are measured in.
+        GeometryReader { geometry in
+            let size = geometry.size
+            zones(size: size)
+        }
+    }
+
+    private func zones(size: CGSize) -> some View {
         let w = size.width / 3
         let h = size.height / 3
-        ZStack {
+        return ZStack {
             zone("PREVIOUS", x: 0, y: 0, width: w, height: size.height, tint: .blue)
             zone("NEXT", x: 2 * w, y: 0, width: w, height: size.height, tint: .blue)
             zone("WEIRD", x: w, y: 0, width: w, height: h, tint: .red)
