@@ -104,7 +104,7 @@ final class AppModel: ObservableObject {
             // an override for the day the account grows a second skeleton.
             phase = .indexing
             do {
-                guard let client, let found = LibraryPaths.discoverLibrary(root: try await client.folderSkeleton(path: "/")) else {
+                guard let client, let found = try await Self.discoverLibrary(client: client) else {
                     lastProblem = "No folder holding both 1_sorted and 2_outbox found in this account"
                     phase = .needsLibrary
                     return
@@ -207,6 +207,31 @@ final class AppModel: ObservableObject {
         try? FileManager.default.removeItem(at: catalogURL)
         persistState()
         await start()
+    }
+
+    /// Hunt for the library by its skeleton. pCloud refuses a recursive
+    /// listing of the ROOT with 1101 (a 2025-era server change), so the walk
+    /// starts shallow there and recurses per top-level folder, descending
+    /// again wherever the refusal repeats.
+    private static func discoverLibrary(client: PCloudClient) async throws -> String? {
+        var queue = ["/"]
+        var visited = 0
+        while !queue.isEmpty, visited < 50 {
+            let path = queue.removeFirst()
+            visited += 1
+            do {
+                let tree = try await client.folderSkeleton(path: path, recursive: true)
+                if let found = LibraryPaths.discoverLibrary(root: tree, at: path) { return found }
+            } catch let error as PCloudError where error.code == 1101 {
+                let shallow = try await client.folderSkeleton(path: path, recursive: false)
+                let base = path == "/" ? "" : path
+                if let found = LibraryPaths.discoverLibrary(root: shallow, at: path) { return found }
+                for child in shallow.contents ?? [] where child.isfolder {
+                    queue.append(base + "/" + child.name)
+                }
+            }
+        }
+        return nil
     }
 
     private func connect(token: String) throws {

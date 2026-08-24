@@ -62,8 +62,8 @@ actor PCloudClient {
         try await call(PCloudAPI.userInfo(auth: auth), as: UserInfoResponse.self)
     }
 
-    func folderSkeleton(path: String) async throws -> PCloudEntry {
-        try await call(PCloudAPI.listFolders(path: path, auth: auth), as: ListFolderResponse.self).metadata
+    func folderSkeleton(path: String, recursive: Bool = true) async throws -> PCloudEntry {
+        try await call(PCloudAPI.listFolders(path: path, auth: auth, recursive: recursive), as: ListFolderResponse.self).metadata
     }
 
     func listLibrary(path: String) async throws -> [LibraryFile] {

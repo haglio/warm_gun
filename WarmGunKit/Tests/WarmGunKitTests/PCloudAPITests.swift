@@ -474,5 +474,15 @@ extension PCloudAPITests {
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])
+        // pCloud refuses recursive listings of the ROOT with 1101 (a 2025-era
+        // server change, see rclone#9315), so the hunt must be able to descend
+        // one shallow rung at a time.
+        let shallow = PCloudAPI.listFolders(path: "/", auth: "token-abc", recursive: false)
+        #expect(shallow.query == [
+            URLQueryItem(name: "path", value: "/"),
+            URLQueryItem(name: "nofiles", value: "1"),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+            URLQueryItem(name: "auth", value: "token-abc"),
+        ])
     }
 }

@@ -59,9 +59,10 @@ public enum LibraryPaths {
     /// wins: no underscore component first, then the shallower, then the
     /// lexicographically first, so the answer is one value however the
     /// listing is ordered.
-    public static func discoverLibrary(root: PCloudEntry) -> String? {
+    public static func discoverLibrary(root: PCloudEntry, at basePath: String = "") -> String? {
         var candidates: [String] = []
-        collectLibraryCandidates(root, at: "", into: &candidates)
+        let base = basePath == "/" ? "" : basePath
+        collectLibraryCandidates(root, at: base, into: &candidates)
         func parked(_ path: String) -> Bool {
             path.split(separator: "/").contains { $0.hasPrefix("_") }
         }

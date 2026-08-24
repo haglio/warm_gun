@@ -67,6 +67,16 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.discoverLibrary(root: root) == "/alpha/videos/videos/2D/AI")
     }
 
+    @Test func aSubtreeListingYieldsAbsolutePathsWhenGivenItsBase() {
+        // When the root refuses a recursive listing, discovery descends and
+        // lists subtrees — whose candidates must still come back as full
+        // account paths, not paths relative to wherever the walk stood.
+        let subtree = Self.folder("videos", [
+            Self.folder("2D", [Self.folder("AI", [Self.folder("1_sorted"), Self.folder("2_outbox")])]),
+        ])
+        #expect(LibraryPaths.discoverLibrary(root: subtree, at: "/alpha/videos") == "/alpha/videos/2D/AI")
+    }
+
     @Test func anArchivedCopyLosesToTheLiveTree() {
         // Parked trees ride under underscore-prefixed folders by convention;
         // ties break on depth, then on the path itself, so the answer is one

@@ -102,7 +102,7 @@ class Store:
         self.cache_file.write_text(json.dumps(self.probe_cache))
         self.moves_file.write_text(json.dumps(self.moved))
 
-    def entry(self, path: Path, recursive: bool, nofiles: bool = False) -> dict | None:
+    def entry(self, path: Path, recursive: bool, nofiles: bool = False, top: bool = True) -> dict | None:
         pc = self.pcloud_path(path)
         if pc in self.moved:
             return None
@@ -111,14 +111,16 @@ class Store:
                 "name": path.name or "/", "isfolder": True, "folderid": fnv64(pc),
                 "modified": int(path.stat().st_mtime), "path": pc,
             }
-            if recursive:
+            # Like the real API: the LISTED folder always carries its immediate
+            # children; only recursive listings carry the children's children.
+            if recursive or top:
                 children = []
                 for child in sorted(path.iterdir()):
                     if child.name.startswith("."):
                         continue
                     if nofiles and not child.is_dir():
                         continue
-                    e = self.entry(child, recursive, nofiles)
+                    e = self.entry(child, recursive, nofiles, top=False)
                     if e is not None:
                         children.append(e)
                 folder["contents"] = children
@@ -169,6 +171,11 @@ class Handler(BaseHTTPRequestHandler):
         if method == "getapiserver":
             return self.reply({"result": 0, "api": ["localhost:%d" % self.port]})
         if method == "listfolder":
+            # The real API refuses a recursive listing of the root with 1101
+            # (observed 2026-08-24, same as rclone#9315); mirror it so the
+            # app's descend-and-retry path is what the Simulator exercises.
+            if q.get("path", "/") == "/" and q.get("recursive") == "1":
+                return self.reply({"result": 1101, "error": "Invalid request."})
             target = self.store.resolve(q.get("path", "/"))
             if target is None or not target.is_dir():
                 return self.reply({"result": 2005, "error": "Directory does not exist."})

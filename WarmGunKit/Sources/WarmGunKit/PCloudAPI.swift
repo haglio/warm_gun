@@ -146,15 +146,21 @@ public enum PCloudAPI {
     }
 
     /// The folder skeleton alone — no files — which is all library discovery
-    /// needs and a fraction of the full listing's size.
-    public static func listFolders(path: String, auth: String) -> PCloudRequest {
-        PCloudRequest(method: "listfolder", query: [
-            URLQueryItem(name: "path", value: path),
-            URLQueryItem(name: "recursive", value: "1"),
+    /// needs and a fraction of the full listing's size. Non-recursive when the
+    /// server refuses depth: pCloud answers a recursive listing of the ROOT
+    /// with 1101 "Invalid request" (a 2025-era server change), so the hunt
+    /// descends one shallow rung at a time from there.
+    public static func listFolders(path: String, auth: String, recursive: Bool = true) -> PCloudRequest {
+        var query = [URLQueryItem(name: "path", value: path)]
+        if recursive {
+            query.append(URLQueryItem(name: "recursive", value: "1"))
+        }
+        query.append(contentsOf: [
             URLQueryItem(name: "nofiles", value: "1"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: auth),
         ])
+        return PCloudRequest(method: "listfolder", query: query)
     }
 
     /// A short-lived direct download URL. Keyed by file id, not path, because
