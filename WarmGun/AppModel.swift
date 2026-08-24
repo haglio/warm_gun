@@ -37,6 +37,10 @@ final class AppModel: ObservableObject {
     private var measuredSeconds: [String: Double] = [:]
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
+    /// The player is stalled mid-buffer for long enough to say so — debounced,
+    /// so a loop wrap's momentary hiccup does not flash a loading screen.
+    @Published private(set) var buffering = false
+    private var bufferingTask: Task<Void, Never>?
     @Published private(set) var waitingFor: String?
     @Published private(set) var cached: Set<String> = []
     @Published private(set) var cacheBytes: Int64 = 0
@@ -98,6 +102,7 @@ final class AppModel: ObservableObject {
         try? FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
         engine.onAdvanced = { [weak self] url in self?.advanced(to: url) }
         engine.onFinished = { [weak self] in self?.finished() }
+        engine.onBuffering = { [weak self] stalled in self?.buffering(stalled) }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
     }
@@ -369,8 +374,11 @@ final class AppModel: ObservableObject {
                                              stats: stats, measuredSeconds: measuredSeconds,
                                              overlay: overlay, rng: &rng)
         if playlist.isEmpty {
-            if !session.playlist.isEmpty { flash("Nothing matches", favorite: false) }
-            if session.playlist.isEmpty { sync() }
+            // Nothing fits these switches: say exactly that on a blank screen
+            // (the view reads the empty playlist) rather than playing on as if
+            // the switch had not landed.
+            session = Session(playlist: [])
+            sync()
             return
         }
         let before = session.current
@@ -602,6 +610,16 @@ final class AppModel: ObservableObject {
             session.advance()
         }
         sync()
+    }
+
+    private func buffering(_ stalled: Bool) {
+        bufferingTask?.cancel()
+        guard stalled else { buffering = false; return }
+        bufferingTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            self?.buffering = true
+        }
     }
 
     /// The clip played out with nothing staged behind it — a streamed scene,

@@ -22,6 +22,9 @@ final class PlayerEngine {
     /// Called when the clip played out with nothing staged behind it and no
     /// loop holding it — the session's cue to move on.
     var onFinished: (() -> Void)?
+    /// Called as the player enters and leaves its buffering stall — the only
+    /// sign a streaming scene gives before its first frame.
+    var onBuffering: ((Bool) -> Void)?
     /// Called when a clip cannot be played at all — a truncated download, a
     /// container AVFoundation refuses. Without this an unplayable file would
     /// freeze the endless run silently and forever.
@@ -34,6 +37,7 @@ final class PlayerEngine {
     private var failObserver: NSObjectProtocol?
     private var timeObserver: Any?
     private var itemObservation: NSKeyValueObservation?
+    private var rateObservation: NSKeyValueObservation?
     private var statusObservations: [NSKeyValueObservation] = []
 
     init() {
@@ -57,6 +61,10 @@ final class PlayerEngine {
         failObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: nil, queue: .main) { [weak self] note in
             guard let self, let item = note.object as? AVPlayerItem else { return }
             self.itemFailed(item)
+        }
+        rateObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            let stalled = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
+            Task { @MainActor in self?.onBuffering?(stalled) }
         }
         itemObservation = player.observe(\.currentItem, options: [.old, .new]) { [weak self] _, change in
             guard let self, let old = change.oldValue ?? nil, let new = change.newValue ?? nil, old !== new else { return }

@@ -21,13 +21,22 @@ struct PlayerView: View {
                     model.togglePause()
                 }
                 .ignoresSafeArea()
-                // The big spinner only when there is nothing on the glass at
-                // all; over a playing picture a fetch is a small pill, not a
-                // shroud.
-                if model.showing == nil && (model.waitingFor != nil || model.phase == .indexing) {
-                    ProgressView()
-                        .controlSize(.large)
-                        .tint(.white)
+                // Loading states say so in words; over a playing picture a
+                // fetch stays a small pill, never a shroud.
+                if model.phase == .ready && model.catalog != nil && model.session.playlist.isEmpty {
+                    Text("Nothing matches these filters")
+                        .font(.headline)
+                        .foregroundStyle(.white.opacity(0.85))
+                } else if (model.showing == nil && (model.waitingFor != nil || model.phase == .indexing))
+                            || model.buffering {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.large)
+                            .tint(.white)
+                        Text(model.phase == .indexing ? "Indexing the library…" : "Loading…")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
                 }
                 VStack {
                     if let notice = model.notice {
