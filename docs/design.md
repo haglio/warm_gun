@@ -19,7 +19,9 @@ The owner, not alone.
   and stems are unique library-wide).
 - **Transport**: the pCloud HTTP API straight from the phone (`api.pcloud.com`,
   the account is US-region). The owner logs in *inside the app* (username +
-  password → `userinfo?getauth=1` → the `auth` token goes into the Keychain; the
+  password → the `login` method, introducing itself as a client the way pCloud's
+  own apps do — a bare `userinfo?getauth=1` trips new-device verification whose
+  code the API never delivers — → the `auth` token goes into the Keychain; the
   password is never stored), or pastes a token. The app lists the library once
   with one recursive `listfolder`, which also hands back each clip's size,
   duration, codec and dimensions for free — no probing.

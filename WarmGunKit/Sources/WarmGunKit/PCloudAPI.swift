@@ -68,10 +68,15 @@ public struct PCloudRequest: Equatable, Sendable {
 /// have to be taught to parse.
 public enum PCloudAPI {
     /// The one call that takes a password. The token it returns is what the
-    /// Keychain keeps; the password is used here and forgotten. `code` is the
-    /// second factor pCloud sometimes demands (error 1022, "Please provide
-    /// 'code'.") — an authenticator or emailed verification code, retried as
-    /// the same login with the code riding along.
+    /// Keychain keeps; the password is used here and forgotten.
+    ///
+    /// The method is `login`, not `userinfo?getauth=1`, and the difference is
+    /// not cosmetic: pCloud's new-device protection answers a bare userinfo
+    /// login with 1022 ("Please provide 'code'.") and never dispatches that
+    /// code anywhere, while a login that introduces itself the way pCloud's
+    /// own clients do — device, deviceid, os — is let straight through
+    /// (measured against the real API, 2026-08-24). `code` still rides along
+    /// when a challenge does come back.
     public static func login(username: String, password: String, code: String? = nil) -> PCloudRequest {
         var query = [
             URLQueryItem(name: "getauth", value: "1"),
@@ -81,12 +86,14 @@ public enum PCloudAPI {
             // from home for weeks and a re-login needs a password we do not keep.
             URLQueryItem(name: "authexpire", value: "63072000"),
             URLQueryItem(name: "device", value: "WarmGun"),
+            URLQueryItem(name: "deviceid", value: "warmgun-phone"),
+            URLQueryItem(name: "os", value: "4"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
         ]
         if let code {
             query.append(URLQueryItem(name: "code", value: code))
         }
-        return PCloudRequest(method: "userinfo", query: query)
+        return PCloudRequest(method: "login", query: query)
     }
 
     /// The second leg of a two-factor login: the challenge token from the

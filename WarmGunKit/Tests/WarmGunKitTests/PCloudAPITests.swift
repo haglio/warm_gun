@@ -23,9 +23,14 @@ import Testing
 }
 
 extension PCloudAPITests {
-    @Test func asksUserinfoForATokenThatOutlivesTheTripAndNeverKeepsThePassword() {
+    @Test func logsInAsAClientWithADeviceIdentityAndNeverKeepsThePassword() {
+        // The `login` method, not `userinfo?getauth=1`: pCloud's new-device
+        // protection answers the latter with "provide 'code'" and never sends
+        // the code anywhere, while a login that introduces itself as a client
+        // (device, deviceid, os) is let straight through — measured against the
+        // real API, 2026-08-24.
         let request = PCloudAPI.login(username: "gunner@example.test", password: "a&b+c d")
-        #expect(request.method == "userinfo")
+        #expect(request.method == "login")
         #expect(request.query == [
             URLQueryItem(name: "getauth", value: "1"),
             URLQueryItem(name: "username", value: "gunner@example.test"),
@@ -34,6 +39,8 @@ extension PCloudAPITests {
             // weeks at a time and a re-login needs a password we do not store.
             URLQueryItem(name: "authexpire", value: "63072000"),
             URLQueryItem(name: "device", value: "WarmGun"),
+            URLQueryItem(name: "deviceid", value: "warmgun-phone"),
+            URLQueryItem(name: "os", value: "4"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
         ])
     }
@@ -407,7 +414,7 @@ extension PCloudAPITests {
         #expect(plain == PCloudAPI.login(username: "gunner@example.test", password: "pw", code: nil))
         let coded = PCloudAPI.login(username: "gunner@example.test", password: "pw", code: "123456")
         #expect(coded.query.contains(URLQueryItem(name: "code", value: "123456")))
-        #expect(coded.method == "userinfo")
+        #expect(coded.method == "login")
     }
 }
 
