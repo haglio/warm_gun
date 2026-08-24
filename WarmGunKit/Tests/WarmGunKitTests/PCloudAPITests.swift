@@ -410,3 +410,48 @@ extension PCloudAPITests {
         #expect(coded.method == "userinfo")
     }
 }
+
+extension PCloudAPITests {
+    @Test func aTwoFactorChallengeCarriesItsTokenOutOfTheErrorEnvelope() throws {
+        // A 2FA account answers the password with an error that ALSO carries a
+        // token (and the factor type); the app exchanges that token plus a code
+        // via tfa_login. Dropping those fields is what made the challenge look
+        // like a dead end.
+        let json = Data(#"{"result": 2297, "error": "TFA login required.", "token": "tfa-tok-1", "tfatype": 1, "hasdevices": true}"#.utf8)
+        let error = try #require(throws: PCloudError.self) {
+            try PCloudAPI.decode(LoginResponse.self, from: json)
+        }
+        #expect(error.token == "tfa-tok-1")
+        #expect(error.tfaType == 1)
+        #expect(error.hasDevices == true)
+        let plain = try #require(throws: PCloudError.self) {
+            try PCloudAPI.decode(LoginResponse.self, from: Data(#"{"result": 2000, "error": "Log in failed."}"#.utf8))
+        }
+        #expect(plain.token == nil)
+    }
+
+    @Test func theSecondLegExchangesTheChallengeTokenAndACode() {
+        let request = PCloudAPI.tfaLogin(token: "tfa-tok-1", code: "123456", trustDevice: true, isRecovery: false)
+        #expect(request.method == "tfa_login")
+        #expect(request.query == [
+            URLQueryItem(name: "getauth", value: "1"),
+            URLQueryItem(name: "token", value: "tfa-tok-1"),
+            URLQueryItem(name: "code", value: "123456"),
+            URLQueryItem(name: "trustdevice", value: "1"),
+            URLQueryItem(name: "authexpire", value: "63072000"),
+            URLQueryItem(name: "device", value: "WarmGun"),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+        ])
+        #expect(PCloudAPI.tfaLogin(token: "t", code: "c", trustDevice: false, isRecovery: true).method
+                == "tfa_loginwithrecoverycode")
+    }
+
+    @Test func aCodeCanBeSentBySMSOrToTheOtherLoggedInDevices() {
+        let sms = PCloudAPI.tfaSendCodeViaSMS(token: "tfa-tok-1")
+        #expect(sms.method == "tfa_sendcodeviasms")
+        #expect(sms.query == [URLQueryItem(name: "token", value: "tfa-tok-1")])
+        let push = PCloudAPI.tfaSendCodeViaNotification(token: "tfa-tok-1")
+        #expect(push.method == "tfa_sendcodeviasysnotification")
+        #expect(push.query == [URLQueryItem(name: "token", value: "tfa-tok-1")])
+    }
+}

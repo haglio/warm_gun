@@ -89,6 +89,33 @@ public enum PCloudAPI {
         return PCloudRequest(method: "userinfo", query: query)
     }
 
+    /// The second leg of a two-factor login: the challenge token from the
+    /// first leg's error, plus the code the user got — from their authenticator
+    /// app, an SMS, or a notification pushed to another logged-in pCloud app.
+    /// `trustDevice` asks pCloud not to challenge this phone again.
+    public static func tfaLogin(token: String, code: String, trustDevice: Bool, isRecovery: Bool) -> PCloudRequest {
+        PCloudRequest(method: isRecovery ? "tfa_loginwithrecoverycode" : "tfa_login", query: [
+            URLQueryItem(name: "getauth", value: "1"),
+            URLQueryItem(name: "token", value: token),
+            URLQueryItem(name: "code", value: code),
+            URLQueryItem(name: "trustdevice", value: trustDevice ? "1" : "0"),
+            URLQueryItem(name: "authexpire", value: "63072000"),
+            URLQueryItem(name: "device", value: "WarmGun"),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+        ])
+    }
+
+    public static func tfaSendCodeViaSMS(token: String) -> PCloudRequest {
+        PCloudRequest(method: "tfa_sendcodeviasms", query: [URLQueryItem(name: "token", value: token)])
+    }
+
+    /// Pushes the code to every OTHER logged-in pCloud app — the desktop drive
+    /// on the Mac or PC — which is the channel that still works when neither
+    /// SMS nor an authenticator is at hand.
+    public static func tfaSendCodeViaNotification(token: String) -> PCloudRequest {
+        PCloudRequest(method: "tfa_sendcodeviasysnotification", query: [URLQueryItem(name: "token", value: token)])
+    }
+
     /// Does the token still work? The one call the app makes on launch before
     /// it trusts what the Keychain handed it.
     public static func userInfo(auth: String) -> PCloudRequest {
@@ -198,7 +225,7 @@ public enum PCloudAPI {
         case failure(PCloudError)
 
         private enum CodingKeys: String, CodingKey {
-            case result, error
+            case result, error, token, tfatype, hasdevices
         }
 
         init(from decoder: Decoder) throws {
@@ -206,7 +233,10 @@ public enum PCloudAPI {
             let result = try container.decode(Int.self, forKey: .result)
             guard result == 0 else {
                 let message = try container.decodeIfPresent(String.self, forKey: .error)
-                self = .failure(PCloudError(code: result, message: message ?? ""))
+                self = .failure(PCloudError(code: result, message: message ?? "",
+                                            token: try? container.decodeIfPresent(String.self, forKey: .token),
+                                            tfaType: try? container.decodeIfPresent(Int.self, forKey: .tfatype),
+                                            hasDevices: try? container.decodeIfPresent(Bool.self, forKey: .hasdevices)))
                 return
             }
             self = .success(try Payload(from: decoder))
@@ -221,15 +251,25 @@ public enum PCloudAPI {
 public struct PCloudError: Error, LocalizedError, Equatable, Sendable {
     public let code: Int
     public let message: String
+    /// A two-factor challenge rides inside the error envelope: the token to
+    /// exchange via `tfa_login`, which factor the account uses, and whether
+    /// other logged-in pCloud apps exist to push a code to.
+    public let token: String?
+    public let tfaType: Int?
+    public let hasDevices: Bool?
 
     /// The server's own words, because they are the only clue the user gets —
     /// without this conformance Foundation shows "operation couldn't be
     /// completed", which reads as nothing happening at all.
     public var errorDescription: String? { "pCloud: \(message) (code \(code))" }
 
-    public init(code: Int, message: String) {
+    public init(code: Int, message: String,
+                token: String? = nil, tfaType: Int? = nil, hasDevices: Bool? = nil) {
         self.code = code
         self.message = message
+        self.token = token
+        self.tfaType = tfaType
+        self.hasDevices = hasDevices
     }
 
     /// 1000 (no auth given) and 2000 (log in failed) both mean the token is no

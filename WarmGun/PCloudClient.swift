@@ -44,6 +44,20 @@ actor PCloudClient {
         return try await client.call(PCloudAPI.login(username: username, password: password, code: code), as: LoginResponse.self)
     }
 
+    static func tfaLogin(apiHost: String, token: String, code: String, isRecovery: Bool) async throws -> LoginResponse {
+        let client = try PCloudClient(apiHost: apiHost, auth: "")
+        return try await client.call(PCloudAPI.tfaLogin(token: token, code: code, trustDevice: true, isRecovery: isRecovery), as: LoginResponse.self)
+    }
+
+    /// Both senders answer with just a result envelope; a thrown error is the
+    /// only failure signal.
+    static func sendTFACode(apiHost: String, token: String, viaSMS: Bool) async throws {
+        let client = try PCloudClient(apiHost: apiHost, auth: "")
+        let request = viaSMS ? PCloudAPI.tfaSendCodeViaSMS(token: token)
+                             : PCloudAPI.tfaSendCodeViaNotification(token: token)
+        _ = try await client.call(request, as: Acknowledged.self)
+    }
+
     func userInfo() async throws -> UserInfoResponse {
         try await call(PCloudAPI.userInfo(auth: auth), as: UserInfoResponse.self)
     }
@@ -124,5 +138,5 @@ actor PCloudClient {
     }
 
     /// A response whose only content of interest is `result == 0`.
-    private struct Acknowledged: Decodable {}
+    struct Acknowledged: Decodable {}
 }

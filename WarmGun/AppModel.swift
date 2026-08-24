@@ -41,6 +41,10 @@ final class AppModel: ObservableObject {
     /// pCloud answered the password with "provide a code" (1022) or "invalid
     /// code" (2012): the login form must grow a verification-code field.
     @Published private(set) var loginWantsCode = false
+    /// A full two-factor challenge: the token to exchange, and whether other
+    /// logged-in pCloud apps exist to push a code to.
+    @Published private(set) var tfaToken: String?
+    @Published private(set) var tfaHasDevices = false
 
     private let engine = PlayerEngine()
     /// The one AVFoundation object the view layer needs — the player the video
@@ -106,9 +110,18 @@ final class AppModel: ObservableObject {
     /// True on success, so the form knows whether to clear the password or
     /// keep it for another try. Any failure lands in `lastProblem` verbatim.
     func login(username: String, password: String, code: String? = nil) async -> Bool {
+        let trimmed = (code ?? "").trimmingCharacters(in: .whitespaces)
         do {
-            let response = try await PCloudClient.login(apiHost: settings.apiHost, username: username, password: password,
-                                                        code: (code?.isEmpty ?? true) ? nil : code)
+            let response: LoginResponse
+            if let tfaToken, !trimmed.isEmpty {
+                // The second leg: exchange the challenge token and the code.
+                // Recovery codes are long; pCloud tells them apart by length.
+                response = try await PCloudClient.tfaLogin(apiHost: settings.apiHost, token: tfaToken,
+                                                           code: trimmed, isRecovery: trimmed.count >= 16)
+            } else {
+                response = try await PCloudClient.login(apiHost: settings.apiHost, username: username, password: password,
+                                                        code: trimmed.isEmpty ? nil : trimmed)
+            }
             Keychain.store(token: response.auth)
             guard Keychain.token() != nil else {
                 lastProblem = "The Keychain refused to store the token"
@@ -116,17 +129,42 @@ final class AppModel: ObservableObject {
             }
             lastProblem = nil
             loginWantsCode = false
+            tfaToken = nil
+            tfaHasDevices = false
             await start()
             return true
         } catch {
             lastProblem = error.localizedDescription
-            if let pcloud = error as? PCloudError, pcloud.code == 1022 || pcloud.code == 2012 {
+            guard let pcloud = error as? PCloudError else { return false }
+            if let challenge = pcloud.token {
+                tfaToken = challenge
+                tfaHasDevices = pcloud.hasDevices ?? false
+                loginWantsCode = true
+                lastProblem = "pCloud wants a second factor. Enter a code from your authenticator app, or use a send button below."
+            } else if pcloud.code == 1022 || pcloud.code == 2012 {
                 loginWantsCode = true
                 lastProblem = pcloud.code == 1022
                     ? "This account wants a verification code — check your authenticator app (or email/SMS from pCloud) and enter it below."
                     : "pCloud refused that verification code — try a fresh one."
+            } else if pcloud.code == 2064 {
+                // The challenge token has expired; the run starts over.
+                tfaToken = nil
+                loginWantsCode = false
+                lastProblem = "That code session expired — log in with the password again."
             }
             return false
+        }
+    }
+
+    /// Ask pCloud to deliver a code: by SMS, or pushed as a notification to
+    /// every OTHER logged-in pCloud app (the drive on the Mac or PC).
+    func sendTFACode(viaSMS: Bool) async {
+        guard let tfaToken else { return }
+        do {
+            try await PCloudClient.sendTFACode(apiHost: settings.apiHost, token: tfaToken, viaSMS: viaSMS)
+            lastProblem = viaSMS ? "Code sent by SMS." : "Code sent — check the pCloud app on your other machines."
+        } catch {
+            lastProblem = error.localizedDescription
         }
     }
 

@@ -29,9 +29,17 @@ struct SettingsView: View {
                         SecureField("pCloud password", text: $password)
                             .textContentType(.password)
                         if model.loginWantsCode {
-                            TextField("Verification code", text: $verificationCode)
+                            TextField("Verification or recovery code", text: $verificationCode)
                                 .textContentType(.oneTimeCode)
-                                .keyboardType(.numberPad)
+                            if model.tfaToken != nil {
+                                Button("Send code by SMS") {
+                                    Task { await model.sendTFACode(viaSMS: true) }
+                                }
+                                Button("Send code to your other pCloud apps") {
+                                    Task { await model.sendTFACode(viaSMS: false) }
+                                }
+                                .disabled(!model.tfaHasDevices)
+                            }
                         }
                         TextField("API host", text: $model.settings.apiHost)
                             .textInputAutocapitalization(.never)
