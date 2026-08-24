@@ -56,12 +56,12 @@ struct SettingsView: View {
                     Button("Use this library") {
                         Task { await model.setLibraryPath(libraryPath) }
                     }
-                    .disabled(libraryPath.trimmingCharacters(in: .whitespaces).isEmpty || libraryPath == model.settings.libraryPath)
+                    .disabled(libraryPath.trimmingCharacters(in: .whitespaces).isEmpty)
                     if let catalog = model.catalog {
                         LabeledContent("Indexed", value: "\(catalog.clips.count) clips")
                     }
                     Button("Re-index now") { Task { await model.index() } }
-                        .disabled(model.phase != .ready)
+                        .disabled(model.phase == .indexing || model.phase == .needsLogin)
                 } header: {
                     Text("Library")
                 } footer: {
@@ -74,7 +74,7 @@ struct SettingsView: View {
                         .autocorrectionDisabled()
                     Toggle("Move weird clips to kinda_weird in pCloud", isOn: $model.settings.moveWeirdInCloud)
                     Button("Sync now") { Task { await model.syncWithCloud() } }
-                        .disabled(model.phase != .ready)
+                        .disabled(model.phase == .needsLogin)
                 } header: {
                     Text("Sharing with the desktop")
                 } footer: {

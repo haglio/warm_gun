@@ -8,12 +8,24 @@ import WarmGunKit
 /// and evicts the least recently used cached clips that the plan does not
 /// protect once the cache is over its cap. A separate backlog behind the plan
 /// serves "download everything": it only ever draws from spare download slots,
-/// so the window around the playhead always wins.
+/// and the plan preempts it — the window around the playhead always wins.
 actor Prefetcher {
     enum Event: Sendable {
+        /// `path` is on disk and playable-sized.
         case ready(String)
-        case failed(String, String)
-        case backlog(remaining: Int, total: Int)
+        /// One attempt on `path` failed; `attempts` is the consecutive count,
+        /// and `loginRequired` says the token itself was refused.
+        case failed(String, String, attempts: Int, loginRequired: Bool)
+        /// The backlog moved: `failures` counts clips it had to give up on.
+        case backlog(remaining: Int, total: Int, failures: Int)
+        /// The cap was enforced; these paths left the disk.
+        case evicted([String])
+    }
+
+    private struct Flight {
+        let task: Task<Void, Never>
+        let token: UUID
+        let planned: Bool
     }
 
     private let client: PCloudClient
@@ -21,11 +33,15 @@ actor Prefetcher {
     private var links = LinkCache()
     private var clips: [String: Clip] = [:]
     private var plan: [String] = []
+    private var planGeneration = 0
     private var backlog: [String] = []
     private var backlogTotal = 0
-    private var inFlight: [String: Task<Void, Never>] = [:]
+    private var backlogFailures = 0
+    private var inFlight: [String: Flight] = [:]
+    private var failures: [String: (attempts: Int, last: Date)] = [:]
     private var capBytes: Int64
     private let parallelism = 3
+    private let failureCooldown: TimeInterval = 8
     private let continuation: AsyncStream<Event>.Continuation
     let events: AsyncStream<Event>
 
@@ -42,13 +58,26 @@ actor Prefetcher {
         capBytes = bytes
     }
 
-    func replan(_ order: [String], clips: [String: Clip]) async {
+    /// Adopt a new window. Stale generations are dropped rather than applied —
+    /// two `sync()`s in quick succession may land here out of order, and the
+    /// older plan must not win.
+    func replan(_ order: [String], clips: [String: Clip], generation: Int) async {
+        guard generation >= planGeneration else { return }
+        planGeneration = generation
         self.clips.merge(clips) { _, new in new }
         plan = order
         let wanted = Set(order).union(backlog)
-        for (path, task) in inFlight where !wanted.contains(path) {
-            task.cancel()
+        for (path, flight) in inFlight where !wanted.contains(path) {
+            flight.task.cancel()
             inFlight[path] = nil
+        }
+        // The head of the plan is the clip the screen is waiting for. If every
+        // slot is spent on the backlog, take one back — a tap must never queue
+        // behind "download everything".
+        if let head = order.first, inFlight[head] == nil, inFlight.count >= parallelism,
+           let sacrifice = inFlight.first(where: { !$0.value.planned }) {
+            sacrifice.value.task.cancel()
+            inFlight[sacrifice.key] = nil
         }
         await pump()
     }
@@ -60,45 +89,93 @@ actor Prefetcher {
         let cached = await cache.cachedPaths()
         backlog = paths.filter { !cached.contains($0) }
         backlogTotal = backlog.count
-        continuation.yield(.backlog(remaining: backlog.count, total: backlogTotal))
+        backlogFailures = 0
+        continuation.yield(.backlog(remaining: backlog.count, total: backlogTotal, failures: 0))
         await pump()
     }
 
     func cancelBacklog() {
         backlog = []
         backlogTotal = 0
-        continuation.yield(.backlog(remaining: 0, total: 0))
+        backlogFailures = 0
+        continuation.yield(.backlog(remaining: 0, total: 0, failures: 0))
     }
 
     private func pump() async {
         guard inFlight.count < parallelism else { return }
         let cached = await cache.cachedPaths()
-        let candidates = plan + backlog
-        for path in candidates where inFlight.count < parallelism {
+        let now = Date()
+        var cooling = false
+        for (path, planned) in candidates() where inFlight.count < parallelism {
             guard !cached.contains(path), inFlight[path] == nil, let clip = clips[path] else { continue }
-            inFlight[path] = Task { [weak self] in
-                await self?.fetch(clip)
+            // A path that just failed sits out a beat instead of hammering the
+            // same broken link in a tight loop; the delayed pump below retries.
+            if let failure = failures[path], now.timeIntervalSince(failure.last) < failureCooldown {
+                cooling = true
+                continue
+            }
+            let token = UUID()
+            let task = Task { [weak self] in _ = await self?.fetch(clip, token: token) }
+            inFlight[path] = Flight(task: task, token: token, planned: planned)
+        }
+        if cooling && inFlight.isEmpty {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(self?.failureCooldown ?? 8))
+                await self?.pump()
             }
         }
     }
 
-    private func fetch(_ clip: Clip) async {
-        defer { inFlight[clip.path] = nil }
+    private func candidates() -> [(String, Bool)] {
+        plan.map { ($0, true) } + backlog.map { ($0, false) }
+    }
+
+    private func fetch(_ clip: Clip, token: UUID) async {
+        defer {
+            // Only this flight's own registration — replan may have cancelled
+            // it and pump may already have a replacement in the slot.
+            if inFlight[clip.path]?.token == token { inFlight[clip.path] = nil }
+        }
+        var succeeded = false
         do {
             try await fetchOnce(clip, retryOnStaleLink: true)
+            failures[clip.path] = nil
+            succeeded = true
             continuation.yield(.ready(clip.path))
             await evict()
         } catch is CancellationError {
             return
+        } catch let error as URLError where error.code == .cancelled {
+            // URLSession's spelling of the same thing — a window shift, not a
+            // failure, and never something to alarm anyone with.
+            return
         } catch {
-            continuation.yield(.failed(clip.path, error.localizedDescription))
+            let attempts = (failures[clip.path]?.attempts ?? 0) + 1
+            failures[clip.path] = (attempts, Date())
+            let loginRequired = (error as? PCloudError)?.isLoginRequired ?? false
+            continuation.yield(.failed(clip.path, error.localizedDescription,
+                                       attempts: attempts, loginRequired: loginRequired))
+            if backlog.contains(clip.path) && attempts >= 3 {
+                backlog.removeAll { $0 == clip.path }
+                backlogFailures += 1
+            }
         }
-        backlog.removeAll { $0 == clip.path }
+        if succeeded { backlog.removeAll { $0 == clip.path } }
         if backlogTotal > 0 {
-            continuation.yield(.backlog(remaining: backlog.count, total: backlogTotal))
-            if backlog.isEmpty { backlogTotal = 0 }
+            continuation.yield(.backlog(remaining: backlog.count, total: backlogTotal, failures: backlogFailures))
+            if backlog.isEmpty { backlogTotal = 0; backlogFailures = 0 }
         }
         await pump()
+    }
+
+    enum FetchFailure: Error, LocalizedError {
+        case wrongSize(got: Int64, expected: Int64)
+        var errorDescription: String? {
+            switch self {
+            case .wrongSize(let got, let expected):
+                return "Downloaded \(got) bytes where the index says \(expected) — not the clip (a captive portal?)"
+            }
+        }
     }
 
     /// A link that pCloud has let expire answers with a 4xx; that means
@@ -108,6 +185,14 @@ actor Prefetcher {
         do {
             let tmp = try await client.download(url)
             try Task.checkCancellation()
+            // The index knows the clip's exact size; a 200 whose body is any
+            // other length is not the clip — travel wifi answers with captive
+            // portals and proxy pages, and those must never reach the player.
+            let got = (try? FileManager.default.attributesOfItem(atPath: tmp.path)[.size] as? Int64) ?? -1
+            guard got == clip.size else {
+                try? FileManager.default.removeItem(at: tmp)
+                throw FetchFailure.wrongSize(got: got, expected: clip.size)
+            }
             try await cache.store(temporary: tmp, for: clip.path)
         } catch PCloudClient.Failure.http(let code) where retryOnStaleLink && (400..<500).contains(code) {
             links.forget(clip.fileID)
@@ -127,6 +212,9 @@ actor Prefetcher {
         let cached = await cache.cachedFiles()
         let keep = Set(plan).union(backlog.isEmpty ? [] : Set(cached.map(\.path)))
         let doomed = PrefetchPlanner.evictions(cached: cached, keep: keep, capBytes: capBytes)
-        if !doomed.isEmpty { await cache.remove(doomed) }
+        if !doomed.isEmpty {
+            await cache.remove(doomed)
+            continuation.yield(.evicted(doomed))
+        }
     }
 }

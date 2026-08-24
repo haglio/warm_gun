@@ -204,3 +204,17 @@ extension SessionTests {
         #expect(session.current == Self.three[1])
     }
 }
+
+extension SessionTests {
+    @Test func aRebuildThatLosesTheHeldClipReleasesTheHold() {
+        // The desktop cancels the lock on every rebuild that touches the player
+        // (`command_dispatch.py` `_cancel_lock`): repeat-one must never be
+        // inherited by whatever clip happens to land at the top of a new list.
+        var session = Session(playlist: Self.three, index: 1)
+        session.setLocked(true)
+        session.replacePlaylist(["1_sorted/gamma/portrait/clip-four.mp4",
+                                 "1_sorted/gamma/landscape/clip-five.mp4"])
+        #expect(session.index == 0)
+        #expect(session.locked == false)
+    }
+}

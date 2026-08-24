@@ -86,7 +86,15 @@ public struct Session: Equatable, Sendable {
         guard !playlist.isEmpty else { return }
         let playing = current
         self.playlist = playlist
-        index = playing.flatMap(playlist.firstIndex(of:)) ?? 0
+        if let kept = playing.flatMap(playlist.firstIndex(of:)) {
+            index = kept
+        } else {
+            // The held clip is gone, and repeat-one must not be inherited by
+            // whatever lands at the top — the desktop cancels the lock on
+            // every rebuild that moves a player for the same reason.
+            index = 0
+            locked = false
+        }
     }
 
     /// Swift's `%` keeps the sign of the dividend, which would put a backward

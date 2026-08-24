@@ -15,7 +15,11 @@ struct WarmGunApp: App {
                     // The screen stays lit only while the app is on it; the
                     // journal leaves for the cloud whenever the app steps aside.
                     UIApplication.shared.isIdleTimerDisabled = phase == .active
-                    if phase == .background { Task { await model.syncWithCloud() } }
+                    if phase == .active { model.becameActive() }
+                    if phase == .background {
+                        model.flushState()
+                        Task { await model.syncWithCloud() }
+                    }
                 }
         }
     }

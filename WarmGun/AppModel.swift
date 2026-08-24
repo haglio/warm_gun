@@ -1,4 +1,5 @@
 import AVFoundation
+import UIKit
 import Foundation
 import WarmGunKit
 
@@ -49,6 +50,13 @@ final class AppModel: ObservableObject {
     private var prefetcher: Prefetcher?
     private var eventPump: Task<Void, Never>?
     private var tracker = WatchTracker()
+    /// The clip actually on the glass — not `session.current`, which runs
+    /// ahead of the screen whenever a download is still in flight. Every watch
+    /// sample and journal line is labeled with this, never with the session.
+    private var showing: String?
+    private var planGeneration = 0
+    private var consecutiveFailureSkips = 0
+    private var persistTask: Task<Void, Never>?
     private var clipsByPath: [String: Clip] = [:]
     private var rng = SystemRandomNumberGenerator()
     private var journalDirty = false
@@ -59,8 +67,9 @@ final class AppModel: ObservableObject {
         self.cache = cache ?? ClipCache(directory: ClipCache.defaultDirectory)
         settings = Settings.load()
         try? FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
-        engine.onAdvanced = { [weak self] in self?.advanced() }
+        engine.onAdvanced = { [weak self] url in self?.advanced(to: url) }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
+        engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
     }
 
     nonisolated static var defaultStateDirectory: URL {
@@ -114,7 +123,11 @@ final class AppModel: ObservableObject {
     func setLibraryPath(_ path: String) async {
         settings.libraryPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
         catalog = nil
+        clipsByPath = [:]
         session = Session(playlist: [])
+        // The persisted index describes the OLD library; left in place it would
+        // be reloaded on the next start and played against the new path.
+        try? FileManager.default.removeItem(at: catalogURL)
         persistState()
         await start()
     }
@@ -136,16 +149,43 @@ final class AppModel: ObservableObject {
     private func handle(_ event: Prefetcher.Event) async {
         switch event {
         case .ready(let path):
+            consecutiveFailureSkips = 0
             cached.insert(path)
             cacheBytes = await cache.totalBytes()
             cached = await cache.cachedPaths()
             if path == waitingFor || path == session.staged { sync() }
-        case .failed(let path, let message):
+        case .failed(let path, let message, let attempts, let loginRequired):
             lastProblem = "\(message) — \((path as NSString).lastPathComponent)"
-            if path == waitingFor { session.step(1); sync() }
-        case .backlog(let remaining, let total):
+            if loginRequired {
+                // 1000/2000 means the token itself is refused; keeping it would
+                // just show a "logged in" screen over an account that is not.
+                Keychain.forget()
+                phase = .needsLogin
+                return
+            }
+            // Step past a clip only once it has genuinely refused three times,
+            // and stop stepping altogether when everything is refusing — a dead
+            // network must leave the run parked and retrying, not sprint it
+            // silently through the whole playlist.
+            if path == waitingFor && attempts >= 3 {
+                if consecutiveFailureSkips < 5 {
+                    consecutiveFailureSkips += 1
+                    flash("Skipping — clip won't fetch", favorite: false)
+                    session.step(1)
+                    sync()
+                } else {
+                    lastProblem = "pCloud unreachable — holding here and retrying"
+                }
+            }
+        case .backlog(let remaining, let total, let failures):
             backlog = total == 0 ? nil : (remaining, total)
             if total == 0 { cacheBytes = await cache.totalBytes() }
+            if remaining == 0 && failures > 0 {
+                lastProblem = "\(failures) clip\(failures == 1 ? "" : "s") could not be downloaded"
+            }
+        case .evicted(let paths):
+            cached.subtract(paths)
+            cacheBytes = await cache.totalBytes()
         }
     }
 
@@ -165,7 +205,16 @@ final class AppModel: ObservableObject {
             if session.playlist.isEmpty {
                 rebuild(startAtTop: true)
             } else if changed {
-                rebuild(startAtTop: false)
+                // A background refresh must not reshuffle the run in progress —
+                // that is exactly the clip-jumping the desktop's session resume
+                // exists to prevent. Prune what the library no longer has; new
+                // arrivals join on the next rebuild the user asks for.
+                let known = Set(fresh.clips.map(\.path))
+                let surviving = session.playlist.filter(known.contains)
+                if surviving.count != session.playlist.count {
+                    session.replacePlaylist(surviving)
+                }
+                sync()
             }
         } catch {
             if catalog == nil { phase = .failed(error.localizedDescription) } else { lastProblem = error.localizedDescription }
@@ -243,16 +292,25 @@ final class AppModel: ObservableObject {
     /// the desktop's up-arrow does.
     func markWeird() {
         guard let path = session.current else { return }
+        // Either half of the demotion swallows the departure event, as the
+        // desktop arms note_discard before it knows which half the press is.
+        tracker.noteDiscard()
         if favorites.contains(path: path) {
             favorites.remove(path: path)
             journal("unfavorite", path)
             session.step(1)
             flash("Unfavorited", favorite: true)
         } else {
-            tracker.noteDiscard()
             weird.insert(path)
             journal("weird", path)
-            _ = session.discard()
+            if session.playlist.count <= 1 {
+                // The desktop refuses to trash the last clip; here the honest
+                // outcome is an empty run — the clip is weird now, and looping
+                // it forever would contradict the gesture just made.
+                session = Session(playlist: [])
+            } else {
+                _ = session.discard()
+            }
             flash("Marked weird", favorite: false)
             cached.remove(path)
             Task { await cache.remove([path]); cacheBytes = await cache.totalBytes() }
@@ -278,6 +336,9 @@ final class AppModel: ObservableObject {
     func update(browse: BrowseOptions) {
         let orderChanged = browse.latest != settings.browse.latest
         settings.browse = browse
+        // "Download this browse" pinned the OLD browse; spending slots on it
+        // after the switch would starve the window the user is now watching.
+        Task { await prefetcher?.cancelBacklog() }
         rebuild(startAtTop: orderChanged)
     }
 
@@ -321,21 +382,29 @@ final class AppModel: ObservableObject {
     /// with the session.
     private func sync() {
         guard let prefetcher else { return }
+        planGeneration += 1
+        let generation = planGeneration
         let plan = PrefetchPlanner.plan(playlist: session.playlist, index: session.index,
                                         ahead: settings.prefetchAhead, behind: settings.prefetchBehind)
         let clips = clipsByPath
-        Task { await prefetcher.replan(plan, clips: clips) }
+        Task { await prefetcher.replan(plan, clips: clips, generation: generation) }
         guard let current = session.current else {
             engine.clear()
+            showing = nil
             waitingFor = nil
             return
         }
         let loop = session.locked || settings.loopClip
         guard cached.contains(current) else {
+            // The last picture keeps looping under the spinner, but nothing may
+            // stay queued behind it: a stale roll-on would advance a session
+            // that has already moved somewhere else.
+            engine.holdCurrent()
             waitingFor = current
             return
         }
         waitingFor = nil
+        showing = current
         let staged = session.staged.flatMap { cached.contains($0) ? $0 : nil }
         Task {
             let currentURL = await cache.fileURL(for: current)
@@ -344,20 +413,49 @@ final class AppModel: ObservableObject {
             await cache.markUsed(current)
             engine.show(current: currentURL, next: nextURL, loop: loop)
         }
-        persistState()
+        persistSoon()
     }
 
-    private func advanced() {
-        session.advance()
+    /// The queue rolled on. Advance the session only when what it rolled onto
+    /// is the clip the session staged — the engine's queue is not the session,
+    /// and a roll that predates a gesture must not move it.
+    private func advanced(to url: URL) {
+        if let staged = session.staged, url.lastPathComponent == ClipCache.fileName(for: staged) {
+            session.advance()
+        }
+        sync()
+    }
+
+    /// A clip the player refuses — a truncated body, a container AVFoundation
+    /// cannot read. The cached copy is poison, so it leaves the disk; if it is
+    /// the clip on screen the run steps past it rather than freezing.
+    private func itemFailed(_ url: URL) {
+        guard let path = session.playlist.first(where: { url.lastPathComponent == ClipCache.fileName(for: $0) })
+        else { return }
+        cached.remove(path)
+        Task { await cache.remove([path]); cacheBytes = await cache.totalBytes() }
+        lastProblem = "Unplayable clip — \((path as NSString).lastPathComponent)"
+        if path == showing {
+            flash("Skipping unplayable clip", favorite: false)
+            session.step(1)
+        }
         sync()
     }
 
     private func progressed(_ fraction: Double) {
-        guard let path = session.current else { return }
+        // While a download is in flight the engine is replaying the PREVIOUS
+        // clip under a spinner; those frames speak for nothing the session
+        // points at, so they are not sampled at all.
+        guard waitingFor == nil, let path = showing else { return }
         for (event, eventPath) in tracker.sample(path: path, fraction: fraction, now: Date()) {
             stats.record(event, path: eventPath)
             journal(event.rawValue, eventPath)
         }
+    }
+
+    /// The scene is back on screen; AVPlayer does not resume by itself.
+    func becameActive() {
+        engine.resume()
     }
 
     private func flash(_ text: String, favorite: Bool) {
@@ -391,6 +489,10 @@ final class AppModel: ObservableObject {
     /// Settings; never in the way of playback.
     func syncWithCloud() async {
         guard let client, !settings.syncFolder.isEmpty else { return }
+        // The caller is usually the background transition; without an assertion
+        // iOS suspends the app mid-upload and the journal never leaves.
+        let assertion = UIApplication.shared.beginBackgroundTask()
+        defer { if assertion != .invalid { UIApplication.shared.endBackgroundTask(assertion) } }
         do {
             try await client.createFolderIfNotExists(path: settings.syncFolder)
             if journalDirty, let data = try? Data(contentsOf: journalURL) {
@@ -421,6 +523,7 @@ final class AppModel: ObservableObject {
         var stats: WatchStats
         var playlist: [String]
         var index: Int
+        var locked: Bool?  // optional so older blobs still decode
     }
 
     private var catalogURL: URL { stateDirectory.appendingPathComponent("catalog.json") }
@@ -434,7 +537,8 @@ final class AppModel: ObservableObject {
 
     private func persistState() {
         let state = PersistedState(favorites: favorites, weird: weird, stats: stats,
-                                   playlist: session.playlist, index: session.index)
+                                   playlist: session.playlist, index: session.index,
+                                   locked: session.locked)
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: stateURL, options: .atomic)
         }
@@ -457,6 +561,28 @@ final class AppModel: ObservableObject {
         if !surviving.isEmpty, state.index < state.playlist.count, let current = Optional(state.playlist[state.index]), clipsByPath[current] != nil {
             restored.playFile(current)
         }
+        restored.setLocked(state.locked ?? false)
         session = restored
+    }
+
+    /// Auto-advance persists through here: at most one write per fifteen
+    /// seconds, on the tail edge, because every write is the whole playlist
+    /// plus all stats JSON-encoded on the main actor. Gestures persist
+    /// immediately (they call `persistState` directly), and going to the
+    /// background flushes whatever is pending.
+    private func persistSoon() {
+        guard persistTask == nil else { return }
+        persistTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            guard !Task.isCancelled else { return }
+            self?.persistTask = nil
+            self?.persistState()
+        }
+    }
+
+    func flushState() {
+        persistTask?.cancel()
+        persistTask = nil
+        persistState()
     }
 }
