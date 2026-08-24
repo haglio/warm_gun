@@ -100,14 +100,22 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func login(username: String, password: String) async {
+    /// True on success, so the form knows whether to clear the password or
+    /// keep it for another try. Any failure lands in `lastProblem` verbatim.
+    func login(username: String, password: String) async -> Bool {
         do {
             let response = try await PCloudClient.login(apiHost: settings.apiHost, username: username, password: password)
             Keychain.store(token: response.auth)
+            guard Keychain.token() != nil else {
+                lastProblem = "The Keychain refused to store the token"
+                return false
+            }
             lastProblem = nil
             await start()
+            return true
         } catch {
             lastProblem = error.localizedDescription
+            return false
         }
     }
 

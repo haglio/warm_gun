@@ -211,9 +211,14 @@ public enum PCloudAPI {
 /// four-digit one from the body; the two questions the app actually asks of it
 /// are whether to re-login and whether to back off, so they are properties here
 /// rather than magic numbers scattered through the transport.
-public struct PCloudError: Error, Equatable, Sendable {
+public struct PCloudError: Error, LocalizedError, Equatable, Sendable {
     public let code: Int
     public let message: String
+
+    /// The server's own words, because they are the only clue the user gets —
+    /// without this conformance Foundation shows "operation couldn't be
+    /// completed", which reads as nothing happening at all.
+    public var errorDescription: String? { "pCloud: \(message) (code \(code))" }
 
     public init(code: Int, message: String) {
         self.code = code

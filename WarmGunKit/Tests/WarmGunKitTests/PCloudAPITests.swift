@@ -387,3 +387,13 @@ extension PCloudAPITests {
         ])
     }
 }
+
+extension PCloudAPITests {
+    @Test func aPCloudErrorSpeaksTheServersOwnWords() {
+        // Surfaced straight to the login screen: `localizedDescription` must be
+        // the server's message, not Foundation's "operation couldn't be
+        // completed" shrug — the message is the only clue the user gets.
+        let error: Error = PCloudError(code: 2000, message: "Log in failed.")
+        #expect(error.localizedDescription == "pCloud: Log in failed. (code 2000)")
+    }
+}

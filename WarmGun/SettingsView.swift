@@ -33,12 +33,23 @@ struct SettingsView: View {
                         Button(loggingIn ? "Logging in…" : "Log in") {
                             loggingIn = true
                             Task {
-                                await model.login(username: username, password: password)
-                                password = ""
+                                // The password survives a failure for another
+                                // try; only success clears it.
+                                if await model.login(username: username, password: password) {
+                                    password = ""
+                                }
                                 loggingIn = false
                             }
                         }
                         .disabled(loggingIn || username.isEmpty || password.isEmpty)
+                        if let problem = model.lastProblem {
+                            // Right under the button — the section at the very
+                            // bottom of the form is below the fold on a phone,
+                            // and an invisible error reads as nothing happening.
+                            Text(problem)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
                     } else {
                         LabeledContent("pCloud", value: "logged in")
                         Button("Log out", role: .destructive) { model.logout() }
