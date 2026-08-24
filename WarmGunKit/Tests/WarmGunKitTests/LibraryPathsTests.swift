@@ -109,3 +109,23 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.nonAIPath(forLibrary: "/") == nil)
     }
 }
+
+extension LibraryPathsTests {
+    @Test func namesTheMetadataMirrorAndMapsASidecarBackToItsOriginal() {
+        // The sidecars mirror the UPSCALE tree under videos/metadata (the
+        // videos tree's sibling): a zip of its 2D/AI branch holds entries like
+        // 2D/AI/2_outbox/upscaled_by_orientation/<orientation>/<source>/<stem>_topaz.json,
+        // each speaking for the original at 1_sorted/<source>/<orientation>/<stem>.mp4.
+        #expect(LibraryPaths.metadataAIPath(forLibrary: "/alpha/videos/videos/2D/AI")
+                == "/alpha/videos/metadata/2D/AI")
+        #expect(LibraryPaths.metadataAIPath(forLibrary: "/x") == nil)
+        // The zip's root depends on what the server chose to zip, so the
+        // parser anchors on the spine, not on a fixed prefix.
+        #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/AI/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.json")
+                == "1_sorted/alpha/portrait/clip-one.mp4")
+        #expect(LibraryPaths.originalPath(forSidecarEntry: "2_outbox/upscaled_by_orientation/landscape/beta/clip-two_topaz.json")
+                == "1_sorted/beta/landscape/clip-two.mp4")
+        #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/non_AI/beta/scene.json") == nil)
+        #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/AI/2_outbox/upscaled_by_orientation/portrait/alpha/odd-name.json") == nil)
+    }
+}

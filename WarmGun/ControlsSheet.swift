@@ -28,10 +28,12 @@ struct ControlsSheet: View {
                     }
                     .pickerStyle(.segmented)
                     Picker("Loop", selection: Binding(
-                        get: { model.settings.loopClip },
-                        set: { model.update(loopClip: $0) })) {
-                        Text("Loop all").tag(false)
-                        Text("Loop 1").tag(true)
+                        get: { model.loopMode },
+                        set: { model.setLoop($0) })) {
+                        Text("All").tag(AppModel.LoopMode.all)
+                        Text("1").tag(AppModel.LoopMode.single)
+                        Text("Seed").tag(AppModel.LoopMode.seed)
+                        Text("Action").tag(AppModel.LoopMode.action)
                     }
                     .pickerStyle(.segmented)
                 }

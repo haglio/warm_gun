@@ -110,6 +110,33 @@ public enum LibraryPaths {
     /// The prefix the app files non-AI scenes under in its own catalog paths.
     public static let nonAIPrefix = "non_AI/"
 
+    /// The AI branch of the metadata mirror — `videos/metadata/2D/AI`, the
+    /// videos tree's sibling; its sidecars mirror the UPSCALE paths.
+    public static func metadataAIPath(forLibrary libraryPath: String) -> String? {
+        let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
+        guard parts.count >= 4 else { return nil }
+        return "/" + (parts.dropLast(3) + ["metadata", "2D", "AI"]).joined(separator: "/")
+    }
+
+    /// The original a sidecar speaks for. Zip entries arrive as
+    /// `2D/AI/2_outbox/upscaled_by_orientation/<orientation>/<source>/<stem>_topaz.json`
+    /// — the upscale's path with `.json` — and the original sits at
+    /// `1_sorted/<source>/<orientation>/<stem>.mp4`, source and orientation
+    /// nested the other way round.
+    public static func originalPath(forSidecarEntry entry: String) -> String? {
+        // Anchored on the spine, not a fixed prefix: the zip's entry root
+        // depends on what the server chose to zip.
+        let parts = entry.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        guard let spine = parts.firstIndex(of: "2_outbox"),
+              parts.count == spine + 5, parts[spine + 1] == "upscaled_by_orientation",
+              let orientation = Orientation(rawValue: parts[spine + 2]) else { return nil }
+        let file = parts[spine + 4]
+        guard file.hasSuffix(".json") else { return nil }
+        let stem = String(file.dropLast(".json".count))
+        guard stem.hasSuffix(upscaleSuffix) else { return nil }
+        return "1_sorted/\(parts[spine + 3])/\(orientation.rawValue)/\(stem.dropLast(upscaleSuffix.count)).mp4"
+    }
+
     /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
     /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
     /// The stem alone identifies a clip: they are unique library-wide.

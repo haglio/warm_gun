@@ -106,6 +106,17 @@ actor PCloudClient {
         _ = try PCloudAPI.decode(Acknowledged.self, from: response)
     }
 
+    /// A whole raw body for a request whose response is not the JSON envelope
+    /// — getzip streams an archive. The request's own auth placeholder is
+    /// ignored; this client's token rides instead.
+    func downloadRaw(_ request: PCloudRequest) async throws -> Data {
+        let authed = PCloudRequest(method: request.method,
+                                   query: request.query.map { $0.name == "auth" ? URLQueryItem(name: "auth", value: auth) : $0 })
+        let (data, response) = try await session.data(from: authed.url(origin: origin))
+        try Self.check(response)
+        return data
+    }
+
     /// Downloads a content URL whole to a temporary file and returns it.
     /// The caller moves it into the cache; a partial file never lands there.
     func download(_ url: URL) async throws -> URL {

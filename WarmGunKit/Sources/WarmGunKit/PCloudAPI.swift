@@ -225,6 +225,17 @@ public enum PCloudAPI {
         ])
     }
 
+    /// The whole sidecar corpus in one body: getzip streams a folder as a
+    /// single zip, where fetching its files one by one would be thousands of
+    /// round-trips for a megabyte and a half.
+    public static func getZip(path: String, auth: String) -> PCloudRequest {
+        PCloudRequest(method: "getzip", query: [
+            URLQueryItem(name: "path", value: path),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+            URLQueryItem(name: "auth", value: auth),
+        ])
+    }
+
     /// Unwrap one response. pCloud answers HTTP 200 to everything, so the only
     /// thing that says whether a call worked is the `result` field inside the
     /// body — which makes this the single door every response comes through.

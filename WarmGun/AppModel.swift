@@ -32,9 +32,17 @@ final class AppModel: ObservableObject {
     @Published private(set) var favorites = Favorites()
     @Published private(set) var weird: Set<String> = []
     @Published private(set) var stats = WatchStats()
+    /// Which loop the run is in: the whole browse, one clip, or the current
+    /// clip's seed family / action group — the desktop satellite's axes.
+    enum LoopMode: String { case all, single, seed, action }
+    @Published private(set) var loopMode: LoopMode = .all
     /// Clip lengths measured off the cached files, path-keyed — the real
     /// pCloud listing carries no durations, so the phone learns them itself.
     private var measuredSeconds: [String: Double] = [:]
+    /// The seed/action grouping over the metadata sidecars, refreshed once per
+    /// launch in the background; empty until the first fetch lands.
+    private var groupIndex = GroupIndex(sidecars: [:])
+    private var refreshedMetadata = false
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
     /// The player is stalled mid-buffer for long enough to say so — debounced,
@@ -343,6 +351,7 @@ final class AppModel: ObservableObject {
             clipsByPath = Dictionary(uniqueKeysWithValues: fresh.clips.map { ($0.path, $0) })
             if changed { persistCatalog() }
             phase = .ready
+            refreshMetadata()
             if session.playlist.isEmpty {
                 rebuild(startAtTop: true)
             } else if changed {
@@ -359,6 +368,26 @@ final class AppModel: ObservableObject {
             }
         } catch {
             if catalog == nil { phase = .failed(error.localizedDescription) } else { lastProblem = error.localizedDescription }
+        }
+    }
+
+    /// The sidecar corpus, fetched as one zip and kept beside the state files;
+    /// the launch's copy serves until the fetch lands.
+    private func refreshMetadata() {
+        guard !refreshedMetadata, let client else { return }
+        refreshedMetadata = true
+        let libraryPath = settings.libraryPath
+        Task {
+            do {
+                let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath)
+                guard !sidecars.isEmpty else { return }
+                groupIndex = GroupIndex(sidecars: sidecars)
+                if let data = try? JSONEncoder().encode(sidecars) {
+                    try? data.write(to: sidecarsURL, options: .atomic)
+                }
+            } catch {
+                lastProblem = "Metadata: \(error.localizedDescription)"
+            }
         }
     }
 
@@ -513,12 +542,44 @@ final class AppModel: ObservableObject {
     func update(browse: BrowseOptions) {
         let orderChanged = browse.latest != settings.browse.latest
         settings.browse = browse
+        if loopMode == .seed || loopMode == .action { loopMode = .all }
         rebuild(startAtTop: orderChanged)
     }
 
-    func update(loopClip: Bool) {
-        settings.loopClip = loopClip
-        sync()
+    /// The Loop control. All and 1 are playback modes; Seed and Action are the
+    /// desktop's group loops: the playlist is re-seated with the current
+    /// clip's group (anchor first) and cycles it by ordinary auto-advance —
+    /// the clip on screen never restarts. A group of one turns the press into
+    /// a lock rather than a dead end, exactly as the desktop does.
+    func setLoop(_ mode: LoopMode) {
+        switch mode {
+        case .all, .single:
+            let wasGrouped = loopMode == .seed || loopMode == .action
+            loopMode = mode
+            settings.loopClip = mode == .single
+            if wasGrouped {
+                rebuild(startAtTop: false)
+                flash("Loop off", favorite: false)
+            } else {
+                sync()
+            }
+        case .seed, .action:
+            guard let current = session.current else { return }
+            let members = mode == .seed ? groupIndex.seedMembers(of: current)
+                                        : groupIndex.actionMembers(of: current)
+            settings.loopClip = false
+            if members.count < 2 {
+                session.setLocked(true)
+                loopMode = .all
+                flash("Locked — no group", favorite: true)
+            } else {
+                session.setLocked(false)
+                session.replacePlaylist(members)
+                loopMode = mode
+                flash("\(mode == .seed ? "Seed" : "Action") loop — \(members.count) clips", favorite: false)
+            }
+            sync()
+        }
     }
 
     func update(cacheCapMB: Int) {
@@ -746,6 +807,7 @@ final class AppModel: ObservableObject {
     }
 
     private var catalogURL: URL { stateDirectory.appendingPathComponent("catalog.json") }
+    private var sidecarsURL: URL { stateDirectory.appendingPathComponent("sidecars.json") }
     private var stateURL: URL { stateDirectory.appendingPathComponent("state.json") }
 
     private func persistCatalog() {
@@ -766,6 +828,10 @@ final class AppModel: ObservableObject {
     /// A relaunch picks up where it left off: same order, same clip, minus
     /// anything the index no longer has (the desktop's `resume_playlists`).
     private func loadPersistedState() {
+        if let data = try? Data(contentsOf: sidecarsURL),
+           let sidecars = try? JSONDecoder().decode([String: Sidecar].self, from: data) {
+            groupIndex = GroupIndex(sidecars: sidecars)
+        }
         if let data = try? Data(contentsOf: catalogURL), let saved = try? JSONDecoder().decode(Catalog.self, from: data) {
             catalog = saved
             clipsByPath = Dictionary(uniqueKeysWithValues: saved.clips.map { ($0.path, $0) })

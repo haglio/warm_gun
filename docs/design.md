@@ -69,7 +69,11 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   first, unweighted. A filter change keeps the on-screen clip playing if it
   survives the rebuild (`session.replace_playlist`), and a filter that matches
   nothing leaves the current playlist in place instead of blanking the screen.
-- **Not reproduced in v1**: seed/action loops, the act filter, the HUD map
+- **Since v1**: seed and action loops are in (the Loop control's Seed/Action
+  segments) — the desktop's exact grouping over the metadata sidecars, fetched
+  as one getzip of the mirror's AI branch and re-seated into the playlist with
+  the anchor first, degenerating to a lock for a group of one. Still to come:
+  the act filter, the HUD map
   (all need the 1 341 metadata sidecars); the desktop's group-collapse of the
   browse (one clip per subject) for the same reason. Indexing the sidecars is
   the one prerequisite for all of them and is the obvious next step.
