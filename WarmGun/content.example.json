@@ -1,8 +1,8 @@
 {
-  "_comment": "Placeholder content overlay. The real copy lives in WarmGun/content.local.json (git-ignored) and is bundled into the app at build time; without it every non-AI scene is a full-length landscape scene. A lane maps a library-relative path prefix to a clip type ('acts' or 'fullLength'), optionally forces an orientation, and for an acts lane names its checkbox.",
+  "_comment": "Placeholder content overlay. The real copy lives in content.local.json (git-ignored, bundled into the app at build time on this machine only). Lanes map a library-relative path prefix to a clip type; orientation is set where the folder dictates one; label names the acts checkbox, since the word itself is library vocabulary.",
   "lanes": [
     { "prefix": "non_AI/alpha/special", "type": "acts", "orientation": "landscape", "label": "Special" },
-    { "prefix": "non_AI/alpha/full", "type": "fullLength", "orientation": "landscape" },
-    { "prefix": "non_AI/tall_cuts", "type": "fullLength", "orientation": "portrait" }
+    { "prefix": "non_AI/alpha/full", "type": "fullLength", "orientation": "landscape", "label": null },
+    { "prefix": "non_AI/tall", "type": "fullLength", "orientation": "portrait", "label": null }
   ]
 }

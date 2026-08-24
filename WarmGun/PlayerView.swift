@@ -139,6 +139,11 @@ private struct ControlsOverlay: View {
                 cluster {
                     chip("Genau", on: typeBinding(.genau))
                     chip("Shorts", on: typeBinding(.short))
+                    // The acts lane's name is library vocabulary: it exists
+                    // only when the bundled overlay defines it.
+                    if let label = model.overlay.actsLabel {
+                        chip(label, on: typeBinding(.acts))
+                    }
                     chip("Full", on: typeBinding(.fullLength))
                 }
             }
