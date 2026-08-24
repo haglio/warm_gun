@@ -32,6 +32,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var favorites = Favorites()
     @Published private(set) var weird: Set<String> = []
     @Published private(set) var stats = WatchStats()
+    /// Clip lengths measured off the cached files, path-keyed — the real
+    /// pCloud listing carries no durations, so the phone learns them itself.
+    private var measuredSeconds: [String: Double] = [:]
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
     @Published private(set) var waitingFor: String?
@@ -257,6 +260,7 @@ final class AppModel: ObservableObject {
         case .ready(let path):
             consecutiveFailureSkips = 0
             cached.insert(path)
+            measureDuration(of: path)
             cacheBytes = await cache.totalBytes()
             cached = await cache.cachedPaths()
             if path == waitingFor || path == session.staged { sync() }
@@ -301,7 +305,18 @@ final class AppModel: ObservableObject {
         guard let client else { return }
         if catalog == nil { phase = .indexing }
         do {
-            let files = try await client.listLibrary(path: settings.libraryPath)
+            var files = try await client.listLibrary(path: settings.libraryPath)
+            // The genau loops live beside the library, not inside it — Evolver
+            // delivers them out of the pipeline into videos/genau/clips. A
+            // missing folder is fine; the source simply contributes nothing.
+            if let genauPath = LibraryPaths.genauClipsPath(forLibrary: settings.libraryPath),
+               let loops = try? await client.listLibrary(path: genauPath) {
+                files += loops.map { loop in
+                    LibraryFile(path: LibraryPaths.genauPrefix + loop.path, fileID: loop.fileID,
+                                size: loop.size, modified: loop.modified, duration: loop.duration,
+                                videoCodec: loop.videoCodec, width: loop.width, height: loop.height)
+                }
+            }
             let fresh = Catalog(files: files)
             let changed = fresh != catalog
             catalog = fresh
@@ -336,16 +351,17 @@ final class AppModel: ObservableObject {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
                                              favoriteStems: favorites.stems, weird: weird,
-                                             stats: stats, rng: &rng)
+                                             stats: stats, measuredSeconds: measuredSeconds, rng: &rng)
         if playlist.isEmpty {
             if !session.playlist.isEmpty { flash("Nothing matches", favorite: false) }
             if session.playlist.isEmpty { sync() }
             return
         }
         if startAtTop {
-            // Starting on a clip that is already on disk makes the switch
-            // instant; the shuffle does not mind which entry opens it.
-            session = Session(playlist: playlist, index: playlist.firstIndex(where: cached.contains) ?? 0)
+            // The top means the top: Latest must open on the newest clip, and
+            // a fresh shuffle on its own first draw — never on whatever
+            // happened to be cached nearby.
+            session = Session(playlist: playlist)
         } else {
             session.replacePlaylist(playlist)
             if let current = session.current, !cached.contains(current),
@@ -593,6 +609,20 @@ final class AppModel: ObservableObject {
         engine.resume()
     }
 
+    /// The listing never times the clips, so each one is measured the moment
+    /// its file lands — from then on the shorts checkbox judges it by truth
+    /// rather than by the size stand-in.
+    private func measureDuration(of path: String) {
+        guard measuredSeconds[path] == nil else { return }
+        Task {
+            let url = await cache.fileURL(for: path)
+            guard let duration = try? await AVURLAsset(url: url).load(.duration).seconds,
+                  duration.isFinite, duration > 0 else { return }
+            measuredSeconds[path] = duration
+            persistSoon()
+        }
+    }
+
     private func flash(_ text: String, favorite: Bool) {
         notice = Notice(text: text, favorite: favorite)
         noticeTask?.cancel()
@@ -659,6 +689,7 @@ final class AppModel: ObservableObject {
         var playlist: [String]
         var index: Int
         var locked: Bool?  // optional so older blobs still decode
+        var measuredSeconds: [String: Double]?
     }
 
     private var catalogURL: URL { stateDirectory.appendingPathComponent("catalog.json") }
@@ -673,7 +704,7 @@ final class AppModel: ObservableObject {
     private func persistState() {
         let state = PersistedState(favorites: favorites, weird: weird, stats: stats,
                                    playlist: session.playlist, index: session.index,
-                                   locked: session.locked)
+                                   locked: session.locked, measuredSeconds: measuredSeconds)
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: stateURL, options: .atomic)
         }
@@ -691,6 +722,7 @@ final class AppModel: ObservableObject {
         favorites = state.favorites
         weird = state.weird
         stats = state.stats
+        measuredSeconds = state.measuredSeconds ?? [:]
         let surviving = state.playlist.filter { clipsByPath[$0] != nil }
         var restored = Session(playlist: surviving)
         if !surviving.isEmpty, state.index < state.playlist.count, let current = Optional(state.playlist[state.index]), clipsByPath[current] != nil {

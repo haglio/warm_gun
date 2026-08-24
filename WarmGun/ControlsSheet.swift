@@ -17,8 +17,6 @@ struct ControlsSheet: View {
                     Toggle("Full length", isOn: typeBinding(.fullLength))
                 } header: {
                     Text("Types")
-                } footer: {
-                    Text("The library follows how you hold the phone — portrait clips upright, landscape clips wide. Act-based types come with the metadata index.")
                 }
                 Section("Order") {
                     Picker("Order", selection: binding(\.latest)) {
@@ -34,23 +32,6 @@ struct ControlsSheet: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                Section("Now") {
-                    LabeledContent("Clip", value: "\(model.session.playlist.isEmpty ? 0 : model.session.index + 1) of \(model.session.playlist.count)")
-                    LabeledContent("Locked", value: model.session.locked ? "yes" : "no")
-                    LabeledContent("Favorite", value: model.session.current.map { model.favorites.contains(path: $0) ? "★" : "—" } ?? "—")
-                    LabeledContent("Cached", value: "\(model.cached.count) clips, \(megabytes(model.cacheBytes)) MB")
-                    if let backlog = model.backlog {
-                        LabeledContent("Downloading", value: "\(backlog.total - backlog.remaining) of \(backlog.total)")
-                        Button("Stop downloading", role: .destructive) { model.cancelDownloadEverything() }
-                    } else {
-                        Button("Download this browse (\(model.session.playlist.count) clips, \(megabytes(browseBytes)) MB)") {
-                            model.downloadEverything()
-                        }
-                    }
-                    if let problem = model.lastProblem {
-                        Text(problem).font(.footnote).foregroundStyle(.red)
-                    }
-                }
                 Section {
                     Button("Settings") { showingSettings = true }
                 }
@@ -62,16 +43,6 @@ struct ControlsSheet: View {
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
         }
-    }
-
-    private var browseBytes: Int64 {
-        guard let catalog = model.catalog else { return 0 }
-        let wanted = Set(model.session.playlist)
-        return catalog.clips.filter { wanted.contains($0.path) }.reduce(0) { $0 + $1.size }
-    }
-
-    private func megabytes(_ bytes: Int64) -> String {
-        String(format: "%.0f", Double(bytes) / 1_000_000)
     }
 
     private func binding(_ key: WritableKeyPath<BrowseOptions, Bool>) -> Binding<Bool> {

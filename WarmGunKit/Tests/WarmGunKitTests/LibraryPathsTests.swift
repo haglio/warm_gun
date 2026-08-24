@@ -88,3 +88,14 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.discoverLibrary(root: Self.folder("/", [Self.folder("empty")])) == nil)
     }
 }
+
+extension LibraryPathsTests {
+    @Test func namesTheGenauClipsFolderBesideTheLibrary() {
+        // Evolver delivers genau loops OUT of the pipeline into
+        // videos/genau/clips — a sibling of the videos/videos tree the library
+        // path points into, reachable from it by construction.
+        #expect(LibraryPaths.genauClipsPath(forLibrary: "/alpha/videos/videos/2D/AI")
+                == "/alpha/videos/genau/clips")
+        #expect(LibraryPaths.genauClipsPath(forLibrary: "/AI") == nil)
+    }
+}

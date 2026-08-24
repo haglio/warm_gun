@@ -73,8 +73,6 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Account")
-                } footer: {
-                    Text("The password is used once to fetch a token and is not kept. US accounts use api.pcloud.com, EU accounts eapi.pcloud.com.")
                 }
 
                 Section {
@@ -92,8 +90,6 @@ struct SettingsView: View {
                         .disabled(model.phase == .indexing || model.phase == .needsLogin)
                 } header: {
                     Text("Library")
-                } footer: {
-                    Text("Found automatically after login — the one folder holding 1_sorted and 2_outbox. Override only if the library moves; Warm Gun plays the originals under 1_sorted.")
                 }
 
                 Section {
@@ -105,11 +101,18 @@ struct SettingsView: View {
                         .disabled(model.phase == .needsLogin)
                 } header: {
                     Text("Sharing with the desktop")
-                } footer: {
-                    Text("Warm Gun uploads its journal of favorites, weird marks and watch counts to this pCloud folder, and imports a favs.csv placed there.")
                 }
 
                 Section("Cache and prefetch") {
+                    if let backlog = model.backlog {
+                        LabeledContent("Downloading", value: "\(backlog.total - backlog.remaining) of \(backlog.total)")
+                        Button("Stop downloading", role: .destructive) { model.cancelDownloadEverything() }
+                    } else {
+                        Button("Download this browse (\(model.session.playlist.count) clips)") {
+                            model.downloadEverything()
+                        }
+                    }
+                    LabeledContent("Cached", value: "\(model.cached.count) clips, \(model.cacheBytes / 1_000_000) MB")
                     Stepper("Cache cap: \(model.settings.cacheCapMB) MB", value: Binding(
                         get: { model.settings.cacheCapMB },
                         set: { model.update(cacheCapMB: $0) }), in: 256...16384, step: 256)

@@ -109,13 +109,14 @@ extension PlaylistTests {
     /// reported cannot be shown to be short — so it sits the build out, the
     /// same way Nau's length filter drops what it cannot measure rather than
     /// guessing. The bound is inclusive.
-    @Test func shortsKeepsClipsUpToTheBoundAndDropsOnesOfUnknownLength() {
+    @Test func shortsKeepsClipsUpToTheBoundAndJudgesUnknownLengthBySize() {
         var rng = PlaylistSeededRNG(seed: 5)
         let catalog = Catalog(files: [
             Self.file("1_sorted/alpha/portrait/clip-one.mp4", seconds: 4.0),
             Self.file("1_sorted/alpha/portrait/clip-two.mp4", seconds: 10.0),
             Self.file("1_sorted/alpha/portrait/clip-three.mp4", seconds: 10.5),
-            Self.file("1_sorted/alpha/portrait/clip-four.mp4", seconds: nil),
+            // Unknown length: the size stands in — a big file reads full length.
+            Self.file("1_sorted/alpha/portrait/clip-four.mp4", size: 20_000_000, seconds: nil),
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(types: [.short]),
@@ -303,7 +304,7 @@ extension PlaylistTests {
         let genau = PlaylistTests.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4)
         let short = PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 8)
         let long = PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)
-        let unknown = PlaylistTests.file("1_sorted/alpha/portrait/clip-d.mp4", seconds: nil)
+        let unknown = PlaylistTests.file("1_sorted/alpha/portrait/clip-d.mp4", size: 20_000_000, seconds: nil)
         let clips = Catalog(files: [genau, short, long, unknown]).clips
         #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genau)
         #expect(ClipType.classify(clips[1], shortsMaxSeconds: 10) == .short)
@@ -338,5 +339,44 @@ extension PlaylistTests {
         #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).types == [.short])
         let plain = Data(#"{"orientation":"portrait"}"#.utf8)
         #expect(try JSONDecoder().decode(BrowseOptions.self, from: plain).types == Set(ClipType.allCases))
+    }
+}
+
+extension PlaylistTests {
+    @Test func aClipTheServerNeverTimedIsJudgedByMeasureThenBySize() {
+        // The real pCloud listing carries no durations at all, so the phone
+        // measures each clip as it lands in the cache — and until it has, the
+        // size stands in (the originals run near half a megabyte a second).
+        let clip = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4",
+                                                      size: 2_000_000, seconds: nil)]).clips[0]
+        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, measuredSeconds: 40) == .fullLength)
+        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, measuredSeconds: nil) == .short)
+        let big = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4",
+                                                     size: 20_000_000, seconds: nil)]).clips[0]
+        #expect(ClipType.classify(big, shortsMaxSeconds: 10, measuredSeconds: nil) == .fullLength)
+    }
+
+    @Test func genauLoopsIgnoreTheOrientationFilterAndMeasuredTimesReachTheBuild() {
+        // A genau loop has no orientation folder — it plays whichever way the
+        // phone is held; and a measured duration must beat the size stand-in.
+        var rng = PlaylistSeededRNG(seed: 11)
+        let genau = LibraryFile(path: "genau/clips/loop-one.mp4", fileID: 9, size: 2_000_000,
+                                modified: Date(timeIntervalSince1970: 0), duration: nil,
+                                videoCodec: nil, width: 1920, height: 1080)
+        let catalog = Catalog(files: [
+            genau,
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 2_000_000, seconds: nil),
+        ])
+        var options = BrowseOptions(orientation: .portrait)
+        options.types = [.genau]
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                      weird: [], stats: WatchStats(), rng: &rng)
+                == ["genau/clips/loop-one.mp4"])
+        options.types = [.fullLength]
+        // Measured as 40 s, the small file stops reading as a short.
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                      weird: [], stats: WatchStats(),
+                                      measuredSeconds: ["1_sorted/alpha/portrait/clip-small.mp4": 40], rng: &rng)
+                == ["1_sorted/alpha/portrait/clip-small.mp4"])
     }
 }

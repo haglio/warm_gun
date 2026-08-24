@@ -12,11 +12,20 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     case short
     case fullLength
 
-    public static func classify(_ clip: Clip, shortsMaxSeconds: Double) -> ClipType {
+    public static func classify(_ clip: Clip, shortsMaxSeconds: Double,
+                                measuredSeconds: Double? = nil) -> ClipType {
         if clip.source.localizedCaseInsensitiveContains("genau") { return .genau }
-        if let duration = clip.duration, duration <= shortsMaxSeconds { return .short }
-        return .fullLength
+        if let seconds = measuredSeconds ?? clip.duration {
+            return seconds <= shortsMaxSeconds ? .short : .fullLength
+        }
+        // The real pCloud listing carries no durations at all, so until the
+        // phone has measured a clip its size stands in: the originals run
+        // near half a megabyte per second.
+        let estimated = Double(clip.size) / estimatedBytesPerSecond
+        return estimated <= shortsMaxSeconds ? .short : .fullLength
     }
+
+    private static let estimatedBytesPerSecond = 500_000.0
 }
 
 /// Every switch on the controls sheet, in one value.
@@ -100,8 +109,9 @@ public enum PlaylistBuilder {
     /// directions from the current clip.
     public static func build(catalog: Catalog, options: BrowseOptions, favoriteStems: Set<String>,
                              weird: Set<String>, stats: WatchStats,
+                             measuredSeconds: [String: Double] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
-        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird) }
+        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird, measuredSeconds[$0.path]) }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
             // order is total and a rebuild never reshuffles what did not change.
@@ -119,11 +129,15 @@ public enum PlaylistBuilder {
     /// themselves cannot matter. Favorites are matched by stem because that is
     /// all the desktop's `favs.csv` carries, and stems are unique library-wide.
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
-                                        _ favoriteStems: Set<String>, _ weird: Set<String>) -> Bool {
-        clip.orientation == options.orientation
+                                        _ favoriteStems: Set<String>, _ weird: Set<String>,
+                                        _ measured: Double?) -> Bool {
+        let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds, measuredSeconds: measured)
+        // A genau loop has no orientation of its own — it plays whichever way
+        // the phone is held.
+        return (clip.orientation == options.orientation || type == .genau)
             && !weird.contains(clip.path)
             && clip.size <= options.maxBytes
             && (!options.favoritesOnly || favoriteStems.contains(clip.stem))
-            && options.types.contains(ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds))
+            && options.types.contains(type)
     }
 }

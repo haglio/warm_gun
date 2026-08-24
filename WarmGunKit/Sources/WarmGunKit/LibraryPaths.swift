@@ -87,6 +87,18 @@ public enum LibraryPaths {
         }
     }
 
+    /// Where Evolver delivers the genau loops: `videos/genau/clips`, a sibling
+    /// of the `videos/videos` tree the library path points into — so it is
+    /// reachable from the library path by construction, three components up.
+    public static func genauClipsPath(forLibrary libraryPath: String) -> String? {
+        let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
+        guard parts.count >= 4 else { return nil }
+        return "/" + (parts.dropLast(3) + ["genau", "clips"]).joined(separator: "/")
+    }
+
+    /// The prefix the app files genau loops under in its own catalog paths.
+    public static let genauPrefix = "genau/clips/"
+
     /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
     /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
     /// The stem alone identifies a clip: they are unique library-wide.

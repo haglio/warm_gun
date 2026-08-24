@@ -22,3 +22,23 @@ import Testing
         #expect(catalog.clips[1].stem == "three")
     }
 }
+
+extension CatalogTests {
+    @Test func aGenauClipJoinsTheCatalogUnderItsOwnSource() {
+        // Genau loops live outside the sorted tree, carry no orientation
+        // folders, and are filed under the source "genau" — orientation comes
+        // from their pixels when the listing has them, portrait otherwise.
+        let wide = LibraryFile(path: "genau/clips/loop-one.mp4", fileID: 1, size: 2_000_000,
+                               modified: Date(timeIntervalSince1970: 0), duration: nil,
+                               videoCodec: nil, width: 1920, height: 1080)
+        let unknown = LibraryFile(path: "genau/clips/loop-two.mp4", fileID: 2, size: 2_000_000,
+                                  modified: Date(timeIntervalSince1970: 0), duration: nil,
+                                  videoCodec: nil, width: nil, height: nil)
+        let catalog = Catalog(files: [wide, unknown])
+        #expect(catalog.clips.count == 2)
+        #expect(catalog.clips[0].source == "genau")
+        #expect(catalog.clips[0].orientation == .landscape)
+        #expect(catalog.clips[0].stem == "loop-one")
+        #expect(catalog.clips[1].orientation == .portrait)
+    }
+}
