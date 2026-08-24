@@ -55,6 +55,7 @@ class Store:
         self.moves_file = scratch / "moves.json"
         self.moved: dict[str, str] = json.loads(self.moves_file.read_text()) if self.moves_file.exists() else {}
         self.files_by_id: dict[int, Path] = {}
+        self.folders_by_id: dict[int, Path] = {}
 
     def resolve(self, pcloud_path: str) -> Path | None:
         rel = pcloud_path.strip("/")
@@ -107,8 +108,10 @@ class Store:
         if pc in self.moved:
             return None
         if path.is_dir():
+            folderid = fnv64(pc)
+            self.folders_by_id[folderid] = path
             folder = {
-                "name": path.name or "/", "isfolder": True, "folderid": fnv64(pc),
+                "name": path.name or "/", "isfolder": True, "folderid": folderid,
                 "modified": int(path.stat().st_mtime), "path": pc,
             }
             # Like the real API: the LISTED folder always carries its immediate
@@ -169,7 +172,11 @@ class Handler(BaseHTTPRequestHandler):
                 body["auth"] = "dev-token"
             return self.reply(body)
         if method == "getzip":
-            target = self.store.resolve(q.get("path", "/"))
+            # Like the real API: getzip takes a TREE (folderid), never a path —
+            # the path form once flattered a build that failed against pCloud.
+            if "folderid" not in q:
+                return self.reply({"result": 1017, "error": "Invalid 'folderid' provided."})
+            target = self.store.folders_by_id.get(int(q["folderid"]))
             if target is None or not target.is_dir():
                 return self.reply({"result": 2005, "error": "Directory does not exist."})
             import io, zipfile

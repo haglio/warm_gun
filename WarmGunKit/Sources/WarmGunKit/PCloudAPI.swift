@@ -227,10 +227,11 @@ public enum PCloudAPI {
 
     /// The whole sidecar corpus in one body: getzip streams a folder as a
     /// single zip, where fetching its files one by one would be thousands of
-    /// round-trips for a megabyte and a half.
-    public static func getZip(path: String, auth: String) -> PCloudRequest {
+    /// round-trips for a megabyte and a half. It takes a TREE — folderid,
+    /// never a path — so the caller lists the folder first to learn its id.
+    public static func getZip(folderID: Int64, auth: String) -> PCloudRequest {
         PCloudRequest(method: "getzip", query: [
-            URLQueryItem(name: "path", value: path),
+            URLQueryItem(name: "folderid", value: String(folderID)),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: auth),
         ])

@@ -490,11 +490,13 @@ extension PCloudAPITests {
 extension PCloudAPITests {
     @Test func fetchesTheWholeSidecarCorpusAsOneZip() {
         // 1,341 sidecars are 1.5 MB but would be 2,682 round-trips fetched one
-        // by one; getzip streams the folder as a single body.
-        let request = PCloudAPI.getZip(path: "/lib/videos/metadata/2D/AI", auth: "token-abc")
+        // by one; getzip streams the folder as a single body. It takes a TREE —
+        // folderid, never a path (the fake accepted a path once and flattered
+        // a build that failed against the real server with 'provide folderid').
+        let request = PCloudAPI.getZip(folderID: 4242, auth: "token-abc")
         #expect(request.method == "getzip")
         #expect(request.query == [
-            URLQueryItem(name: "path", value: "/lib/videos/metadata/2D/AI"),
+            URLQueryItem(name: "folderid", value: "4242"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])

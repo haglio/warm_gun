@@ -9,7 +9,12 @@ import WarmGunKit
 enum MetadataFetcher {
     static func fetchSidecars(client: PCloudClient, libraryPath: String) async throws -> [String: Sidecar] {
         guard let metadataPath = LibraryPaths.metadataAIPath(forLibrary: libraryPath) else { return [:] }
-        let body = try await client.downloadRaw(PCloudAPI.getZip(path: metadataPath, auth: ""))
+        // getzip takes a tree (folderid), never a path — list the folder
+        // shallowly first to learn its id.
+        guard let folderID = try await client.folderSkeleton(path: metadataPath, recursive: false).folderid else {
+            return [:]
+        }
+        let body = try await client.downloadRaw(PCloudAPI.getZip(folderID: folderID, auth: ""))
         if body.first == UInt8(ascii: "{") {
             // pCloud answers errors as JSON even where a zip was asked for.
             _ = try PCloudAPI.decode(EmptyPayload.self, from: body)
