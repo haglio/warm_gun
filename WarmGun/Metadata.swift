@@ -11,6 +11,7 @@ enum MetadataFetcher {
     /// when it will not — either way the corpus arrives. `progress` narrates
     /// for the status line the sheet shows.
     static func fetchSidecars(client: PCloudClient, libraryPath: String,
+                              listing: [LibraryFile],
                               progress: @escaping @Sendable (String) -> Void) async throws -> [String: Sidecar] {
         guard let metadataPath = LibraryPaths.metadataAIPath(forLibrary: libraryPath) else { return [:] }
         do {
@@ -19,9 +20,17 @@ enum MetadataFetcher {
         } catch {
             // getzip has already failed against the real server once (it takes
             // a folderid, not a path) — never trust it as the only road.
-            progress("archive failed (\(error.localizedDescription)) — fetching sidecars singly…")
-            return try await fetchSingly(client: client, metadataPath: metadataPath, progress: progress)
+            progress("archive failed — fetching sidecars singly…")
+            return try await fetchSingly(client: client, listing: listing, progress: progress)
         }
+    }
+
+    /// One number standing for the whole mirror: how many sidecars, and the
+    /// newest write among them. A matching fingerprint means nothing changed
+    /// and there is nothing to fetch.
+    static func fingerprint(of listing: [LibraryFile]) -> String {
+        let newest = listing.map(\.modified.timeIntervalSince1970).max() ?? 0
+        return "\(listing.count)|\(Int(newest))"
     }
 
     private static func fetchViaZip(client: PCloudClient, metadataPath: String) async throws -> [String: Sidecar] {
@@ -43,10 +52,9 @@ enum MetadataFetcher {
         return sidecars
     }
 
-    private static func fetchSingly(client: PCloudClient, metadataPath: String,
+    private static func fetchSingly(client: PCloudClient, listing: [LibraryFile],
                                     progress: @escaping @Sendable (String) -> Void) async throws -> [String: Sidecar] {
-        let files = try await client.listLibrary(path: metadataPath)
-            .filter { $0.path.hasSuffix(".json") }
+        let files = listing
         let decoder = JSONDecoder()
         var sidecars: [String: Sidecar] = [:]
         var fetched = 0

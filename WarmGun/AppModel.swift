@@ -387,7 +387,22 @@ final class AppModel: ObservableObject {
         let libraryPath = settings.libraryPath
         Task {
             do {
-                let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath) { note in
+                guard let metadataPath = LibraryPaths.metadataAIPath(forLibrary: libraryPath) else { return }
+                // One cheap listing decides whether anything moved: same count
+                // and same newest write means the persisted index still speaks
+                // for the mirror, and nothing is fetched at all.
+                let listing = try await client.listLibrary(path: metadataPath)
+                    .filter { $0.path.hasSuffix(".json") }
+                let fingerprint = MetadataFetcher.fingerprint(of: listing)
+                let stored = UserDefaults.standard.string(forKey: "warm-gun.metadata-fingerprint")
+                if fingerprint == stored, !groupIndex.isEmpty {
+                    metadataStatus = "indexed \(listing.count) sidecars (unchanged)"
+                    metadataFailed = false
+                    recomputeLoopAvailability()
+                    return
+                }
+                let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath,
+                                                                       listing: listing) { note in
                     Task { @MainActor [weak self] in self?.metadataStatus = note }
                 }
                 guard !sidecars.isEmpty else {
@@ -404,6 +419,7 @@ final class AppModel: ObservableObject {
                 recomputeLoopAvailability()
                 if let data = try? JSONEncoder().encode(sidecars) {
                     try? data.write(to: sidecarsURL, options: .atomic)
+                    UserDefaults.standard.set(fingerprint, forKey: "warm-gun.metadata-fingerprint")
                 }
             } catch {
                 metadataStatus = error.localizedDescription
