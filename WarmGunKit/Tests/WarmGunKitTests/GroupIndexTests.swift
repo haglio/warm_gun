@@ -98,3 +98,13 @@ import Testing
         #expect(stub.sourceImage == nil)
     }
 }
+
+extension GroupIndexTests {
+    @Test func handsOutTheNormalizedActsForTheBuildToFilterOn() {
+        let index = GroupIndex(sidecars: [
+            "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "Very  Special"),
+            "1_sorted/a/portrait/two.mp4": Self.sidecar(action: nil),
+        ])
+        #expect(index.actsByPath == ["1_sorted/a/portrait/one.mp4": "very special"])
+    }
+}

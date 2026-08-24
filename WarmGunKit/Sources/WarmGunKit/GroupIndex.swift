@@ -31,6 +31,11 @@ public struct GroupIndex: Sendable, Equatable {
     private var actionMembersByKey: [String: [String]] = [:]
     private var seedMembersByKey: [String: [String]] = [:]
 
+    /// Every clip's normalized recorded act, for the build's act-query filter.
+    public var actsByPath: [String: String] {
+        actByPath.filter { !$0.value.isEmpty }
+    }
+
     /// True until any sidecar has been indexed — the UI's cue that the loops
     /// have nothing to stand on yet.
     public var isEmpty: Bool { actByPath.isEmpty }
@@ -105,7 +110,7 @@ public struct GroupIndex: Sendable, Equatable {
 
     /// `" ".join(str(value or "").split()).lower()` — whitespace collapsed,
     /// lowercased, nil to empty.
-    static func normText(_ value: String?) -> String {
+    public static func normText(_ value: String?) -> String {
         (value ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ").lowercased()
     }
 }

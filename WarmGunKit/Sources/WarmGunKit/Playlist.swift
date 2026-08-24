@@ -17,8 +17,10 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
 
     public static func classify(_ clip: Clip, shortsMaxSeconds: Double,
                                 measuredSeconds: Double? = nil,
-                                overlay: ContentOverlay = .empty) -> ClipType {
+                                overlay: ContentOverlay = .empty,
+                                act: String? = nil) -> ClipType {
         if let lane = overlay.lane(for: clip.path) { return lane.type }
+        if let act, overlay.matchesActQuery(act) { return .acts }
         if clip.source.localizedCaseInsensitiveContains("genau") { return .genau }
         if clip.source == "non_AI" { return .fullLength }
         if let seconds = measuredSeconds ?? clip.duration {
@@ -117,8 +119,9 @@ public enum PlaylistBuilder {
                              weird: Set<String>, stats: WatchStats,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
+                             acts: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
-        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird, measuredSeconds[$0.path], overlay) }
+        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird, measuredSeconds[$0.path], overlay, acts[$0.path]) }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
             // order is total and a rebuild never reshuffles what did not change.
@@ -137,9 +140,10 @@ public enum PlaylistBuilder {
     /// all the desktop's `favs.csv` carries, and stems are unique library-wide.
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
                                         _ favoriteStems: Set<String>, _ weird: Set<String>,
-                                        _ measured: Double?, _ overlay: ContentOverlay) -> Bool {
+                                        _ measured: Double?, _ overlay: ContentOverlay,
+                                        _ act: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
-                                     measuredSeconds: measured, overlay: overlay)
+                                     measuredSeconds: measured, overlay: overlay, act: act)
         // A lane's orientation outranks the pixels; a genau loop has no
         // orientation of its own and plays whichever way the phone is held.
         let orientation = overlay.lane(for: clip.path)?.orientation ?? clip.orientation

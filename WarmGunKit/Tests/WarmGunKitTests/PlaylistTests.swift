@@ -435,3 +435,33 @@ extension PlaylistTests {
                 == ["non_AI/tall/scene-two.mp4"])
     }
 }
+
+extension PlaylistTests {
+    @Test func theActsCheckboxAlsoCatchesAIClipsByTheirRecordedAct() {
+        // "Type" is not one field anywhere: genau is a source lane, shorts a
+        // running time, and acts an entry in the sidecar's video.action — 43
+        // distinct values on the real library. The overlay's act_queries name
+        // which of those count, matched the desktop's way: normalized
+        // contiguous substring.
+        let overlay = ContentOverlay(lanes: [], actQueries: ["special"])
+        #expect(overlay.matchesActQuery("Very  Special act") == true)
+        #expect(overlay.matchesActQuery("plain") == false)
+
+        var rng = PlaylistSeededRNG(seed: 23)
+        let catalog = Catalog(files: [
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 30),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 30),
+        ])
+        var options = BrowseOptions()
+        options.types = [.acts]
+        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                          weird: [], stats: WatchStats(), overlay: overlay,
+                                          acts: ["1_sorted/alpha/portrait/clip-a.mp4": "special act"], rng: &rng)
+        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
+    }
+
+    @Test func anOverlayWithoutActQueriesStillDecodes() throws {
+        let old = Data(#"{"lanes": []}"#.utf8)
+        #expect(try JSONDecoder().decode(ContentOverlay.self, from: old).actQueries.isEmpty)
+    }
+}

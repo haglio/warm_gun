@@ -27,9 +27,32 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
     }
 
     public let lanes: [Lane]
+    /// Which recorded acts count as the acts type, for the AI clips whose act
+    /// lives in the sidecar rather than in a folder. Matched the desktop's
+    /// way: a normalized query as a contiguous substring of the normalized
+    /// act. The words are library vocabulary and live only in the overlay.
+    public let actQueries: [String]
 
-    public init(lanes: [Lane] = []) {
+    public init(lanes: [Lane] = [], actQueries: [String] = []) {
         self.lanes = lanes
+        self.actQueries = actQueries
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case lanes
+        case actQueries = "act_queries"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        lanes = try c.decodeIfPresent([Lane].self, forKey: .lanes) ?? []
+        actQueries = try c.decodeIfPresent([String].self, forKey: .actQueries) ?? []
+    }
+
+    public func matchesActQuery(_ act: String) -> Bool {
+        let normalized = GroupIndex.normText(act)
+        guard !normalized.isEmpty else { return false }
+        return actQueries.contains { normalized.contains(GroupIndex.normText($0)) }
     }
 
     public static let empty = ContentOverlay()

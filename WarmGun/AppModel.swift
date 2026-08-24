@@ -438,7 +438,7 @@ final class AppModel: ObservableObject {
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
                                              favoriteStems: favorites.stems, weird: weird,
                                              stats: stats, measuredSeconds: measuredSeconds,
-                                             overlay: overlay, rng: &rng)
+                                             overlay: overlay, acts: groupIndex.actsByPath, rng: &rng)
         if playlist.isEmpty {
             // Nothing fits these switches: say exactly that on a blank screen
             // (the view reads the empty playlist) rather than playing on as if
