@@ -10,6 +10,7 @@ import WarmGunKit
 /// for that), so there is no default for them beyond an empty string.
 struct Settings: Codable, Equatable {
     var apiHost = "api.pcloud.com"
+    var username = ""
     var libraryPath = ""
     var syncFolder = "/WarmGun"
     var browse = BrowseOptions()

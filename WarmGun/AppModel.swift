@@ -111,6 +111,8 @@ final class AppModel: ObservableObject {
     /// keep it for another try. Any failure lands in `lastProblem` verbatim.
     func login(username: String, password: String, code: String? = nil) async -> Bool {
         let trimmed = (code ?? "").trimmingCharacters(in: .whitespaces)
+        settings.username = username
+        Keychain.storePending(password: password)
         do {
             let response: LoginResponse
             if let tfaToken, !trimmed.isEmpty {
@@ -131,6 +133,7 @@ final class AppModel: ObservableObject {
             loginWantsCode = false
             tfaToken = nil
             tfaHasDevices = false
+            Keychain.forgetPending()
             await start()
             return true
         } catch {

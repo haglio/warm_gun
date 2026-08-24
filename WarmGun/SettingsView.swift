@@ -53,6 +53,8 @@ struct SettingsView: View {
                                     password = ""
                                     verificationCode = ""
                                 }
+                                // On failure both fields keep their text — the
+                                // next attempt costs only the code.
                                 loggingIn = false
                             }
                         }
@@ -131,7 +133,11 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
             }
-            .onAppear { libraryPath = model.settings.libraryPath }
+            .onAppear {
+                libraryPath = model.settings.libraryPath
+                if username.isEmpty { username = model.settings.username }
+                if password.isEmpty { password = Keychain.pendingPassword() ?? "" }
+            }
         }
     }
 }
