@@ -1,27 +1,32 @@
 import Foundation
 
 /// The kinds of clip the controls sheet lets the browse narrow to. Every clip
-/// classifies as exactly one: genau loops are named by their source folder
-/// (the desktop delivers them from origenerator's genau lane), shorts are by
-/// running time, and the rest — unknown durations included — are full length.
-/// Act-based types (the desktop's filter vocabulary) arrive with the metadata
-/// sidecar index, and their names are library content — they will come from a
-/// git-ignored overlay the way the desktop's do, never from this enum.
+/// is exactly one, and the desktop settles which: it records the kind on the
+/// video's metadata sidecar (`video.type`), for the whole library, so the same
+/// clip is the same kind in every app that reads it. The raw values are that
+/// field's own words.
+///
+/// Everything after the record is a fallback for a clip the phone has no
+/// sidecar for — the non-AI scenes and the genau loops, whose records the
+/// index does not carry: the overlay's lanes first, then the source folder,
+/// then a running time. They are how this app answered the question before the
+/// field existed, kept only for where the field cannot reach.
 public enum ClipType: String, Codable, CaseIterable, Sendable {
-    case genau
+    case genauClip = "genau_clip"
+    /// A scene carved out of a longer one. Which folders hold them — and what
+    /// the checkbox is called — is library vocabulary, defined only by the
+    /// overlay.
+    case excerpt
     case short
-    case fullLength
-    /// Act-specific scenes. Which folders hold them — and what the checkbox
-    /// is called — is library vocabulary, defined only by the overlay.
-    case acts
+    case fullLength = "full_length"
 
     public static func classify(_ clip: Clip, shortsMaxSeconds: Double,
+                                recorded: String? = nil,
                                 measuredSeconds: Double? = nil,
-                                overlay: ContentOverlay = .empty,
-                                act: String? = nil) -> ClipType {
+                                overlay: ContentOverlay = .empty) -> ClipType {
+        if let recorded, let kind = ClipType(rawValue: recorded) { return kind }
         if let lane = overlay.lane(for: clip.path) { return lane.type }
-        if let act, overlay.matchesActQuery(act) { return .acts }
-        if clip.source.localizedCaseInsensitiveContains("genau") { return .genau }
+        if clip.source.localizedCaseInsensitiveContains("genau") { return .genauClip }
         if clip.source == "non_AI" { return .fullLength }
         if let seconds = measuredSeconds ?? clip.duration {
             return seconds <= shortsMaxSeconds ? .short : .fullLength
@@ -32,6 +37,12 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
         let estimated = Double(clip.size) / estimatedBytesPerSecond
         return estimated <= shortsMaxSeconds ? .short : .fullLength
     }
+
+    /// What a kind was called in a browse persisted before the desktop's
+    /// vocabulary arrived. An app update must never cost the saved controls.
+    static let retiredNames: [String: ClipType] = [
+        "genau": .genauClip, "acts": .excerpt, "fullLength": .fullLength,
+    ]
 
     private static let estimatedBytesPerSecond = 500_000.0
 }
@@ -80,8 +91,8 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
         let defaults = BrowseOptions()
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? defaults.orientation
         favoritesOnly = try c.decodeIfPresent(Bool.self, forKey: .favoritesOnly) ?? defaults.favoritesOnly
-        if let saved = try c.decodeIfPresent(Set<ClipType>.self, forKey: .types) {
-            types = saved
+        if let saved = try c.decodeIfPresent([String].self, forKey: .types) {
+            types = Set(saved.compactMap { ClipType(rawValue: $0) ?? ClipType.retiredNames[$0] })
         } else if try c.decodeIfPresent(Bool.self, forKey: .shortsOnly) == true {
             types = [.short]
         } else {
@@ -128,8 +139,12 @@ public enum PlaylistBuilder {
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
                              acts: [String: String] = [:],
+                             kinds: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
-        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteKeys, weird, measuredSeconds[$0.path], overlay, acts[$0.path]) }
+        let clips = catalog.clips.filter {
+            survivesFilters($0, options, favoriteKeys, weird, kinds[$0.path],
+                            measuredSeconds[$0.path], overlay, acts[$0.path])
+        }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
             // order is total and a rebuild never reshuffles what did not change.
@@ -148,10 +163,10 @@ public enum PlaylistBuilder {
     /// filed under (`LibraryPaths.favoriteKey`).
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
                                         _ favoriteKeys: Set<String>, _ weird: Set<String>,
-                                        _ measured: Double?, _ overlay: ContentOverlay,
-                                        _ act: String?) -> Bool {
+                                        _ recorded: String?, _ measured: Double?,
+                                        _ overlay: ContentOverlay, _ act: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
-                                     measuredSeconds: measured, overlay: overlay, act: act)
+                                     recorded: recorded, measuredSeconds: measured, overlay: overlay)
         // A lane's orientation outranks the pixels; a genau loop has no
         // orientation of its own and plays whichever way the phone is held.
         let orientation = overlay.lane(for: clip.path)?.orientation ?? clip.orientation
@@ -162,7 +177,7 @@ public enum PlaylistBuilder {
         if let bucket = overlay.actBucket(for: act), options.disabledActs.contains(bucket) {
             return false
         }
-        return (orientation == options.orientation || type == .genau)
+        return (orientation == options.orientation || type == .genauClip)
             && !weird.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)
             && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)

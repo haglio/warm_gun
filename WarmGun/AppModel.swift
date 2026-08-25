@@ -497,7 +497,8 @@ final class AppModel: ObservableObject {
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
                                              favoriteKeys: favorites.held, weird: weird,
                                              weights: weights, measuredSeconds: measuredSeconds,
-                                             overlay: overlay, acts: groupIndex.actsByPath, rng: &rng)
+                                             overlay: overlay, acts: groupIndex.actsByPath,
+                                             kinds: groupIndex.kindsByPath, rng: &rng)
         if playlist.isEmpty {
             // Nothing fits these switches: say exactly that on a blank screen
             // (the view reads the empty playlist) rather than playing on as if
@@ -570,9 +571,9 @@ final class AppModel: ObservableObject {
     private func currentClipFightsBrowse() -> Bool {
         guard let current = session.current, let clip = clipsByPath[current] else { return false }
         let type = ClipType.classify(clip, shortsMaxSeconds: settings.browse.shortsMaxSeconds,
-                                     measuredSeconds: measuredSeconds[current], overlay: overlay,
-                                     act: groupIndex.actsByPath[current])
-        guard type != .genau else { return false }
+                                     recorded: groupIndex.kindsByPath[current],
+                                     measuredSeconds: measuredSeconds[current], overlay: overlay)
+        guard type != .genauClip else { return false }
         let orientation = overlay.lane(for: current)?.orientation ?? clip.orientation
         return orientation != settings.browse.orientation
     }

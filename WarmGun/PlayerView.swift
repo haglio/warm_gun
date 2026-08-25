@@ -134,12 +134,12 @@ private struct ControlsOverlay: View {
             // flat, where height is the scarce direction.
             corner(.topLeading) {
                 cluster {
-                    chip("Genau", on: typeBinding(.genau))
+                    chip("Genau", on: typeBinding(.genauClip))
                     chip("Shorts", on: typeBinding(.short))
-                    // The acts lane's name is library vocabulary: it exists
-                    // only when the bundled overlay defines it.
-                    if let label = model.overlay.actsLabel {
-                        chip(label, on: typeBinding(.acts))
+                    // The excerpts lane's name is library vocabulary: it
+                    // exists only when the bundled overlay defines it.
+                    if let label = model.overlay.excerptLabel {
+                        chip(label, on: typeBinding(.excerpt))
                     }
                     chip("Full", on: typeBinding(.fullLength))
                 }

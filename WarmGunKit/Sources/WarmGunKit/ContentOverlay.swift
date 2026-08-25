@@ -6,6 +6,11 @@ import Foundation
 /// (`content.local.json`, with a committed example documenting the shape),
 /// never as source. Without an overlay every non-AI scene is simply a
 /// full-length landscape scene.
+///
+/// The lanes are a *fallback*: the desktop records every video's kind on its
+/// sidecar, and the phone's index carries only the AI branch of those, so the
+/// non-AI scenes are the clips whose kind still has to be read off their
+/// folder.
 public struct ContentOverlay: Codable, Equatable, Sendable {
     public struct Lane: Codable, Equatable, Sendable {
         /// Library-relative path prefix, e.g. `non_AI/<bucket>/<folder>`.
@@ -14,8 +19,8 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
         /// Set when the folder dictates one (a portrait-cuts folder); nil
         /// leaves the clip's own pixels in charge.
         public let orientation: Orientation?
-        /// The checkbox title for an `.acts` lane — the word itself is library
-        /// vocabulary, so it lives here, not in source.
+        /// The checkbox title for an `.excerpt` lane — the word itself is
+        /// library vocabulary, so it lives here, not in source.
         public let label: String?
 
         public init(prefix: String, type: ClipType, orientation: Orientation?, label: String?) {
@@ -56,29 +61,20 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
 
     public let lanes: [Lane]
     public let actFilters: [ActFilter]
-    /// Which recorded acts count as the acts type, for the AI clips whose act
-    /// lives in the sidecar rather than in a folder. Matched the desktop's
-    /// way: a normalized query as a contiguous substring of the normalized
-    /// act. The words are library vocabulary and live only in the overlay.
-    public let actQueries: [String]
-
-    public init(lanes: [Lane] = [], actFilters: [ActFilter] = [], actQueries: [String] = []) {
+    public init(lanes: [Lane] = [], actFilters: [ActFilter] = []) {
         self.lanes = lanes
         self.actFilters = actFilters
-        self.actQueries = actQueries
     }
 
     private enum CodingKeys: String, CodingKey {
         case lanes
         case actFilters = "act_filters"
-        case actQueries = "act_queries"
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         lanes = try c.decodeIfPresent([Lane].self, forKey: .lanes) ?? []
         actFilters = try c.decodeIfPresent([ActFilter].self, forKey: .actFilters) ?? []
-        actQueries = try c.decodeIfPresent([String].self, forKey: .actQueries) ?? []
     }
 
     /// The button that claims *act*: the first whose query matches, else the
@@ -97,12 +93,6 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
         return actFilters.first(where: \.isOther)?.label
     }
 
-    public func matchesActQuery(_ act: String) -> Bool {
-        let normalized = GroupIndex.normText(act)
-        guard !normalized.isEmpty else { return false }
-        return actQueries.contains { normalized.contains(GroupIndex.normText($0)) }
-    }
-
     public static let empty = ContentOverlay()
 
     /// The most specific lane covering *path* — longest prefix wins.
@@ -111,8 +101,8 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
             .max { $0.prefix.count < $1.prefix.count }
     }
 
-    /// What the acts checkbox is called, when any lane defines acts at all.
-    public var actsLabel: String? {
-        lanes.first { $0.type == .acts }?.label
+    /// What the excerpts checkbox is called, when any lane defines one at all.
+    public var excerptLabel: String? {
+        lanes.first { $0.type == .excerpt }?.label
     }
 }

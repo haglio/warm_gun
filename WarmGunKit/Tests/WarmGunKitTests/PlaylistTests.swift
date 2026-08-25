@@ -252,7 +252,7 @@ extension PlaylistTests {
     /// The controls sheet is where it was left: the switches are saved between
     /// launches, so the whole record has to survive a JSON round trip.
     @Test func theBrowseSwitchesSurviveAJSONRoundTrip() throws {
-        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genau],
+        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genauClip],
                                     shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
 
         let data = try JSONEncoder().encode(options)
@@ -309,10 +309,42 @@ extension PlaylistTests {
         let long = PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)
         let unknown = PlaylistTests.file("1_sorted/alpha/portrait/clip-d.mp4", size: 20_000_000, seconds: nil)
         let clips = Catalog(files: [genau, short, long, unknown]).clips
-        #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genau)
+        #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genauClip)
         #expect(ClipType.classify(clips[1], shortsMaxSeconds: 10) == .short)
         #expect(ClipType.classify(clips[2], shortsMaxSeconds: 10) == .fullLength)
         #expect(ClipType.classify(clips[3], shortsMaxSeconds: 10) == .fullLength)
+    }
+
+    @Test func theKindTheDesktopRecordedOutranksEveryGuessHere() {
+        // The desktop writes one kind on every video's sidecar, so the phone
+        // reads it instead of running its own three tests. A 40-second clip
+        // this would have called full length is a short if that is what the
+        // sidecar says, and a clip in the genau lane is whatever it says too.
+        let long = Catalog(files: [Self.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)]).clips[0]
+        let inGenauLane = Catalog(files: [Self.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4)]).clips[0]
+
+        #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "short") == .short)
+        #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "excerpt") == .excerpt)
+        #expect(ClipType.classify(inGenauLane, shortsMaxSeconds: 10, recorded: "full_length") == .fullLength)
+        // A kind this build has never heard of is no kind at all.
+        #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "medium_length") == .fullLength)
+    }
+
+    @Test func theTypeCheckboxesNarrowTheRecordedKindsToo() {
+        var rng = PlaylistSeededRNG(seed: 31)
+        let catalog = Catalog(files: [
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 40),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 40),
+        ])
+        var options = BrowseOptions()
+        options.types = [.excerpt]
+
+        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
+                                          weird: [], weights: WatchWeights(),
+                                          kinds: ["1_sorted/alpha/portrait/clip-a.mp4": "excerpt"],
+                                          rng: &rng)
+
+        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
     }
 
     @Test func theTypeCheckboxesNarrowTheBuild() {
@@ -327,7 +359,7 @@ extension PlaylistTests {
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-b.mp4"])
-        options.types = [.genau, .fullLength]
+        options.types = [.genauClip, .fullLength]
         let both = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                          weird: [], weights: WatchWeights(), rng: &rng)
         #expect(Set(both) == ["1_sorted/alpha_genau/portrait/clip-a.mp4",
@@ -371,7 +403,7 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 2_000_000, seconds: nil),
         ])
         var options = BrowseOptions(orientation: .portrait)
-        options.types = [.genau]
+        options.types = [.genauClip]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["genau/clips/loop-one.mp4"])
@@ -398,20 +430,20 @@ extension PlaylistTests {
         // orientation. Everything unmatched under non_AI is a full-length
         // scene.
         let overlay = ContentOverlay(lanes: [
-            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .acts, orientation: .landscape, label: "Special"),
+            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, orientation: .landscape, label: "Special"),
             ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait, label: nil),
         ])
         let special = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4")]).clips[0]
         let tall = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
         let plain = Catalog(files: [Self.nonAI("non_AI/beta/scene-three.mp4")]).clips[0]
-        #expect(ClipType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .acts)
+        #expect(ClipType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .excerpt)
         #expect(ClipType.classify(plain, shortsMaxSeconds: 10, overlay: overlay) == .fullLength)
         #expect(overlay.lane(for: tall.path)?.orientation == .portrait)
-        #expect(overlay.actsLabel == "Special")
+        #expect(overlay.excerptLabel == "Special")
 
         var rng = PlaylistSeededRNG(seed: 13)
         var options = BrowseOptions(orientation: .landscape)
-        options.types = [.acts]
+        options.types = [.excerpt]
         let catalog = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4"),
                                       Self.nonAI("non_AI/beta/scene-three.mp4")])
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
@@ -440,32 +472,35 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    @Test func theActsCheckboxAlsoCatchesAIClipsByTheirRecordedAct() {
-        // "Type" is not one field anywhere: genau is a source lane, shorts a
-        // running time, and acts an entry in the sidecar's video.action — 43
-        // distinct values on the real library. The overlay's act_queries name
-        // which of those count, matched the desktop's way: normalized
-        // contiguous substring.
-        let overlay = ContentOverlay(lanes: [], actQueries: ["special"])
-        #expect(overlay.matchesActQuery("Very  Special act") == true)
-        #expect(overlay.matchesActQuery("plain") == false)
+    @Test func theBundledOverlayDecodesInTheShapeItsExampleDocuments() throws {
+        // The lane types are the desktop's own words for the kinds, so the
+        // file beside the app and this enum have to keep saying the same
+        // thing: a mismatch decodes as no overlay at all, and every non-AI
+        // scene silently becomes a full-length landscape one.
+        let json = Data(#"""
+        {"lanes": [
+           {"prefix": "non_AI/alpha/carved", "type": "excerpt",
+            "orientation": "landscape", "label": "Carved"},
+           {"prefix": "non_AI/tall", "type": "full_length",
+            "orientation": "portrait", "label": null}],
+         "act_filters": [{"label": "AL", "queries": ["alpha"]}]}
+        """#.utf8)
 
-        var rng = PlaylistSeededRNG(seed: 23)
-        let catalog = Catalog(files: [
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 30),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 30),
-        ])
-        var options = BrowseOptions()
-        options.types = [.acts]
-        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
-                                          weird: [], weights: WatchWeights(), overlay: overlay,
-                                          acts: ["1_sorted/alpha/portrait/clip-a.mp4": "special act"], rng: &rng)
-        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
+        let overlay = try JSONDecoder().decode(ContentOverlay.self, from: json)
+
+        #expect(overlay.lanes.map(\.type) == [.excerpt, .fullLength])
+        #expect(overlay.excerptLabel == "Carved")
+        #expect(overlay.actFilters.map(\.label) == ["AL"])
     }
 
-    @Test func anOverlayWithoutActQueriesStillDecodes() throws {
-        let old = Data(#"{"lanes": []}"#.utf8)
-        #expect(try JSONDecoder().decode(ContentOverlay.self, from: old).actQueries.isEmpty)
+    @Test func aPersistedBrowseKeepsItsCheckboxesThroughTheRename() throws {
+        // The kinds were this app's own words before the desktop had any; a
+        // browse persisted with them must come back as the same checkboxes.
+        let old = Data(#"{"orientation":"portrait","types":["genau","acts","fullLength"]}"#.utf8)
+
+        let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)
+
+        #expect(restored.types == [.genauClip, .excerpt, .fullLength])
     }
 }
 

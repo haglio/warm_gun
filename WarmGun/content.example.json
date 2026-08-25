@@ -1,27 +1,24 @@
 {
-  "_comment": "Placeholder content overlay. The real copy lives in content.local.json (git-ignored, bundled into the app at build time on this machine only). Lanes map a library-relative path prefix to a clip type; orientation is set where the folder dictates one; label names the acts checkbox, since the word itself is library vocabulary.",
+  "_comment": "Placeholder content overlay. The real copy lives in content.local.json (git-ignored, bundled into the app at build time on this machine only). Lanes map a library-relative path prefix to a clip type; orientation is set where the folder dictates one; label names the excerpts checkbox, since the word itself is library vocabulary.",
   "lanes": [
     {
       "prefix": "non_AI/alpha/special",
-      "type": "acts",
+      "type": "excerpt",
       "orientation": "landscape",
       "label": "Special"
     },
     {
       "prefix": "non_AI/alpha/full",
-      "type": "fullLength",
+      "type": "full_length",
       "orientation": "landscape",
       "label": null
     },
     {
       "prefix": "non_AI/tall",
-      "type": "fullLength",
+      "type": "full_length",
       "orientation": "portrait",
       "label": null
     }
-  ],
-  "act_queries": [
-    "special"
   ],
   "act_filters": [
     {

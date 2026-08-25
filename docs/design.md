@@ -36,10 +36,20 @@ the owner, not alone.
   arrow keys.
 - **Controls sheet** (checkboxes): Landscape library (off = portrait); Favs
   (favorites only — on a satellite those are the same switch, `modes.py:253`);
-  Shorts only; Latest (newest first, else weighted shuffle); Loop clip (repeat
-  each clip instead of advancing); plus Settings (login, library path, cache
-  size, "download everything"). The name of the clip on the glass sits under
-  the pause button — the sheet is the one place the app says which file this is.
+  the four kind checkboxes; Latest (newest first, else weighted shuffle); Loop
+  clip (repeat each clip instead of advancing); plus Settings (login, library
+  path, cache size, "download everything"). The name of the clip on the glass
+  sits under the pause button — the sheet is the one place the app says which
+  file this is.
+- **What kind a clip is comes from the desktop, not from here.** Evolver
+  records one of `genau_clip` / `excerpt` / `short` / `full_length` on every
+  library video's metadata sidecar (`video.type`), and `ClipType` is that
+  field's vocabulary — so a clip is the same kind on the phone as it is in Fun
+  Time and Nau. The index now covers all three branches of the metadata mirror,
+  so the record reaches every lane; the overlay's lanes, the source folder and
+  a running time remain as fallbacks, in that order, for a clip whose sidecar
+  has not arrived. The act a clip records (`video.action`) is a different axis
+  and belongs to the act buttons; it never decides a kind.
 
 ## Fidelity to the desktop satellite (what each gesture really does)
 

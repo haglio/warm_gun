@@ -116,12 +116,19 @@ public struct GroupIndex: Sendable, Equatable {
     private var actionKeyByPath: [String: String] = [:]
     private var seedKeyByPath: [String: String] = [:]
     private var actByPath: [String: String] = [:]
+    private var kindByPath: [String: String] = [:]
     private var actionMembersByKey: [String: [String]] = [:]
     private var seedMembersByKey: [String: [String]] = [:]
 
-    /// Every clip's normalized recorded act, for the build's act-query filter.
+    /// Every clip's normalized recorded act, for the build's act buttons.
     public var actsByPath: [String: String] {
         actByPath.filter { !$0.value.isEmpty }
+    }
+
+    /// Every clip's recorded kind — what the desktop wrote in `video.type`,
+    /// which is what the type checkboxes narrow by wherever it is there.
+    public var kindsByPath: [String: String] {
+        kindByPath.filter { !$0.value.isEmpty }
     }
 
     /// True until any sidecar has been indexed — the UI's cue that the loops
@@ -131,6 +138,7 @@ public struct GroupIndex: Sendable, Equatable {
     public init(sidecars: [String: Sidecar]) {
         for (path, sidecar) in sidecars {
             actByPath[path] = Self.normText(sidecar.video?["action"])
+            kindByPath[path] = sidecar.video?["type"] ?? ""
             if let key = Self.actionGroupKey(sidecar) {
                 actionKeyByPath[path] = key
                 actionMembersByKey[key, default: []].append(path)
