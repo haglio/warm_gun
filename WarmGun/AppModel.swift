@@ -177,7 +177,17 @@ final class AppModel: ObservableObject {
             await index()
         } else {
             phase = .ready
-            if session.playlist.isEmpty { rebuild(startAtTop: true) } else { sync() }
+            if session.playlist.isEmpty {
+                rebuild(startAtTop: true)
+            } else if currentClipFightsBrowse() {
+                // The resumed playlist was built under other switches — the
+                // launch-in-portrait-sees-landscape bug: orientation changed
+                // while no catalog was loaded, and the restored run was never
+                // re-judged. A mismatch rebuilds; a match keeps the run.
+                rebuild(startAtTop: false)
+            } else {
+                sync()
+            }
             Task { await index() }
         }
     }
@@ -373,6 +383,8 @@ final class AppModel: ObservableObject {
             refreshMetadata()
             if session.playlist.isEmpty {
                 rebuild(startAtTop: true)
+            } else if currentClipFightsBrowse() {
+                rebuild(startAtTop: false)
             } else if changed {
                 // A background refresh must not reshuffle the run in progress —
                 // that is exactly the clip-jumping the desktop's session resume
@@ -499,6 +511,19 @@ final class AppModel: ObservableObject {
         } else {
             engine.resume()
         }
+    }
+
+    /// Does the clip on screen belong to a different orientation than the
+    /// browse asks for? Genau loops play either way; a lane's orientation
+    /// outranks the pixels, as in the build itself.
+    private func currentClipFightsBrowse() -> Bool {
+        guard let current = session.current, let clip = clipsByPath[current] else { return false }
+        let type = ClipType.classify(clip, shortsMaxSeconds: settings.browse.shortsMaxSeconds,
+                                     measuredSeconds: measuredSeconds[current], overlay: overlay,
+                                     act: groupIndex.actsByPath[current])
+        guard type != .genau else { return false }
+        let orientation = overlay.lane(for: current)?.orientation ?? clip.orientation
+        return orientation != settings.browse.orientation
     }
 
     /// The phone was turned: the browse follows the screen, portrait clips

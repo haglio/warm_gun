@@ -185,10 +185,14 @@ private struct ControlsOverlay: View {
         model.tap(action)
     }
 
+    /// Portrait stacks a cluster tall; landscape folds it into a 2x2 grid so
+    /// a four-chip row cannot reach the edge buttons at top and bottom center.
     @ViewBuilder
     private func cluster(@ViewBuilder _ content: () -> some View) -> some View {
         if landscape {
-            HStack(spacing: 6) { content() }
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
+                      alignment: .leading, spacing: 6) { content() }
+                .frame(width: 220)
         } else {
             VStack(alignment: .leading, spacing: 6) { content() }
         }
