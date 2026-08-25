@@ -50,6 +50,10 @@ final class AppModel: ObservableObject {
     private var refreshedMetadata = false
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
+    /// The video layer has a frame on the glass. False is the truthful "you
+    /// are looking at black" signal — rate alone lies during the first seconds
+    /// of a big file.
+    @Published private(set) var layerReady = false
     /// The player is stalled mid-buffer for long enough to say so — debounced,
     /// so a loop wrap's momentary hiccup does not flash a loading screen.
     @Published private(set) var buffering = false
@@ -504,6 +508,10 @@ final class AppModel: ObservableObject {
 
     /// A single tap in the middle. Navigation always unpauses — a tap that
     /// asks for a different clip is a tap that wants playback.
+    func setLayerReady(_ ready: Bool) {
+        if layerReady != ready { layerReady = ready }
+    }
+
     func togglePause() {
         paused.toggle()
         if paused {

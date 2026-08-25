@@ -465,3 +465,43 @@ extension PlaylistTests {
         #expect(try JSONDecoder().decode(ContentOverlay.self, from: old).actQueries.isEmpty)
     }
 }
+
+extension PlaylistTests {
+    @Test func theActButtonsBucketEveryClipAndCombine() {
+        // Eight combinable act buttons, overlay-defined (the words are library
+        // vocabulary): a clip lands in the first bucket whose query matches its
+        // recorded act, and in the catch-all otherwise — including clips with
+        // no act at all. Deselecting a bucket hides its clips.
+        let overlay = ContentOverlay(lanes: [], actFilters: [
+            ContentOverlay.ActFilter(label: "AL", queries: ["alpha"], isOther: false),
+            ContentOverlay.ActFilter(label: "BE", queries: ["beta"], isOther: false),
+            ContentOverlay.ActFilter(label: "O", queries: [], isOther: true),
+        ])
+        #expect(overlay.actBucket(for: "big alpha act") == "AL")
+        #expect(overlay.actBucket(for: "beta") == "BE")
+        #expect(overlay.actBucket(for: "gamma") == "O")
+        #expect(overlay.actBucket(for: nil) == "O")
+
+        var rng = PlaylistSeededRNG(seed: 29)
+        let catalog = Catalog(files: [
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 30),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 30),
+            PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 30),
+        ])
+        var options = BrowseOptions()
+        options.disabledActs = ["BE", "O"]
+        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+                                          weird: [], stats: WatchStats(), overlay: overlay,
+                                          acts: ["1_sorted/alpha/portrait/clip-a.mp4": "alpha",
+                                                 "1_sorted/alpha/portrait/clip-b.mp4": "beta"], rng: &rng)
+        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])  // c has no act -> O -> hidden
+    }
+
+    @Test func anOverlayOrBrowseWithoutActFiltersChangesNothing() throws {
+        // No filters defined -> no bucketing, nothing hidden; and an old
+        // persisted browse without the key decodes with none disabled.
+        #expect(ContentOverlay(lanes: []).actBucket(for: "anything") == nil)
+        let old = Data(#"{"orientation":"portrait"}"#.utf8)
+        #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).disabledActs.isEmpty)
+    }
+}

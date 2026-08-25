@@ -9,7 +9,6 @@ import WarmGunKit
 struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showingControls = false
-    @State private var showingSettings = false
     @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
@@ -17,8 +16,10 @@ struct PlayerView: View {
             let landscape = geometry.size.width > geometry.size.height
             ZStack {
                 Color.black.ignoresSafeArea()
-                VideoSurface(player: model.player)
-                    .ignoresSafeArea()
+                VideoSurface(player: model.player) { ready in
+                    model.setLayerReady(ready)
+                }
+                .ignoresSafeArea()
                 TapLayer { action in
                     model.tap(action)
                     if showingControls { keepControlsAlive() }
@@ -32,8 +33,10 @@ struct PlayerView: View {
                     Text("Nothing matches these filters")
                         .font(.headline)
                         .foregroundStyle(.white.opacity(0.85))
-                } else if (model.showing == nil && (model.waitingFor != nil || model.phase == .indexing))
-                            || model.buffering {
+                } else if model.phase == .indexing
+                            || (model.showing == nil && model.waitingFor != nil)
+                            || model.buffering
+                            || (model.showing != nil && !model.layerReady) {
                     VStack(spacing: 12) {
                         ProgressView()
                             .controlSize(.large)
@@ -70,8 +73,7 @@ struct PlayerView: View {
                 .padding(.top, 24)
                 if showingControls {
                     ControlsOverlay(landscape: landscape,
-                                    onAnyInteraction: keepControlsAlive,
-                                    openSettings: { showingSettings = true })
+                                    onAnyInteraction: keepControlsAlive)
                         .transition(.opacity)
                 }
             }
@@ -86,10 +88,6 @@ struct PlayerView: View {
         .animation(.easeOut(duration: 0.15), value: showingControls)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
-                .presentationDetents([.large])
-        }
     }
 
     private func revealControls() {
@@ -129,7 +127,6 @@ private struct ControlsOverlay: View {
     @EnvironmentObject private var model: AppModel
     let landscape: Bool
     let onAnyInteraction: () -> Void
-    let openSettings: () -> Void
 
     var body: some View {
         ZStack {
@@ -161,8 +158,20 @@ private struct ControlsOverlay: View {
                     loopChip("Action", .action, enabled: model.actionLoopAvailable)
                 }
             }
+            // The combinable act buttons, overlay-defined: 2 wide and 4 tall in
+            // portrait, 4 wide and 2 tall in landscape. Settings has no door
+            // here — the login screen appears by itself when a login is needed.
             corner(.bottomTrailing) {
-                iconButton("gearshape.fill") { onAnyInteraction(); openSettings() }
+                if !model.overlay.actFilters.isEmpty {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5),
+                                             count: landscape ? 4 : 2),
+                              alignment: .trailing, spacing: 5) {
+                        ForEach(model.overlay.actFilters, id: \.label) { filter in
+                            actChip(filter.label)
+                        }
+                    }
+                    .frame(width: landscape ? 200 : 104)
+                }
             }
             // Edges: the four gestures, drawn where their tap zones live.
             edge(.leading) { iconButton("backward.frame.fill") { act(.previous) } }
@@ -210,6 +219,30 @@ private struct ControlsOverlay: View {
         default: .bottom
         }
         return content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+    }
+
+    private func actChip(_ label: String) -> some View {
+        let enabled = !model.settings.browse.disabledActs.contains(label)
+        return Button {
+            onAnyInteraction()
+            var browse = model.settings.browse
+            if enabled {
+                browse.disabledActs.insert(label)
+            } else {
+                browse.disabledActs.remove(label)
+            }
+            model.update(browse: browse)
+        } label: {
+            Text(label)
+                .frame(minWidth: 40, minHeight: 34)
+        }
+        .buttonStyle(.plain)
+        .font(.subheadline.weight(enabled ? .bold : .regular))
+        .padding(.horizontal, 2)
+        .padding(.vertical, 3)
+        .background(enabled ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
+        .foregroundStyle(enabled ? AnyShapeStyle(.white) : AnyShapeStyle(.white.opacity(0.45)))
+        .contentShape(Capsule())
     }
 
     private func chip(_ label: String, on binding: Binding<Bool>) -> some View {
@@ -334,12 +367,16 @@ private struct TapLayer: View {
 /// phone (or the reverse) letterboxes rather than crops.
 struct VideoSurface: UIViewRepresentable {
     let player: AVPlayer
+    /// Fires with the layer's own is-a-frame-on-the-glass fact — the only
+    /// signal that does not lie during a big file's black opening seconds.
+    let onReadyForDisplay: (Bool) -> Void
 
     func makeUIView(context: Context) -> PlayerLayerView {
         let view = PlayerLayerView()
         view.playerLayer.player = player
         view.playerLayer.videoGravity = .resizeAspect
         view.backgroundColor = .black
+        view.observeReadiness(onReadyForDisplay)
         return view
     }
 
@@ -350,5 +387,13 @@ struct VideoSurface: UIViewRepresentable {
     final class PlayerLayerView: UIView {
         override static var layerClass: AnyClass { AVPlayerLayer.self }
         var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+        private var readiness: NSKeyValueObservation?
+
+        func observeReadiness(_ onChange: @escaping (Bool) -> Void) {
+            readiness = playerLayer.observe(\.isReadyForDisplay, options: [.initial, .new]) { layer, _ in
+                let ready = layer.isReadyForDisplay
+                DispatchQueue.main.async { onChange(ready) }
+            }
+        }
     }
 }

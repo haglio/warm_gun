@@ -47,6 +47,10 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
     public var types: Set<ClipType>
     public var shortsMaxSeconds: Double
     public var latest: Bool
+    /// Act buttons the user switched OFF (overlay-defined labels); empty means
+    /// everything shows. Stored as the disabled side so the default needs no
+    /// knowledge of which buttons the overlay defines.
+    public var disabledActs: Set<String>
     /// The size ceiling that keeps the legacy HEVC files sitting in the
     /// originals tree out: the phone fetches a clip whole before it plays, so an
     /// outlier is minutes of black screen rather than a slow start.
@@ -54,17 +58,18 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
 
     public init(orientation: Orientation = .portrait, favoritesOnly: Bool = false,
                 types: Set<ClipType> = Set(ClipType.allCases), shortsMaxSeconds: Double = 10,
-                latest: Bool = false, maxBytes: Int64 = 25_000_000) {
+                latest: Bool = false, disabledActs: Set<String> = [], maxBytes: Int64 = 25_000_000) {
         self.orientation = orientation
         self.favoritesOnly = favoritesOnly
         self.types = types
         self.shortsMaxSeconds = shortsMaxSeconds
         self.latest = latest
+        self.disabledActs = disabledActs
         self.maxBytes = maxBytes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case orientation, favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, maxBytes
+        case orientation, favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, disabledActs, maxBytes
     }
 
     /// A blob persisted before a switch existed decodes with that switch at its
@@ -84,6 +89,7 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
         }
         shortsMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .shortsMaxSeconds) ?? defaults.shortsMaxSeconds
         latest = try c.decodeIfPresent(Bool.self, forKey: .latest) ?? defaults.latest
+        disabledActs = try c.decodeIfPresent(Set<String>.self, forKey: .disabledActs) ?? []
         maxBytes = try c.decodeIfPresent(Int64.self, forKey: .maxBytes) ?? defaults.maxBytes
     }
 
@@ -95,6 +101,7 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
         try c.encode(types, forKey: .types)
         try c.encode(shortsMaxSeconds, forKey: .shortsMaxSeconds)
         try c.encode(latest, forKey: .latest)
+        try c.encode(disabledActs, forKey: .disabledActs)
         try c.encode(maxBytes, forKey: .maxBytes)
     }
 }
@@ -150,6 +157,10 @@ public enum PlaylistBuilder {
         // The size ceiling exists to keep the legacy monsters out of the AI
         // originals; a real scene is big by nature and passes on principle.
         let gated = clip.path.hasPrefix("1_sorted/")
+        // The combinable act buttons: a clip whose bucket is switched off hides.
+        if let bucket = overlay.actBucket(for: act), options.disabledActs.contains(bucket) {
+            return false
+        }
         return (orientation == options.orientation || type == .genau)
             && !weird.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)

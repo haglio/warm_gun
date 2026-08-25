@@ -22,5 +22,25 @@
   ],
   "act_queries": [
     "special"
+  ],
+  "act_filters": [
+    {
+      "label": "AL",
+      "queries": [
+        "alpha"
+      ]
+    },
+    {
+      "label": "BE",
+      "queries": [
+        "beta",
+        "beta act"
+      ]
+    },
+    {
+      "label": "O",
+      "queries": [],
+      "is_other": true
+    }
   ]
 }
