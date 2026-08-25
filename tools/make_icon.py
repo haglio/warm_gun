@@ -30,8 +30,8 @@ BLACK = (0, 0, 0)
 # T. Both letters wear Fun Time's maximally chunky square face (every bar the
 # full width, every post the full height).
 W = [
-    "#...#",
-    "#...#",
+    "#.#.#",
+    "#.#.#",
     "#.#.#",
     "#.#.#",
     "#####",
