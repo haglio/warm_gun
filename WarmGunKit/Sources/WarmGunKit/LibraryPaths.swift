@@ -137,6 +137,15 @@ public enum LibraryPaths {
         return "1_sorted/\(parts[spine + 3])/\(orientation.rawValue)/\(stem.dropLast(upscaleSuffix.count)).mp4"
     }
 
+    /// The bare file name of a catalog path — what the controls overlay puts
+    /// on the glass so the picture can be named. Nil when the path ends in a
+    /// separator or is empty: there is no file there to name.
+    public static func filename(ofClip path: String) -> String? {
+        guard let last = path.split(separator: "/", omittingEmptySubsequences: false).last,
+              !last.isEmpty else { return nil }
+        return String(last)
+    }
+
     /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
     /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
     /// The stem alone identifies a clip: they are unique library-wide.

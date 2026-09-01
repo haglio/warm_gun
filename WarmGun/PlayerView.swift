@@ -185,6 +185,22 @@ private struct ControlsOverlay: View {
                 onAnyInteraction()
                 model.togglePause()
             }
+            // The name of what is on the glass, under the pause button: the
+            // only band clear of the corner clusters and the edge buttons,
+            // which sit at the centers of the sides.
+            if let name = model.showing.flatMap(LibraryPaths.filename(ofClip:)) {
+                Text(name)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+                    .frame(maxWidth: landscape ? 360 : 230)
+                    .offset(y: landscape ? 62 : 74)
+            }
         }
         .padding(18)
     }

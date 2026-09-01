@@ -38,7 +38,8 @@ The owner, not alone.
   (favorites only — on a satellite those are the same switch, `modes.py:253`);
   Shorts only; Latest (newest first, else weighted shuffle); Loop clip (repeat
   each clip instead of advancing); plus Settings (login, library path, cache
-  size, "download everything").
+  size, "download everything"). The name of the clip on the glass sits under
+  the pause button — the sheet is the one place the app says which file this is.
 
 ## Fidelity to the desktop satellite (what each gesture really does)
 

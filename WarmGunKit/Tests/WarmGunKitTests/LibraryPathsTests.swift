@@ -129,3 +129,13 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/AI/2_outbox/upscaled_by_orientation/portrait/alpha/odd-name.json") == nil)
     }
 }
+
+extension LibraryPathsTests {
+    @Test func readsTheFilenameOutOfACatalogPath() {
+        #expect(LibraryPaths.filename(ofClip: "1_sorted/alpha/portrait/clip-one.mp4") == "clip-one.mp4")
+        #expect(LibraryPaths.filename(ofClip: "non_AI/beta/a scene.mkv") == "a scene.mkv")
+        #expect(LibraryPaths.filename(ofClip: "bare.mp4") == "bare.mp4")
+        #expect(LibraryPaths.filename(ofClip: "genau/clips/") == nil)
+        #expect(LibraryPaths.filename(ofClip: "") == nil)
+    }
+}
