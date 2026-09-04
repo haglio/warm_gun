@@ -188,23 +188,42 @@ public enum LibraryPaths {
         return String(last)
     }
 
-    /// A clip's stem — its file name without the extension, in any lane. Stems
-    /// are unique library-wide, which is what lets favorites be kept by stem
-    /// and still mean one clip whichever rendition names it.
+    /// A clip's stem — its file name without the extension, in any lane.
     public static func stem(ofClip path: String) -> String? {
         filename(ofClip: path).flatMap(dropExtension)
     }
 
-    /// The stem of a clip named the desktop's way — a path (Windows or POSIX,
-    /// any prefix) to whichever file Fun Time plays. For a generated clip that
-    /// is the `<stem>_topaz.<ext>` upscale; for a genau loop or a real scene it
-    /// is the video itself, under its own name. So the suffix comes off when it
-    /// is there, and what is left is the stem either way. The stem alone
-    /// identifies a clip: they are unique library-wide.
-    public static func stem(ofDesktopReference reference: String) -> String? {
-        let file = reference.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? reference
-        guard let stem = dropExtension(file), !stem.isEmpty else { return nil }
-        guard stem.hasSuffix(upscaleSuffix) else { return stem }
+    /// What a favorite is filed under.
+    ///
+    /// A generated clip is filed under its STEM, because that is the only name
+    /// the desktop's `favs.csv` — which lists Windows paths to upscales — and
+    /// this store can both say, and because `1_sorted` and `2_outbox` are in
+    /// total correspondence the stem is unique across that lane. Nothing makes
+    /// the same promise for the other two: the non-AI tree is walked
+    /// recursively on both sides, and the genau folder holds clips carved by
+    /// hand beside generated ones, so two same-named files are perfectly
+    /// possible. Those are filed under their whole path, which the library
+    /// itself keeps unique — so one star can never cover two clips.
+    public static func favoriteKey(forClip path: String) -> String? {
+        if let original = parseOriginal(path) { return original.stem }
+        guard path.hasPrefix(genauPrefix) || path.hasPrefix(nonAIPrefix) else { return nil }
+        return dropExtension(path)
+    }
+
+    /// The stem of a GENERATED clip named the desktop's way — a path (Windows
+    /// or POSIX, any prefix) to `<stem>_topaz.<ext>` — or nil when the
+    /// reference is not one.
+    ///
+    /// The suffix alone does not settle it: a genau loop is delivered into the
+    /// clips folder under the upscale's own name, `_topaz` and all
+    /// (`evolver/tasks/genau_deliver.py`), and its stem IS that whole name. So
+    /// a reference inside a genau clips folder is not an upscale reference,
+    /// whatever it is called.
+    public static func stem(ofUpscaleReference reference: String) -> String? {
+        let normalized = reference.replacingOccurrences(of: "\\", with: "/")
+        guard !normalized.contains(genauPrefix) else { return nil }
+        let file = normalized.split(separator: "/").last.map(String.init) ?? normalized
+        guard let stem = dropExtension(file), stem.hasSuffix(upscaleSuffix) else { return nil }
         return String(stem.dropLast(upscaleSuffix.count))
     }
 }

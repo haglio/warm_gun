@@ -28,16 +28,17 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    /// The desktop names whichever file IT plays, and that is not always an
-    /// upscale: a generated clip's is, but a genau loop and a real scene are
-    /// named under their own names, so the suffix comes off when it is there
-    /// and the rest of the name is the stem either way.
-    @Test func readsTheStemOutOfADesktopReferenceInAnyLaneAndAnySeparators() {
-        #expect(LibraryPaths.stem(ofDesktopReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
-        #expect(LibraryPaths.stem(ofDesktopReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
-        #expect(LibraryPaths.stem(ofDesktopReference: #"D:\lib\videos\genau\clips\loop-two.mp4"#) == "loop-two")
-        #expect(LibraryPaths.stem(ofDesktopReference: #"D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"#) == "scene-three")
-        #expect(LibraryPaths.stem(ofDesktopReference: "no-extension") == nil)
+    /// The desktop names whichever file IT plays, and only one of the three
+    /// lanes can be read back from that name. A delivered genau loop keeps the
+    /// upscale's own name, `_topaz` and all, so the suffix alone does not make
+    /// a reference an upscale reference — the folder it sits in decides.
+    @Test func readsTheStemOfAnUpscaleReferenceAndOfNothingElse() {
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
+        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\clips\loop-two_topaz.mp4"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/1_sorted/beta/landscape/a_b_c.mp4") == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: "no-extension") == nil)
     }
 }
 
@@ -168,5 +169,27 @@ extension LibraryPathsTests {
                 == "/alpha/videos/metadata/2D/non_AI")
         #expect(LibraryPaths.MetadataBranch.allCases.count == 3)
         #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: "/x") == nil)
+    }
+}
+
+extension LibraryPathsTests {
+    /// What a favorite is filed under. A generated clip's stem is unique
+    /// library-wide because `1_sorted` and `2_outbox` are in total
+    /// correspondence, and it has to stay the key because the desktop's
+    /// favorites file knows that name and nothing else. Nothing makes the same
+    /// promise for the other two lanes — the non-AI tree is walked recursively
+    /// on both sides and the genau folder holds clips carved by hand as well as
+    /// generated ones — so those are filed under their whole path, where the
+    /// library itself already guarantees uniqueness.
+    @Test func aFavoriteIsFiledUnderAStemInTheAILaneAndAWholePathInTheOthers() {
+        #expect(LibraryPaths.favoriteKey(forClip: "1_sorted/alpha/portrait/clip-one.mp4") == "clip-one")
+        #expect(LibraryPaths.favoriteKey(forClip: "genau/clips/loop-two_topaz.mp4") == "genau/clips/loop-two_topaz")
+        #expect(LibraryPaths.favoriteKey(forClip: "non_AI/bucket/inner/scene-three.mkv")
+                == "non_AI/bucket/inner/scene-three")
+        // Two same-named scenes in different folders are two clips, not one.
+        #expect(LibraryPaths.favoriteKey(forClip: "non_AI/one/scene.mp4")
+                != LibraryPaths.favoriteKey(forClip: "non_AI/two/scene.mp4"))
+        #expect(LibraryPaths.favoriteKey(forClip: "genau/clips/") == nil)
+        #expect(LibraryPaths.favoriteKey(forClip: "somewhere/else/thing.mp4") == nil)
     }
 }

@@ -17,7 +17,7 @@ import Testing
         var rng = PlaylistSeededRNG(seed: 1)
 
         let playlist = PlaylistBuilder.build(catalog: Catalog(files: []), options: BrowseOptions(),
-                                             favoriteStems: [], weird: [], weights: WatchWeights(), rng: &rng)
+                                             favoriteKeys: [], weird: [], weights: WatchWeights(), rng: &rng)
 
         #expect(playlist.isEmpty)
     }
@@ -36,9 +36,9 @@ extension PlaylistTests {
         ])
 
         let portrait = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(orientation: .portrait),
-                                             favoriteStems: [], weird: [], weights: WatchWeights(), rng: &rng)
+                                             favoriteKeys: [], weird: [], weights: WatchWeights(), rng: &rng)
         let landscape = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(orientation: .landscape),
-                                              favoriteStems: [], weird: [], weights: WatchWeights(), rng: &rng)
+                                              favoriteKeys: [], weird: [], weights: WatchWeights(), rng: &rng)
 
         #expect(portrait.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/gamma/portrait/clip-three.mp4"])
         #expect(landscape == ["1_sorted/beta/landscape/clip-two.mp4"])
@@ -56,7 +56,7 @@ extension PlaylistTests {
             Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
                                              weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
                                              weights: WatchWeights(), rng: &rng)
 
@@ -77,7 +77,7 @@ extension PlaylistTests {
             Self.file("1_sorted/alpha/portrait/clip-three.mp4", size: 25_000_000),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
                                              weird: [], weights: WatchWeights(), rng: &rng)
 
         #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-three.mp4"])
@@ -97,7 +97,7 @@ extension PlaylistTests {
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(favoritesOnly: true),
-                                             favoriteStems: ["clip-two", "clip-absent"], weird: [],
+                                             favoriteKeys: ["clip-two", "clip-absent"], weird: [],
                                              weights: WatchWeights(), rng: &rng)
 
         #expect(playlist == ["1_sorted/beta/portrait/clip-two.mp4"])
@@ -120,7 +120,7 @@ extension PlaylistTests {
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(types: [.short]),
-                                             favoriteStems: [], weird: [], weights: WatchWeights(), rng: &rng)
+                                             favoriteKeys: [], weird: [], weights: WatchWeights(), rng: &rng)
 
         #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-two.mp4"])
     }
@@ -143,7 +143,7 @@ extension PlaylistTests {
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125))])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(latest: true),
-                                             favoriteStems: [], weird: [], weights: weights, rng: &rng)
+                                             favoriteKeys: [], weird: [], weights: weights, rng: &rng)
 
         #expect(playlist == [
             "1_sorted/alpha/portrait/clip-new.mp4",
@@ -168,7 +168,7 @@ extension PlaylistTests {
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125))])
 
         let builds = (0..<200).map { _ in
-            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
                                   weird: [], weights: weights, rng: &rng)
         }
 
@@ -186,7 +186,7 @@ extension PlaylistTests {
         let catalog = Catalog(files: (0..<24).map { Self.file("1_sorted/alpha/portrait/clip-\($0).mp4") })
         func build(seed: UInt64) -> [String] {
             var rng = PlaylistSeededRNG(seed: seed)
-            return PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+            return PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
                                          weird: [], weights: WatchWeights(), rng: &rng)
         }
 
@@ -214,13 +214,13 @@ extension PlaylistTests {
         let favorites: Set<String> = ["clip-one", "clip-two", "clip-three", "clip-five", "clip-six"]
         var options = BrowseOptions(orientation: .portrait, favoritesOnly: true, types: [.short])
 
-        let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: favorites,
+        let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: favorites,
                                            weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
                                            weights: WatchWeights(), rng: &rng)
         #expect(strict == ["1_sorted/gamma/portrait/clip-six.mp4"])
 
         options.favoritesOnly = false
-        let relaxed = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: favorites,
+        let relaxed = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: favorites,
                                             weird: ["1_sorted/alpha/portrait/clip-two.mp4"],
                                             weights: WatchWeights(), rng: &rng)
         #expect(relaxed.sorted() == ["1_sorted/beta/portrait/clip-four.mp4", "1_sorted/gamma/portrait/clip-six.mp4"])
@@ -240,7 +240,7 @@ extension PlaylistTests {
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 8.0))])
 
         let lovedFirst = (0..<200).filter { _ in
-            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteStems: [],
+            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
                                   weird: [], weights: weights, rng: &rng).first == "1_sorted/alpha/portrait/clip-loved.mp4"
         }.count
 
@@ -285,14 +285,14 @@ extension PlaylistTests {
 
         var sized = BrowseOptions()
         sized.maxBytes = 10_000_000
-        #expect(PlaylistBuilder.build(catalog: catalog, options: sized, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: sized, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
 
         var shorts = BrowseOptions()
         shorts.types = [.short]
         shorts.shortsMaxSeconds = 9
-        #expect(PlaylistBuilder.build(catalog: catalog, options: shorts, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: shorts, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
     }
@@ -324,11 +324,11 @@ extension PlaylistTests {
         ])
         var options = BrowseOptions()
         options.types = [.short]
-        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-b.mp4"])
         options.types = [.genau, .fullLength]
-        let both = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        let both = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                          weird: [], weights: WatchWeights(), rng: &rng)
         #expect(Set(both) == ["1_sorted/alpha_genau/portrait/clip-a.mp4",
                               "1_sorted/alpha/portrait/clip-c.mp4"])
@@ -372,12 +372,12 @@ extension PlaylistTests {
         ])
         var options = BrowseOptions(orientation: .portrait)
         options.types = [.genau]
-        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["genau/clips/loop-one.mp4"])
         options.types = [.fullLength]
         // Measured as 40 s, the small file stops reading as a short.
-        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(),
                                       measuredSeconds: ["1_sorted/alpha/portrait/clip-small.mp4": 40], rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
@@ -414,7 +414,7 @@ extension PlaylistTests {
         options.types = [.acts]
         let catalog = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4"),
                                       Self.nonAI("non_AI/beta/scene-three.mp4")])
-        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), overlay: overlay, rng: &rng)
                 == ["non_AI/alpha/special/scene-one.mp4"])
     }
@@ -433,7 +433,7 @@ extension PlaylistTests {
         ])
         var options = BrowseOptions(orientation: .portrait)
         options.types = [.fullLength]
-        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), overlay: overlay, rng: &rng)
                 == ["non_AI/tall/scene-two.mp4"])
     }
@@ -457,7 +457,7 @@ extension PlaylistTests {
         ])
         var options = BrowseOptions()
         options.types = [.acts]
-        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           weird: [], weights: WatchWeights(), overlay: overlay,
                                           acts: ["1_sorted/alpha/portrait/clip-a.mp4": "special act"], rng: &rng)
         #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
@@ -493,7 +493,7 @@ extension PlaylistTests {
         ])
         var options = BrowseOptions()
         options.disabledActs = ["BE", "O"]
-        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteStems: [],
+        let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           weird: [], weights: WatchWeights(), overlay: overlay,
                                           acts: ["1_sorted/alpha/portrait/clip-a.mp4": "alpha",
                                                  "1_sorted/alpha/portrait/clip-b.mp4": "beta"], rng: &rng)

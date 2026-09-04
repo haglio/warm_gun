@@ -49,6 +49,10 @@ final class AppModel: ObservableObject {
     /// The playback weights off those same sidecars — what BOTH apps did with
     /// each clip, summed and stamped by Evolver. Neutral until they land.
     private var weights = WatchWeights()
+    /// The corpus both are built from, kept so a refresh can fold into it. A
+    /// branch of the mirror that fails to list contributes nothing that run,
+    /// and replacing rather than folding would make its silence erase the lane.
+    private var sidecars: [String: Sidecar] = [:]
     private var refreshedMetadata = false
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
@@ -429,19 +433,29 @@ final class AppModel: ObservableObject {
                 recomputeLoopAvailability()
                 return
             }
-            let sidecars = await MetadataFetcher.fetchSidecars(client: client, branches: branches)
-            guard !sidecars.isEmpty else {
+            let fetched = await MetadataFetcher.fetchSidecars(client: client, branches: branches)
+            guard !fetched.isEmpty else {
                 lastProblem = "Metadata: the metadata folders came back empty"
                 return
             }
-            adopt(sidecars: sidecars)
+            // Folded in, never substituted: a branch that did not answer this
+            // run keeps whatever it contributed to the last one.
+            adopt(sidecars: sidecars.merging(fetched) { _, new in new })
             // A run that matched nothing is a dead end this corpus can end —
             // the favorites switch before any favorite had arrived is exactly
             // that screen. A run in progress is left alone: a background
             // refresh must never reshuffle what is playing.
             if session.playlist.isEmpty { rebuild(startAtTop: true) }
-            if let data = try? JSONEncoder().encode(sidecars) {
-                try? data.write(to: sidecarsURL, options: .atomic)
+            guard let data = try? JSONEncoder().encode(sidecars),
+                  (try? data.write(to: sidecarsURL, options: .atomic)) != nil else { return }
+            // The fingerprint says "the mirror as the survey found it is on
+            // this phone", so it may only be stamped when that is true: every
+            // sidecar the survey named came back, and the file landed. A
+            // partial corpus is worth adopting and worth keeping, but stamping
+            // it would make the next launch skip the fetch that would complete
+            // it — and nothing short of the mirror moving would ever unstick it.
+            let wanted = branches.reduce(0) { $0 + $1.index.clipsByListedSidecar.count }
+            if fetched.count == wanted {
                 UserDefaults.standard.set(fingerprint, forKey: Self.metadataFingerprintKey)
             }
         }
@@ -458,12 +472,17 @@ final class AppModel: ObservableObject {
     /// snapshot from the last time the stage ran, so taking it as the whole
     /// truth would undo every favorite made on the phone since, and taking it
     /// blindly would undo every unfavorite (`Favorites.adopt`).
-    private func adopt(sidecars: [String: Sidecar]) {
-        groupIndex = GroupIndex(sidecars: sidecars)
-        weights = WatchWeights(sidecars: sidecars)
-        let starred = Set(sidecars.filter(\.value.favorite).keys.compactMap(LibraryPaths.stem(ofClip:)))
+    private func adopt(sidecars corpus: [String: Sidecar]) {
+        sidecars = corpus
+        groupIndex = GroupIndex(sidecars: corpus)
+        weights = WatchWeights(sidecars: corpus)
+        let flagged = Set(corpus.filter(\.value.favorite).keys.compactMap(LibraryPaths.favoriteKey(forClip:)))
         let before = favorites
-        favorites.adopt(flagged: starred)
+        // The corpus is only ever as complete as the branches that answered, so
+        // it says nothing about a clip it does not hold: `covering` is what it
+        // could have spoken for, and a refusal outside that is kept.
+        favorites.adopt(flagged: flagged,
+                        covering: Set(corpus.keys.compactMap(LibraryPaths.favoriteKey(forClip:))))
         recomputeLoopAvailability()
         if favorites != before { persistState() }
     }
@@ -476,7 +495,7 @@ final class AppModel: ObservableObject {
     private func rebuild(startAtTop: Bool) {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
-                                             favoriteStems: favorites.stems, weird: weird,
+                                             favoriteKeys: favorites.held, weird: weird,
                                              weights: weights, measuredSeconds: measuredSeconds,
                                              overlay: overlay, acts: groupIndex.actsByPath, rng: &rng)
         if playlist.isEmpty {
@@ -889,7 +908,9 @@ final class AppModel: ObservableObject {
                 defer { try? FileManager.default.removeItem(at: tmp) }
                 let text = try String(contentsOf: tmp, encoding: .utf8)
                 let before = favorites
-                favorites.adopt(flagged: FavsCSV.stems(in: text))
+                // Complete by construction — the whole file, so every refusal
+                // it does not name is one the desktop has settled.
+                favorites.adopt(flagged: FavsCSV.keys(in: text))
                 if favorites != before { persistState() }
             }
         } catch {

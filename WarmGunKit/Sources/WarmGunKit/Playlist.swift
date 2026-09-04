@@ -123,13 +123,13 @@ public enum PlaylistBuilder {
     /// Every draw comes off *rng*, so one seed is one playlist: the run is
     /// knowable in advance, which is what lets the prefetcher work both
     /// directions from the current clip.
-    public static func build(catalog: Catalog, options: BrowseOptions, favoriteStems: Set<String>,
+    public static func build(catalog: Catalog, options: BrowseOptions, favoriteKeys: Set<String>,
                              weird: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
                              acts: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
-        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteStems, weird, measuredSeconds[$0.path], overlay, acts[$0.path]) }
+        let clips = catalog.clips.filter { survivesFilters($0, options, favoriteKeys, weird, measuredSeconds[$0.path], overlay, acts[$0.path]) }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
             // order is total and a rebuild never reshuffles what did not change.
@@ -144,10 +144,10 @@ public enum PlaylistBuilder {
     }
 
     /// The switches, all of which only ever narrow, so their order among
-    /// themselves cannot matter. Favorites are matched by stem because that is
-    /// all the desktop's `favs.csv` carries, and stems are unique library-wide.
+    /// themselves cannot matter. Favorites are matched by the key their lane is
+    /// filed under (`LibraryPaths.favoriteKey`).
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
-                                        _ favoriteStems: Set<String>, _ weird: Set<String>,
+                                        _ favoriteKeys: Set<String>, _ weird: Set<String>,
                                         _ measured: Double?, _ overlay: ContentOverlay,
                                         _ act: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
@@ -165,7 +165,7 @@ public enum PlaylistBuilder {
         return (orientation == options.orientation || type == .genau)
             && !weird.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)
-            && (!options.favoritesOnly || favoriteStems.contains(clip.stem))
+            && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)
             && options.types.contains(type)
     }
 }

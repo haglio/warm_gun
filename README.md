@@ -32,6 +32,8 @@ controls sheet. The name and the pink 5x5 lettermark follow Fun Time's.
   the metadata mirror joined to the catalog lane by lane.
 - `docs/design.md` — every decision, with the desktop code it mirrors.
 - `tools/` — `check.sh` (suite + gates + guard), `gates.py` (coupling gates),
+  `sanitize_tree.py` (the family's guard over every file, since a Swift repo
+  has no pytest suite to host the plugin that does it elsewhere),
   `fake_pcloud.py` (local API stand-in for Simulator runs), `make_icon.py`,
   and the git hooks that run `app_support.sanitize`, the one guard the
   family shares.

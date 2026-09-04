@@ -93,8 +93,8 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 The desktop's `favs.csv` and `watch_stats.json` live in the fun_time checkout
 on the PC, which is *not* in pCloud, and `watch_stats.json` prunes any key that
 is not a path on the writing machine. So Warm Gun does not write either file. It
-keeps its own stores on the phone (favorites, weird marks), keyed
-by the library-relative original path, and appends every event to a journal
+keeps its own stores on the phone (favorites, weird marks) and appends
+every event to a journal
 (`warm-gun-journal.jsonl`, one JSON object per line: `{"t": unix seconds, "event":
 "favorite|unfavorite|weird|lock|completion|skip", "path": "<library-relative
 original path>"}`) that it uploads to a pCloud folder outside the library
@@ -150,7 +150,10 @@ keeps no watch counts of its own at all — it records events and reads a number
   (index, step, discard, lock, replacePlaylist), `WatchWeights` (the stamped
   weight, and the two draw primitives) + `WatchTracker` (samples → events),
   `Sidecar` + `GroupIndex` + `SidecarIndex` (the mirror joined to the catalog),
-  `Favorites` (+ favs.csv import), `PrefetchPlanner` (window → fetch order and
+  `Favorites` (+ favs.csv import; a generated clip is filed under its stem,
+  which is the only name the desktop's file can say, and the other two lanes
+  under their whole path, where nothing promises two files differ by name),
+  `PrefetchPlanner` (window → fetch order and
   eviction), `TapZones`, `Journal`, `LinkCache`.
 - `WarmGun/` — the app: SwiftUI views, `PlayerEngine` (AVFoundation), `Downloader`
   (URLSession), `ClipCache` (disk), `PCloudClient` (transport), `Keychain`,
@@ -167,8 +170,13 @@ keeps no watch counts of its own at all — it records events and reads a number
 - `tools/gates.py` — the coupling/purity gates, numbers with a target of 0,
   fail the build. Runs in CI and from `tools/check.sh`.
 - `tools/githooks/pre-commit` — the family's content guard,
-  `app_support.sanitize`, over everything staged. `tools/check.sh` runs it
-  over the whole tree by staging the tree into a throwaway index.
+  `app_support.sanitize`, over everything staged: a term is caught on its
+  way in, which is the only point at which the fix is free.
+- `tools/sanitize_tree.py` — the same guard over every file in the tree,
+  tracked and untracked, which the hook cannot do: `--staged` reads a DIFF,
+  so on a clean tree it scans nothing and exits 0. The siblings get this
+  half from `app_support.sanitize.pytest_plugin`; a Swift repo has no suite
+  for it to attach to, so `tools/check.sh` runs it directly.
 - `tools/fake_pcloud.py` — a local stand-in for the pCloud API that serves the
   library straight off the pCloud Drive mount (`listfolder`, `getfilelink`,
   `renamefile` into a scratch folder, `uploadfile`), so the whole app can be
