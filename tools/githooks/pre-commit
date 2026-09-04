@@ -22,13 +22,14 @@ set -e
 repo=$(git rev-parse --show-toplevel)
 common=$(git rev-parse --git-common-dir)
 primary=$(cd "$(dirname "$common")" && pwd)
-# One level up from the checkout: this family keeps ONE venv beside the twelve
-# repositories rather than one inside each, and none of them has a `.venv` of
-# its own. Without this candidate the search falls through to whatever `python3`
-# is on PATH, which on a machine where the venv is not activated cannot import
-# the package at all -- so every commit fails on an import error rather than on
-# a blocked term. The four candidates above stay for a checkout that does keep
-# its own venv.
+
+# One level up from the checkout: on this family's Mac there is ONE venv beside
+# the twelve repositories rather than one inside each, so none of the candidates
+# above exists there and the search falls through to whatever `python3` is on
+# PATH -- which cannot import the package unless that venv happens to be
+# activated. Measured across the family: every hook failed on
+# ModuleNotFoundError rather than on a blocked term, which is a checkout that
+# has silently stopped being guarded.
 family=$(dirname "$primary")
 
 for candidate in \
