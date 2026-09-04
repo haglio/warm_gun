@@ -28,7 +28,7 @@ controls sheet. The name and the pink 5x5 lettermark follow Fun Time's.
 - `docs/design.md` — every decision, with the desktop code it mirrors.
 - `tools/` — `check.sh` (suite + gates + guard), `gates.py` (coupling gates),
   `fake_pcloud.py` (local API stand-in for Simulator runs), `make_icon.py`,
-  and the sanitize guard + harvester + git hooks every sibling repo carries.
+  and the sanitize guard + git hooks every sibling repo carries.
 
 ## Running
 

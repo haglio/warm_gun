@@ -15,8 +15,8 @@ __pycache__/
 
 # Private overlays — real values live here and never get published. Each has a
 # committed *.example.* template that documents its shape.
-#   the real blocklist is itself a catalogue of excluded terms, the library paths
-#   it is harvested from name the machine, and the harvest stamp is per-machine
+#   the real blocklist is itself a catalogue of excluded terms, so every overlay
+#   in there is local by construction
 /sanitize/*.local.txt
 #   the content overlay names real library folders (which lanes are which
 #   type); the committed example documents the shape

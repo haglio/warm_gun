@@ -39,8 +39,8 @@ never verify around its absence when the change is about device behavior.
   credentials and no writes; `renamefile` against it only records the move.
 - Every fixture value is fabricated — the same law as every sibling repo, and
   the same guard (`tools/sanitize_guard.py` + git hooks via `core.hooksPath`).
-  Run `python3 tools/githooks/install.py` once per clone; harvest with
-  `python3 tools/harvest_blocklist.py` (needs `sanitize/library_roots.local.txt`).
+  Run `python3 tools/githooks/install.py` once per clone; the guard reads
+  `sanitize/blocklist.local.txt`.
 
 ## Landing
 
