@@ -6,7 +6,7 @@ library's clips with four gestures — on a phone, away from home, off travel
 wifi. No OSR2, no voice, no dashboard. The decisions below were made against the
 research in this session (Fun Time's satellite/dispatch code, the library as it
 sits in pCloud, the pCloud HTTP API, the Highdeas iOS project); change them with
-The owner, not alone.
+the owner, not alone.
 
 ## What it is
 
@@ -146,6 +146,9 @@ Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
   zero skips, before every commit.
 - `tools/gates.py` — the coupling/purity gates, numbers with a target of 0,
   fail the build. Runs in CI and from `tools/check.sh`.
+- `tools/githooks/pre-commit` — the family's content guard,
+  `app_support.sanitize`, over everything staged. `tools/check.sh` runs it
+  over the whole tree by staging the tree into a throwaway index.
 - `tools/fake_pcloud.py` — a local stand-in for the pCloud API that serves the
   library straight off the pCloud Drive mount (`listfolder`, `getfilelink`,
   `renamefile` into a scratch folder, `uploadfile`), so the whole app can be

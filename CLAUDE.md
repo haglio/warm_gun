@@ -38,9 +38,10 @@ never verify around its absence when the change is about device behavior.
   development. The fake server exists so the whole app can be driven with no
   credentials and no writes; `renamefile` against it only records the move.
 - Every fixture value is fabricated — the same law as every sibling repo, and
-  the same guard (`tools/sanitize_guard.py` + git hooks via `core.hooksPath`).
-  Run `python3 tools/githooks/install.py` once per clone; the guard reads
-  `sanitize/blocklist.local.txt`.
+  the same guard: `app_support.sanitize`, run by the git hooks that
+  `core.hooksPath` points at. Run `python3 tools/githooks/install.py` once
+  per clone. The blocklist is one file beside the twelve checkouts, in no
+  repository at all, so there is nothing to copy here.
 
 ## Landing
 

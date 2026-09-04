@@ -13,16 +13,12 @@ xcuserdata/
 __pycache__/
 *.py[cod]
 
-# Private overlays — real values live here and never get published. Each has a
-# committed *.example.* template that documents its shape.
-#   the real blocklist is itself a catalogue of excluded terms, so every overlay
-#   in there is local by construction
-/sanitize/*.local.txt
-#   the content overlay names real library folders (which lanes are which
-#   type); the committed example documents the shape
-/WarmGun/content.local.json
-#   real content overlay — the non-AI lane folder names are library content;
-#   bundled into the app at build time, documented by content.example.json
+# Private overlay — real values live here and never get published; the
+# committed content.example.json documents its shape. The non-AI lane folder
+# names are library content, so the real file is bundled into the app at
+# build time and never committed. The sanitize blocklist is not listed here
+# at all: it sits beside the checkouts, in no repository, which is a stronger
+# promise than a .gitignore line.
 /WarmGun/content.local.json
 
 # pCloud conflict copies (the Haglio trees sync via pCloud). Never our files; an

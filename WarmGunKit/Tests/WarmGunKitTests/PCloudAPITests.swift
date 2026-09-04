@@ -150,7 +150,7 @@ extension PCloudAPITests {
             try PCloudAPI.decode(LoginResponse.self, from: json)
         }
         #expect(error == PCloudError(code: 2000, message: "Log in failed."))
-        // 2000 is the app's cue to send the owner back to the login screen rather
+        // 2000 is the app's cue to send the viewer back to the login screen rather
         // than to retry, which is what it would do for anything else.
         #expect(error.isLoginRequired)
         #expect(!error.isRateLimited)
@@ -288,7 +288,7 @@ extension PCloudAPITests {
     @Test func sortsTheCodesIntoTheTwoBucketsTheAppBranchesOn() {
         // Only two questions are ever asked of a failure: go back to login, or
         // wait and try the same call again. Everything else is just an error,
-        // and mistaking a rate limit for a dead token would log the owner out
+        // and mistaking a rate limit for a dead token would log the viewer out
         // mid-trip over a burst of prefetches.
         #expect(PCloudError(code: 1000, message: "").isLoginRequired)
         #expect(!PCloudError(code: 1000, message: "").isRateLimited)
