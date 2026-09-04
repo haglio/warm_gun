@@ -1,8 +1,11 @@
 import Foundation
 
 /// One clip's metadata sidecar, as the pipeline writes it: a `video` block
-/// (always) and a `source_image` block (image-to-video clips). Every value on
-/// disk is a string, so the blocks decode as plain dictionaries.
+/// (always), a `source_image` block (image-to-video clips), and — since
+/// Evolver's Watch Weights stage — a `watch` block and a `favorite` flag. The
+/// blocks are read as dictionaries of text, whatever JSON shape each field
+/// arrived in, because the desktop reads them through `str(value or "")` and
+/// writes some of them as numbers.
 public struct Sidecar: Codable, Equatable, Sendable {
     /// The `watch` block Evolver stamps on every library video: what both apps
     /// completed, skipped and locked, summed, and the playback weight that sum
@@ -59,10 +62,47 @@ public struct Sidecar: Codable, Equatable, Sendable {
     /// shape not expected here must not take the act down with it.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        video = try c.decodeIfPresent([String: String].self, forKey: .video)
-        sourceImage = try c.decodeIfPresent([String: String].self, forKey: .sourceImage)
+        video = Self.block(c, .video)
+        sourceImage = Self.block(c, .sourceImage)
         watch = try? c.decodeIfPresent(Watch.self, forKey: .watch)
         favorite = ((try? c.decodeIfPresent(Bool.self, forKey: .favorite)) ?? nil) ?? false
+    }
+
+    /// One block, read the way the desktop reads it.
+    ///
+    /// The pipeline does not keep these fields all strings — the Video Kinds
+    /// stage writes `video.duration_seconds` as a JSON float beside
+    /// `video.type` (`evolver/util/video_type.py`) — while the desktop reads
+    /// every field through `str(value or "")` and never notices. Decoded as
+    /// `[String: String]` a single number cost the WHOLE sidecar, and with it
+    /// the act, the weight and the flag. So a scalar of any kind is taken and
+    /// spelled the way that call would spell it, and anything that is not a
+    /// scalar is left out: no field a group key is built from is ever one, and
+    /// an absent key already stands for the empty string.
+    private static func block(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> [String: String]? {
+        guard let fields = ((try? c.decodeIfPresent([String: Field].self, forKey: key)) ?? nil) else { return nil }
+        return fields.compactMapValues(\.text)
+    }
+
+    /// One field of a block, whatever shape it arrived in.
+    private struct Field: Decodable {
+        let text: String?
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.singleValueContainer()
+            if let string = try? c.decode(String.self) { text = string }
+            else if let flag = try? c.decode(Bool.self) { text = flag ? "true" : "false" }
+            // Whole before fractional, so a seed written as an integer reads
+            // back as one — `12345`, never `12345.0`, which would not match the
+            // key the desktop built from the same value. The cost is that a
+            // FLOAT that happens to be whole reads back without its `.0`, where
+            // Python's `str` would keep it; that is only `duration_seconds`,
+            // which no group key is built from, and telling the two apart would
+            // mean reading the raw JSON text this API does not expose.
+            else if let whole = try? c.decode(Int64.self) { text = String(whole) }
+            else if let number = try? c.decode(Double.self) { text = String(number) }
+            else { text = nil }
+        }
     }
 }
 

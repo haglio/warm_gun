@@ -195,14 +195,16 @@ public enum LibraryPaths {
         filename(ofClip: path).flatMap(dropExtension)
     }
 
-    /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
-    /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
-    /// The stem alone identifies a clip: they are unique library-wide.
-    public static func stem(ofUpscaleReference reference: String) -> String? {
+    /// The stem of a clip named the desktop's way — a path (Windows or POSIX,
+    /// any prefix) to whichever file Fun Time plays. For a generated clip that
+    /// is the `<stem>_topaz.<ext>` upscale; for a genau loop or a real scene it
+    /// is the video itself, under its own name. So the suffix comes off when it
+    /// is there, and what is left is the stem either way. The stem alone
+    /// identifies a clip: they are unique library-wide.
+    public static func stem(ofDesktopReference reference: String) -> String? {
         let file = reference.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? reference
-        guard let dot = file.lastIndex(of: "."), dot != file.startIndex else { return nil }
-        let stem = String(file[..<dot])
-        guard stem.hasSuffix(upscaleSuffix) else { return nil }
+        guard let stem = dropExtension(file), !stem.isEmpty else { return nil }
+        guard stem.hasSuffix(upscaleSuffix) else { return stem }
         return String(stem.dropLast(upscaleSuffix.count))
     }
 }

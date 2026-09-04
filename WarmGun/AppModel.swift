@@ -453,17 +453,19 @@ final class AppModel: ObservableObject {
     /// buttons walk, the weights the shuffle draws on, and which clips the
     /// desktop is holding.
     ///
-    /// The favorites only ever gain here, exactly as a `favs.csv` import does:
-    /// the flag is a snapshot from the last time the stage ran, so treating it
-    /// as the whole truth would undo every favorite made on the phone since.
+    /// The favorites only ever gain here, exactly as a `favs.csv` import does,
+    /// and never gain back a stem this phone has let go of: the flag is a
+    /// snapshot from the last time the stage ran, so taking it as the whole
+    /// truth would undo every favorite made on the phone since, and taking it
+    /// blindly would undo every unfavorite (`Favorites.adopt`).
     private func adopt(sidecars: [String: Sidecar]) {
         groupIndex = GroupIndex(sidecars: sidecars)
         weights = WatchWeights(sidecars: sidecars)
         let starred = Set(sidecars.filter(\.value.favorite).keys.compactMap(LibraryPaths.stem(ofClip:)))
-        let before = favorites.stems.count
-        favorites.merge(stems: starred)
+        let before = favorites
+        favorites.adopt(flagged: starred)
         recomputeLoopAvailability()
-        if favorites.stems.count != before { persistState() }
+        if favorites != before { persistState() }
     }
 
     /// Builds the browse from the index and hands it to the session. A change
@@ -886,9 +888,9 @@ final class AppModel: ObservableObject {
                 let tmp = try await client.download(url)
                 defer { try? FileManager.default.removeItem(at: tmp) }
                 let text = try String(contentsOf: tmp, encoding: .utf8)
-                let before = favorites.stems.count
-                favorites.merge(stems: FavsCSV.stems(in: text))
-                if favorites.stems.count != before { persistState() }
+                let before = favorites
+                favorites.adopt(flagged: FavsCSV.stems(in: text))
+                if favorites != before { persistState() }
             }
         } catch {
             lastProblem = "Cloud sync: \(error.localizedDescription)"

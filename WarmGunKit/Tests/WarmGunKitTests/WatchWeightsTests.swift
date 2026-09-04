@@ -105,6 +105,54 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
+    /// The `video` block is not all strings any more, and a number in it used
+    /// to cost the WHOLE sidecar: Evolver's Video Kinds stage writes
+    /// `video.duration_seconds` as a JSON float beside `video.type`
+    /// (`evolver/util/video_type.py:timed`), so every clip that stage has
+    /// measured would decode to nothing — no act, no weight, no flag.
+    @Test func aNumberInTheVideoBlockCostsNeitherTheBlockNorTheSidecar() throws {
+        let json = Data(#"""
+        {"video": {"type": "short", "duration_seconds": 4.2, "seed": 12345,
+                   "action": "waving", "wrong_action": null, "clip": {"of": "x"}},
+         "watch": {"completions": 3, "skips": 0, "locks": 1, "weight": 4.0},
+         "favorite": true}
+        """#.utf8)
+
+        let sidecar = try JSONDecoder().decode(Sidecar.self, from: json)
+
+        #expect(sidecar.video?["action"] == "waving")
+        #expect(sidecar.video?["type"] == "short")
+        // Written the way the desktop's own `str(value)` would write it, since
+        // that is what the group keys are compared against.
+        #expect(sidecar.video?["duration_seconds"] == "4.2")
+        #expect(sidecar.video?["seed"] == "12345")
+        // A null and a nested block name nothing a key is built from, and
+        // stand for the empty string either way.
+        #expect(sidecar.video?["wrong_action"] == nil)
+        #expect(sidecar.video?["clip"] == nil)
+        #expect(sidecar.watchWeight == 4.0)
+        #expect(sidecar.favorite)
+    }
+}
+
+extension WatchWeightsTests {
+    /// The one place this side and the desktop spell a value differently, pinned
+    /// so a change to it is deliberate: a whole number reads back without a
+    /// fractional part, so a running time written as `2.0` reads as "2" where
+    /// Python's `str` would keep the `.0`. Harmless — the running time is not a
+    /// field any group key is built from, and spelling an integer seed as
+    /// "12345" rather than "12345.0" is the trade that buys it.
+    @Test func aWholeNumberReadsBackWithoutAFractionalPart() throws {
+        let json = Data(#"{"video": {"duration_seconds": 2.0, "seed": 12345}}"#.utf8)
+
+        let sidecar = try JSONDecoder().decode(Sidecar.self, from: json)
+
+        #expect(sidecar.video?["duration_seconds"] == "2")
+        #expect(sidecar.video?["seed"] == "12345")
+    }
+}
+
+extension WatchWeightsTests {
     /// Inclusion is the continuous version of marking a clip weird: a clip at or
     /// above neutral always makes the build, and one below it sits out in
     /// proportion to how far below it has fallen.

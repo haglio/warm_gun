@@ -28,10 +28,16 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    @Test func readsTheStemOutOfADesktopUpscaleReferenceWhateverTheSeparators() {
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
-        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
-        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/1_sorted/beta/landscape/a_b_c.mp4") == nil)
+    /// The desktop names whichever file IT plays, and that is not always an
+    /// upscale: a generated clip's is, but a genau loop and a real scene are
+    /// named under their own names, so the suffix comes off when it is there
+    /// and the rest of the name is the stem either way.
+    @Test func readsTheStemOutOfADesktopReferenceInAnyLaneAndAnySeparators() {
+        #expect(LibraryPaths.stem(ofDesktopReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
+        #expect(LibraryPaths.stem(ofDesktopReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
+        #expect(LibraryPaths.stem(ofDesktopReference: #"D:\lib\videos\genau\clips\loop-two.mp4"#) == "loop-two")
+        #expect(LibraryPaths.stem(ofDesktopReference: #"D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"#) == "scene-three")
+        #expect(LibraryPaths.stem(ofDesktopReference: "no-extension") == nil)
     }
 }
 

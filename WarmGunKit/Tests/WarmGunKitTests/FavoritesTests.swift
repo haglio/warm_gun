@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import WarmGunKit
 
@@ -67,24 +68,97 @@ extension FavsCSVTests {
 }
 
 extension FavsCSVTests {
+    /// Evolver writes the row for whichever library video the favorite is, so
+    /// the file legitimately names a genau loop or a real scene as well as an
+    /// upscale. Reading only the upscales would drop two thirds of the library
+    /// on the floor without a word.
+    @Test func readsTheStemOutOfEveryLanesRowNotOnlyTheUpscales() {
+        let loop = #""=HYPERLINK(""file:///D:/lib/videos/genau/clips/loop-two.mp4"";""D:\lib\videos\genau\clips\loop-two.mp4"")",""""#
+        let scene = #""=HYPERLINK(""file:///D:/lib/videos/2D/non_AI/bucket/scene-three.mkv"";""D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"")",""""#
+
+        let stems = FavsCSV.stems(in: [Self.header, Self.firstRow, loop, scene].joined(separator: "\r\n"))
+
+        #expect(stems == ["clip-one", "loop-two", "scene-three"])
+    }
+}
+
+extension FavsCSVTests {
     @Test func namesNothingFromAFileWithNoRowsThatParse() {
         #expect(FavsCSV.stems(in: "").isEmpty)
         #expect(FavsCSV.stems(in: Self.header + "\r\n").isEmpty)
-        // A row whose formula is truncated, and one naming a clip that is not an
-        // upscale, are both skipped rather than taken for a stem.
+        // A row whose formula is truncated names nothing.
         let torn = #""=HYPERLINK(""file:///C:/lib/clip-three_topaz.mp4"";""C:\lib\clip-three_topaz.mp4"#
-        let notAnUpscale = #""=HYPERLINK(""file:///C:/lib/clip-four.mp4"";""C:\lib\clip-four.mp4"")",""""#
-        #expect(FavsCSV.stems(in: [Self.header, torn, notAnUpscale].joined(separator: "\r\n")).isEmpty)
+        #expect(FavsCSV.stems(in: [Self.header, torn].joined(separator: "\r\n")).isEmpty)
     }
 }
 
 extension FavoritesTests {
-    @Test func mergingAnImportAddsToTheStoreRatherThanReplacingIt() {
-        // A favs.csv dropped in from the PC is a second opinion, not the truth:
-        // what was favorited on the phone since the export must survive it.
+    @Test func adoptingTheDesktopsRecordAddsToTheStoreRatherThanReplacingIt() {
+        // The desktop's record — a favs.csv dropped in, or the flag on the
+        // sidecars — is a snapshot from before the trip, not the truth: what was
+        // favorited on the phone since must survive it.
         var favorites = Favorites(stems: ["clip-one"])
-        favorites.merge(stems: ["clip-one", "clip-two"])
+        favorites.adopt(flagged: ["clip-one", "clip-two"])
         #expect(favorites.stems == ["clip-one", "clip-two"])
+    }
+}
+
+extension FavoritesTests {
+    /// The hole a plain union leaves: the desktop's snapshot is read again on
+    /// every launch, so an unfavorite made away from home would be undone by
+    /// the next one — and the weird gesture's two-step demotion could never
+    /// reach its second step, because the first step keeps being re-taken.
+    @Test func aStemLetGoOnThePhoneIsNotHandedBackByAStaleSnapshot() {
+        var favorites = Favorites(stems: ["clip-one", "clip-two"])
+
+        let dropped = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        #expect(dropped)
+        favorites.adopt(flagged: ["clip-one", "clip-two"])
+        #expect(favorites.stems == ["clip-two"])
+
+        // Two launches, three, a hundred: the answer does not drift.
+        favorites.adopt(flagged: ["clip-one", "clip-two"])
+        #expect(favorites.stems == ["clip-two"])
+    }
+}
+
+extension FavoritesTests {
+    /// The hold is released the moment the desktop agrees — its record no
+    /// longer names the clip, so the round trip is complete and the phone stops
+    /// carrying the refusal. And a clip held again on the phone is held, full
+    /// stop: the refusal it once made says nothing about the choice it just did.
+    @Test func theRefusalIsDroppedOnceTheDesktopAgreesOrThePhoneChangesItsMind() {
+        var favorites = Favorites(stems: ["clip-one"])
+        _ = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+
+        favorites.adopt(flagged: ["clip-two"])          // the desktop caught up
+        #expect(favorites.stems == ["clip-two"])
+        favorites.adopt(flagged: ["clip-one", "clip-two"])  // and later re-favorited it
+        #expect(favorites.stems == ["clip-one", "clip-two"])
+
+        var again = Favorites(stems: ["clip-one"])
+        _ = again.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        let held = again.insert(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        #expect(held)
+        again.adopt(flagged: ["clip-one"])
+        #expect(again.stems == ["clip-one"])
+    }
+}
+
+extension FavoritesTests {
+    /// The refusals outlive the app run, or a relaunch is exactly the moment
+    /// the snapshot wins. A blob written before they existed still decodes.
+    @Test func theRefusalsSurviveAJSONRoundTripAndAnOlderBlobStillDecodes() throws {
+        var favorites = Favorites(stems: ["clip-one", "clip-two"])
+        _ = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+
+        let data = try JSONEncoder().encode(favorites)
+        var read = try JSONDecoder().decode(Favorites.self, from: data)
+        read.adopt(flagged: ["clip-one", "clip-two"])
+        #expect(read.stems == ["clip-two"])
+
+        let old = try JSONDecoder().decode(Favorites.self, from: Data(#"{"stems":["clip-one"]}"#.utf8))
+        #expect(old.stems == ["clip-one"])
     }
 }
 
