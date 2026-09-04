@@ -112,10 +112,21 @@ final class AppModel: ObservableObject {
     private var noticeTask: Task<Void, Never>?
 
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: ClipCache? = nil) {
-        if let url = Bundle.main.url(forResource: "content.local", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let loaded = try? JSONDecoder().decode(ContentOverlay.self, from: data) {
-            overlay = loaded
+        // A bundle with no overlay is ordinary — the app is meant to run without
+        // one. A bundle WITH an overlay it cannot read is not: it falls back to
+        // the same empty value, so the lanes and every act button vanish and
+        // nothing says why. That happened, on a phone, because the file spoke a
+        // vocabulary this build did not have; it is reported now rather than
+        // swallowed.
+        var overlayProblem: String?
+        if let url = Bundle.main.url(forResource: "content.local", withExtension: "json") {
+            do {
+                overlay = try JSONDecoder().decode(ContentOverlay.self, from: Data(contentsOf: url))
+            } catch {
+                overlay = .empty
+                overlayProblem = "Content overlay unreadable — no lanes and no act buttons: "
+                    + error.localizedDescription
+            }
         } else {
             overlay = .empty
         }
@@ -142,6 +153,7 @@ final class AppModel: ObservableObject {
         }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
+        lastProblem = overlayProblem
     }
 
     nonisolated static var defaultStateDirectory: URL {
