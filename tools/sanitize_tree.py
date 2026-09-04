@@ -35,8 +35,16 @@ def _files(repo: Path) -> list[str]:
 
 
 def main() -> int:
-    repo = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"],
-                               capture_output=True, text=True, check=True).stdout.strip())
+    # Resolved from this file, not from the working directory: run from anywhere
+    # and it still means THIS checkout — including from a worktree, where the
+    # answer is the worktree and not the primary.
+    here = Path(__file__).resolve().parent
+    found = subprocess.run(["git", "-C", str(here), "rev-parse", "--show-toplevel"],
+                           capture_output=True, text=True)
+    if found.returncode:
+        print(f"not a git checkout: {here}", file=sys.stderr)
+        return 2
+    repo = Path(found.stdout.strip())
     blocklist = blocklist_path(repo)
     terms = load_blocklist(blocklist) if blocklist.exists() else []
     if not terms:
