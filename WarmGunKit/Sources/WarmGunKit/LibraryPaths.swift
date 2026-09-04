@@ -110,31 +110,73 @@ public enum LibraryPaths {
     /// The prefix the app files non-AI scenes under in its own catalog paths.
     public static let nonAIPrefix = "non_AI/"
 
-    /// The AI branch of the metadata mirror — `videos/metadata/2D/AI`, the
-    /// videos tree's sibling; its sidecars mirror the UPSCALE paths.
-    public static func metadataAIPath(forLibrary libraryPath: String) -> String? {
+    /// The metadata mirror's root — `videos/metadata`, the videos tree's
+    /// sibling, reached from the folder holding both.
+    public static func metadataRoot(forLibrary libraryPath: String) -> String? {
         let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
         guard parts.count >= 4 else { return nil }
-        return "/" + (parts.dropLast(3) + ["metadata", "2D", "AI"]).joined(separator: "/")
+        return "/" + (parts.dropLast(3) + ["metadata"]).joined(separator: "/")
     }
 
-    /// The original a sidecar speaks for. Zip entries arrive as
-    /// `2D/AI/2_outbox/upscaled_by_orientation/<orientation>/<source>/<stem>_topaz.json`
-    /// — the upscale's path with `.json` — and the original sits at
-    /// `1_sorted/<source>/<orientation>/<stem>.mp4`, source and orientation
-    /// nested the other way round.
-    public static func originalPath(forSidecarEntry entry: String) -> String? {
-        // Anchored on the spine, not a fixed prefix: the zip's entry root
-        // depends on what the server chose to zip.
-        let parts = entry.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
-        guard let spine = parts.firstIndex(of: "2_outbox"),
-              parts.count == spine + 5, parts[spine + 1] == "upscaled_by_orientation",
-              let orientation = Orientation(rawValue: parts[spine + 2]) else { return nil }
-        let file = parts[spine + 4]
-        guard file.hasSuffix(".json") else { return nil }
-        let stem = String(file.dropLast(".json".count))
-        guard stem.hasSuffix(upscaleSuffix) else { return nil }
-        return "1_sorted/\(parts[spine + 3])/\(orientation.rawValue)/\(stem.dropLast(upscaleSuffix.count)).mp4"
+    /// One tree of the metadata mirror, one lane of the library.
+    ///
+    /// The mirror parallels the video tree path for path with the extension
+    /// swapped for `.json` (`evolver/util/sidecar.py`), which makes two of the
+    /// three lanes a straight translation. The AI lane is the exception: Fun
+    /// Time plays the UPSCALE, so that is where the sidecar is keyed, and the
+    /// upscale tree nests orientation above source where `1_sorted` nests
+    /// source above orientation. There is no `metadata/2D/AI/1_sorted` tree at
+    /// all — a generated clip's own path names no sidecar.
+    public enum MetadataBranch: String, CaseIterable, Sendable {
+        case ai
+        case genau
+        case nonAI
+
+        /// The pCloud folder this branch's sidecars live in.
+        public func path(forLibrary libraryPath: String) -> String? {
+            guard let root = LibraryPaths.metadataRoot(forLibrary: libraryPath) else { return nil }
+            switch self {
+            case .ai: return root + "/2D/AI"
+            // Not under 2D: the loops are delivered beside the library rather
+            // than into it, and the mirror follows them there.
+            case .genau: return root + "/genau/clips"
+            case .nonAI: return root + "/2D/non_AI"
+            }
+        }
+
+        /// Where *clipPath*'s sidecar sits inside this branch — relative to the
+        /// branch folder and WITHOUT the `.json`, because the mirror drops the
+        /// video's own extension and a real scene is not always an `.mp4`.
+        /// Nil when the clip belongs to another lane.
+        public func sidecarPath(forClip clipPath: String) -> String? {
+            switch self {
+            case .ai:
+                guard let original = LibraryPaths.parseOriginal(clipPath) else { return nil }
+                return "\(LibraryPaths.upscaledRoot)/\(original.orientation.rawValue)"
+                    + "/\(original.source)/\(original.stem)\(LibraryPaths.upscaleSuffix)"
+            case .genau:
+                guard clipPath.hasPrefix(LibraryPaths.genauPrefix) else { return nil }
+                let name = String(clipPath.dropFirst(LibraryPaths.genauPrefix.count))
+                // The delivery is one flat folder; anything nested is not a loop.
+                guard !name.contains("/") else { return nil }
+                return LibraryPaths.dropExtension(name)
+            case .nonAI:
+                guard clipPath.hasPrefix(LibraryPaths.nonAIPrefix) else { return nil }
+                let inner = String(clipPath.dropFirst(LibraryPaths.nonAIPrefix.count))
+                guard !inner.isEmpty else { return nil }
+                return LibraryPaths.dropExtension(inner)
+            }
+        }
+    }
+
+    /// A path with its file extension removed — nil when the last component has
+    /// none, or is nothing but one.
+    static func dropExtension(_ path: String) -> String? {
+        guard let dot = path.lastIndex(of: "."), !path[dot...].contains("/") else { return nil }
+        let stem = String(path[..<dot])
+        guard let last = stem.split(separator: "/", omittingEmptySubsequences: false).last,
+              !last.isEmpty else { return nil }
+        return stem
     }
 
     /// The bare file name of a catalog path — what the controls overlay puts

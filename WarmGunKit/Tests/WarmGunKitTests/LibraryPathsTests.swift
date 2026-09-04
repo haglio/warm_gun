@@ -111,31 +111,56 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    @Test func namesTheMetadataMirrorAndMapsASidecarBackToItsOriginal() {
-        // The sidecars mirror the UPSCALE tree under videos/metadata (the
-        // videos tree's sibling): a zip of its 2D/AI branch holds entries like
-        // 2D/AI/2_outbox/upscaled_by_orientation/<orientation>/<source>/<stem>_topaz.json,
-        // each speaking for the original at 1_sorted/<source>/<orientation>/<stem>.mp4.
-        #expect(LibraryPaths.metadataAIPath(forLibrary: "/alpha/videos/videos/2D/AI")
-                == "/alpha/videos/metadata/2D/AI")
-        #expect(LibraryPaths.metadataAIPath(forLibrary: "/x") == nil)
-        // The zip's root depends on what the server chose to zip, so the
-        // parser anchors on the spine, not on a fixed prefix.
-        #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/AI/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.json")
-                == "1_sorted/alpha/portrait/clip-one.mp4")
-        #expect(LibraryPaths.originalPath(forSidecarEntry: "2_outbox/upscaled_by_orientation/landscape/beta/clip-two_topaz.json")
-                == "1_sorted/beta/landscape/clip-two.mp4")
-        #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/non_AI/beta/scene.json") == nil)
-        #expect(LibraryPaths.originalPath(forSidecarEntry: "2D/AI/2_outbox/upscaled_by_orientation/portrait/alpha/odd-name.json") == nil)
-    }
-}
-
-extension LibraryPathsTests {
     @Test func readsTheFilenameOutOfACatalogPath() {
         #expect(LibraryPaths.filename(ofClip: "1_sorted/alpha/portrait/clip-one.mp4") == "clip-one.mp4")
         #expect(LibraryPaths.filename(ofClip: "non_AI/beta/a scene.mkv") == "a scene.mkv")
         #expect(LibraryPaths.filename(ofClip: "bare.mp4") == "bare.mp4")
         #expect(LibraryPaths.filename(ofClip: "genau/clips/") == nil)
         #expect(LibraryPaths.filename(ofClip: "") == nil)
+    }
+}
+
+extension LibraryPathsTests {
+    /// Every lane the phone plays from has a sidecar, and the three of them are
+    /// filed differently: an AI original is spoken for by its UPSCALE's sidecar
+    /// (source and orientation the other way round), while a genau loop and a
+    /// real scene mirror straight across. The extension is dropped either way,
+    /// so a scene that is not an .mp4 still finds its file.
+    @Test func eachLaneKnowsWhichBranchHoldsItsSidecarAndWhereInIt() {
+        let ai = LibraryPaths.MetadataBranch.ai
+        let genau = LibraryPaths.MetadataBranch.genau
+        let nonAI = LibraryPaths.MetadataBranch.nonAI
+
+        #expect(ai.sidecarPath(forClip: "1_sorted/alpha/portrait/clip-one.mp4")
+                == "2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz")
+        #expect(genau.sidecarPath(forClip: "genau/clips/loop-two.mp4") == "loop-two")
+        #expect(nonAI.sidecarPath(forClip: "non_AI/bucket/inner/scene-three.mkv")
+                == "bucket/inner/scene-three")
+
+        // A branch answers for its own lane and no other.
+        #expect(ai.sidecarPath(forClip: "genau/clips/loop-two.mp4") == nil)
+        #expect(genau.sidecarPath(forClip: "non_AI/bucket/scene.mp4") == nil)
+        #expect(nonAI.sidecarPath(forClip: "1_sorted/alpha/portrait/clip-one.mp4") == nil)
+        // A genau delivery is one flat folder; nothing nested is one.
+        #expect(genau.sidecarPath(forClip: "genau/clips/inner/loop.mp4") == nil)
+        #expect(nonAI.sidecarPath(forClip: "non_AI/scene.mp4") == "scene")
+    }
+}
+
+extension LibraryPathsTests {
+    /// The mirror parallels the video tree: `videos/metadata` beside
+    /// `videos/videos`, with the genau branch reached from the folder holding
+    /// both — which is why it is not under `2D` like the other two.
+    @Test func theThreeMetadataBranchesSitBesideTheVideoTree() {
+        let library = "/alpha/videos/videos/2D/AI"
+
+        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: library)
+                == "/alpha/videos/metadata/2D/AI")
+        #expect(LibraryPaths.MetadataBranch.genau.path(forLibrary: library)
+                == "/alpha/videos/metadata/genau/clips")
+        #expect(LibraryPaths.MetadataBranch.nonAI.path(forLibrary: library)
+                == "/alpha/videos/metadata/2D/non_AI")
+        #expect(LibraryPaths.MetadataBranch.allCases.count == 3)
+        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: "/x") == nil)
     }
 }

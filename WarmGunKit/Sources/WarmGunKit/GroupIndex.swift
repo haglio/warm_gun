@@ -4,17 +4,65 @@ import Foundation
 /// (always) and a `source_image` block (image-to-video clips). Every value on
 /// disk is a string, so the blocks decode as plain dictionaries.
 public struct Sidecar: Codable, Equatable, Sendable {
+    /// The `watch` block Evolver stamps on every library video: what both apps
+    /// completed, skipped and locked, summed, and the playback weight that sum
+    /// earns. Only the weight is read here. The formula lives on the desktop
+    /// (`evolver/util/watch.py`) so that one implementation serves every app,
+    /// and this side never recomputes it — it reads the number or nothing.
+    public struct Watch: Codable, Equatable, Sendable {
+        public let weight: Double?
+
+        public init(weight: Double?) {
+            self.weight = weight
+        }
+
+        /// A weight that could not serve as a multiplier is no weight at all.
+        /// Zero would silence a clip for good and a negative one would sort it
+        /// FIRST in the draw — the exact inverse of what the number means — so
+        /// only a finite positive number counts as stamped.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            let stamped = try? c.decodeIfPresent(Double.self, forKey: .weight)
+            weight = (stamped?.isFinite == true && stamped! > 0) ? stamped : nil
+        }
+    }
+
     public let video: [String: String]?
     public let sourceImage: [String: String]?
+    public let watch: Watch?
+    /// Whether the desktop's favorites hold this clip. Evolver writes the field
+    /// only when it is true, and the file it mirrors already carries the
+    /// favorites made on the phone, so this is both sides' answer.
+    public let favorite: Bool
+
+    /// The stamped weight, or nil when the sidecar carries none — which the
+    /// draw reads as the neutral 1.0.
+    public var watchWeight: Double? { watch?.weight }
 
     enum CodingKeys: String, CodingKey {
         case video
         case sourceImage = "source_image"
+        case watch
+        case favorite
     }
 
-    public init(video: [String: String]?, sourceImage: [String: String]?) {
+    public init(video: [String: String]?, sourceImage: [String: String]?,
+                watch: Watch? = nil, favorite: Bool = false) {
         self.video = video
         self.sourceImage = sourceImage
+        self.watch = watch
+        self.favorite = favorite
+    }
+
+    /// A block this side cannot read costs only itself. The sidecar carries the
+    /// act the loops group by as well as the weight, and a `watch` written in a
+    /// shape not expected here must not take the act down with it.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        video = try c.decodeIfPresent([String: String].self, forKey: .video)
+        sourceImage = try c.decodeIfPresent([String: String].self, forKey: .sourceImage)
+        watch = try? c.decodeIfPresent(Watch.self, forKey: .watch)
+        favorite = ((try? c.decodeIfPresent(Bool.self, forKey: .favorite)) ?? nil) ?? false
     }
 }
 

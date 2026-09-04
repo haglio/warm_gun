@@ -115,15 +115,16 @@ public enum PlaylistBuilder {
     ///
     /// The two orders are not two flavours of the same thing. Shuffle is the
     /// watch-weighted draw: chronically skipped clips sit builds out and loved
-    /// ones land early. Latest is a review order and carries no weighting at
-    /// all, deliberately — a new arrival must surface however often it has been
-    /// skipped away from before.
+    /// ones land early, on the weight Evolver stamped from BOTH apps' viewing.
+    /// Latest is a review order and carries no weighting at all, deliberately —
+    /// a new arrival must surface however often it has been skipped away from
+    /// before.
     ///
     /// Every draw comes off *rng*, so one seed is one playlist: the run is
     /// knowable in advance, which is what lets the prefetcher work both
     /// directions from the current clip.
     public static func build(catalog: Catalog, options: BrowseOptions, favoriteStems: Set<String>,
-                             weird: Set<String>, stats: WatchStats,
+                             weird: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
                              acts: [String: String] = [:],
@@ -137,9 +138,9 @@ public enum PlaylistBuilder {
                 .map(\.path)
         }
         let survivors = clips.map(\.path).filter {
-            Weighting.passesInclusion(weight: stats.weight(for: $0), rng: &rng)
+            Weighting.passesInclusion(weight: weights.weight(for: $0), rng: &rng)
         }
-        return Weighting.weightedShuffle(survivors, weight: stats.weight(for:), rng: &rng)
+        return Weighting.weightedShuffle(survivors, weight: weights.weight(for:), rng: &rng)
     }
 
     /// The switches, all of which only ever narrow, so their order among
