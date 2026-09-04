@@ -370,9 +370,12 @@ extension PCloudAPITests {
             #"{"result":0,"name":"clip-one.mp4","isfolder":false,"duration":5}"#.utf8))
         #expect(number.duration == 5.0)
         for bad in [#""abc""#, #""""#, "null", "true"] {
-            let entry = try PCloudAPI.decode(PCloudEntry.self, from: Data(
-                #"{"result":0,"name":"clip-one.mp4","isfolder":false,"duration":"#.utf8
-                + Data(bad.utf8) + Data("}".utf8)))
+            // Built as one string: the pieces were `Data(...)`s added together,
+            // which the compiler resolved here and not on the CI runner (it
+            // read the first as a `String.UTF8View` and asked it to be
+            // range-replaceable). One literal cannot be read two ways.
+            let body = #"{"result":0,"name":"clip-one.mp4","isfolder":false,"duration":"# + bad + "}"
+            let entry = try PCloudAPI.decode(PCloudEntry.self, from: Data(body.utf8))
             #expect(entry.duration == nil, "duration \(bad) should read as absent")
         }
     }
