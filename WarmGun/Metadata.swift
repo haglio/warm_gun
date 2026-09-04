@@ -2,39 +2,69 @@ import Compression
 import Foundation
 import WarmGunKit
 
-/// Fetches the sidecar corpus — one getzip of the metadata mirror's AI branch
-/// (1.5 MB for ~1,300 files) — and turns it into the path-keyed dictionary the
-/// group index is built from. The zip walking lives in the Kit; only the raw
+/// Fetches the sidecar corpus — one getzip per branch of the metadata mirror,
+/// with a one-file-at-a-time road when the server will not zip — and turns it
+/// into the clip-keyed dictionary the group index, the weights and the
+/// favorites are all read off. The zip walking lives in the Kit; only the raw
 /// DEFLATE step is here, because it needs Apple's Compression framework.
 enum MetadataFetcher {
-    /// The zip in one call when the server will give it, one file at a time
-    /// when it will not — either way the corpus arrives. `progress` narrates
-    /// for the status line the sheet shows.
-    static func fetchSidecars(client: PCloudClient, libraryPath: String,
-                              listing: [LibraryFile],
-                              progress: @escaping @Sendable (String) -> Void) async throws -> [String: Sidecar] {
-        guard let metadataPath = LibraryPaths.metadataAIPath(forLibrary: libraryPath) else { return [:] }
-        do {
-            progress("fetching the metadata archive…")
-            return try await fetchViaZip(client: client, metadataPath: metadataPath)
-        } catch {
-            // getzip has already failed against the real server once (it takes
-            // a folderid, not a path) — never trust it as the only road.
-            progress("archive failed — fetching sidecars singly…")
-            return try await fetchSingly(client: client, listing: listing, progress: progress)
+    /// One branch as the survey found it: where it is, what it holds, and which
+    /// of that speaks for a clip the phone can play.
+    struct Branch {
+        let path: String
+        let files: [LibraryFile]
+        let index: SidecarIndex
+    }
+
+    /// One cheap listing per branch. A branch that is absent or refuses to list
+    /// simply contributes nothing — the corpus is still worth having without
+    /// it, and the alternative is one missing folder costing every weight.
+    static func survey(client: PCloudClient, libraryPath: String,
+                       clipPaths: [String]) async -> [Branch] {
+        var branches: [Branch] = []
+        for branch in LibraryPaths.MetadataBranch.allCases {
+            guard let path = branch.path(forLibrary: libraryPath),
+                  let files = try? await client.listLibrary(path: path) else { continue }
+            let index = SidecarIndex(branch: branch, clipPaths: clipPaths,
+                                     listing: files.map(\.path))
+            guard !index.clipsByListedSidecar.isEmpty else { continue }
+            branches.append(Branch(path: path, files: files, index: index))
         }
+        return branches
     }
 
-    /// One number standing for the whole mirror: how many sidecars, and the
-    /// newest write among them. A matching fingerprint means nothing changed
-    /// and there is nothing to fetch.
-    static func fingerprint(of listing: [LibraryFile]) -> String {
-        let newest = listing.map(\.modified.timeIntervalSince1970).max() ?? 0
-        return "\(listing.count)|\(Int(newest))"
+    /// One number standing for the whole mirror: how many sidecars are worth
+    /// having, and the newest write among everything listed. A matching
+    /// fingerprint means nothing moved and there is nothing to fetch.
+    static func fingerprint(of branches: [Branch]) -> String {
+        branches.map { branch in
+            let newest = branch.files.map(\.modified.timeIntervalSince1970).max() ?? 0
+            return "\(branch.index.clipsByListedSidecar.count)|\(Int(newest))"
+        }.joined(separator: ";")
     }
 
-    private static func fetchViaZip(client: PCloudClient, metadataPath: String) async throws -> [String: Sidecar] {
-        guard let folderID = try await client.folderSkeleton(path: metadataPath, recursive: false).folderid else {
+    /// Every sidecar the surveyed branches hold, keyed by the catalog path of
+    /// the clip it speaks for. A branch that fails outright is skipped rather
+    /// than failing the whole corpus.
+    static func fetchSidecars(client: PCloudClient, branches: [Branch]) async -> [String: Sidecar] {
+        var sidecars: [String: Sidecar] = [:]
+        for branch in branches {
+            let fetched: [String: Sidecar]
+            do {
+                fetched = try await fetchViaZip(client: client, branch: branch)
+            } catch {
+                // getzip has already failed against the real server once (it
+                // takes a folderid, not a path) — never trust it as the only
+                // road.
+                fetched = await fetchSingly(client: client, branch: branch)
+            }
+            sidecars.merge(fetched) { _, new in new }
+        }
+        return sidecars
+    }
+
+    private static func fetchViaZip(client: PCloudClient, branch: Branch) async throws -> [String: Sidecar] {
+        guard let folderID = try await client.folderSkeleton(path: branch.path, recursive: false).folderid else {
             throw ZipArchive.Failure(reason: "metadata folder has no id")
         }
         let body = try await client.downloadRaw(PCloudAPI.getZip(folderID: folderID, auth: ""), patientFirstByte: true)
@@ -45,42 +75,40 @@ enum MetadataFetcher {
         let decoder = JSONDecoder()
         var sidecars: [String: Sidecar] = [:]
         for entry in try ZipArchive.entries(in: body, inflate: inflate) {
-            guard let original = LibraryPaths.originalPath(forSidecarEntry: entry.name),
+            guard let clip = branch.index.clip(forZipEntry: entry.name),
                   let sidecar = try? decoder.decode(Sidecar.self, from: entry.data) else { continue }
-            sidecars[original] = sidecar
+            sidecars[clip] = sidecar
         }
         return sidecars
     }
 
-    private static func fetchSingly(client: PCloudClient, listing: [LibraryFile],
-                                    progress: @escaping @Sendable (String) -> Void) async throws -> [String: Sidecar] {
-        let files = listing
+    /// The slow road: only the sidecars that speak for a clip, six at a time.
+    private static func fetchSingly(client: PCloudClient, branch: Branch) async -> [String: Sidecar] {
+        let wanted = branch.index.clipsByListedSidecar
+        let files = branch.files.filter { wanted[$0.path] != nil }
         let decoder = JSONDecoder()
         var sidecars: [String: Sidecar] = [:]
-        var fetched = 0
-        try await withThrowingTaskGroup(of: (String, Data)?.self) { group in
+        await withTaskGroup(of: (String, Data)?.self) { group in
             var iterator = files.makeIterator()
             var inFlight = 0
-            func addNext(_ group: inout ThrowingTaskGroup<(String, Data)?, Error>) {
+            func addNext(_ group: inout TaskGroup<(String, Data)?>) {
                 guard let file = iterator.next() else { return }
                 inFlight += 1
                 group.addTask {
-                    guard let url = try await client.fileLink(fileID: file.fileID).url else { return nil }
-                    let tmp = try await client.download(url)
+                    guard let url = try? await client.fileLink(fileID: file.fileID).url,
+                          let tmp = try? await client.download(url) else { return nil }
                     defer { try? FileManager.default.removeItem(at: tmp) }
-                    return (file.path, try Data(contentsOf: tmp))
+                    guard let data = try? Data(contentsOf: tmp) else { return nil }
+                    return (file.path, data)
                 }
             }
             for _ in 0..<6 { addNext(&group) }
             while inFlight > 0 {
-                guard let result = try await group.next() else { break }
+                guard let result = await group.next() else { break }
                 inFlight -= 1
-                fetched += 1
-                if fetched % 100 == 0 { progress("fetching sidecars \(fetched)/\(files.count)…") }
-                if let (path, data) = result,
-                   let original = LibraryPaths.originalPath(forSidecarEntry: path),
+                if let (path, data) = result, let clip = wanted[path],
                    let sidecar = try? decoder.decode(Sidecar.self, from: data) {
-                    sidecars[original] = sidecar
+                    sidecars[clip] = sidecar
                 }
                 addNext(&group)
             }

@@ -4,7 +4,9 @@ import Foundation
 ///
 /// A stem is unique library-wide and is the one name both renditions share, so
 /// it is also the only thing the desktop's `favs.csv` — which lists Windows
-/// paths to upscales — and Warm Gun's own store can agree on.
+/// paths to upscales — and Warm Gun's own store can agree on. Every lane has
+/// one: a genau loop and a real scene are held exactly as a generated clip is,
+/// which is what lets the flag the desktop stamps on their sidecars land here.
 public struct Favorites: Codable, Equatable, Sendable {
     public var stems: Set<String>
 
@@ -13,21 +15,21 @@ public struct Favorites: Codable, Equatable, Sendable {
     }
 
     public func contains(path: String) -> Bool {
-        guard let stem = LibraryPaths.parseOriginal(path)?.stem else { return false }
+        guard let stem = LibraryPaths.stem(ofClip: path) else { return false }
         return stems.contains(stem)
     }
 
     /// True when this tap actually added something, which is what the journal
     /// records: locking an already-favorited clip is not a second favorite.
     public mutating func insert(path: String) -> Bool {
-        guard let stem = LibraryPaths.parseOriginal(path)?.stem else { return false }
+        guard let stem = LibraryPaths.stem(ofClip: path) else { return false }
         return stems.insert(stem).inserted
     }
 
     /// True when the clip really was a favorite until now — what the weird
     /// gesture's first step reads to know whether it demoted or dropped.
     public mutating func remove(path: String) -> Bool {
-        guard let stem = LibraryPaths.parseOriginal(path)?.stem else { return false }
+        guard let stem = LibraryPaths.stem(ofClip: path) else { return false }
         return stems.remove(stem) != nil
     }
 

@@ -148,6 +148,7 @@ private struct ControlsOverlay: View {
                 cluster {
                     chip("Shuffle", on: orderBinding(latest: false))
                     chip("Latest", on: orderBinding(latest: true))
+                    chip("Favs", on: favoritesBinding())
                 }
             }
             corner(.bottomLeading) {
@@ -319,6 +320,18 @@ private struct ControlsOverlay: View {
                     } else {
                         browse.types.remove(type)
                     }
+                    model.update(browse: browse)
+                })
+    }
+
+    /// The desktop's F-mode. It was taken off the sheet while the phone had
+    /// only its own favorites to show; Evolver now flags every one of the
+    /// desktop's on the sidecars, so the switch has a library behind it again.
+    private func favoritesBinding() -> Binding<Bool> {
+        Binding(get: { model.settings.browse.favoritesOnly },
+                set: { value in
+                    var browse = model.settings.browse
+                    browse.favoritesOnly = value
                     model.update(browse: browse)
                 })
     }

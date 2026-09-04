@@ -14,6 +14,33 @@ import Testing
     }
 }
 
+extension FavoritesTests {
+    /// A favorite is a favorite in every lane. The desktop now flags genau
+    /// loops and real scenes on their sidecars too, so a store that could only
+    /// name a generated clip would disagree with the flag on two thirds of the
+    /// library — and the browse's favorites switch reads a clip's stem, which
+    /// every lane has.
+    @Test func aLoopOrASceneCanBeHeldJustAsAGeneratedClipCan() {
+        var favorites = Favorites()
+
+        let heldLoop = favorites.insert(path: "genau/clips/loop-two.mp4")
+        let heldScene = favorites.insert(path: "non_AI/bucket/inner/scene-three.mkv")
+        #expect(heldLoop)
+        #expect(heldScene)
+
+        #expect(favorites.stems == ["loop-two", "scene-three"])
+        #expect(favorites.contains(path: "genau/clips/loop-two.mp4"))
+        #expect(favorites.contains(path: "non_AI/bucket/inner/scene-three.mkv"))
+
+        let dropped = favorites.remove(path: "genau/clips/loop-two.mp4")
+        #expect(dropped)
+        #expect(!favorites.contains(path: "genau/clips/loop-two.mp4"))
+        // A path naming no file names no clip.
+        let nothing = favorites.insert(path: "genau/clips/")
+        #expect(!nothing)
+    }
+}
+
 /// The desktop writes `favs.csv` for Excel: CRLF rows of two quoted cells, each
 /// an `=HYPERLINK` formula whose inner quotes are doubled. Every fixture path
 /// below is invented; the shape is what matters.
@@ -63,13 +90,10 @@ extension FavoritesTests {
 
 extension FavoritesTests {
     @Test func saysWhenNothingChangedSoTheJournalRecordsOnlyRealTurns() {
-        // Locking a clip that is already a favorite is not a second favorite, and
-        // a path the library shape does not recognise is not a favorite at all.
+        // Locking a clip that is already a favorite is not a second favorite.
         var favorites = Favorites(stems: ["clip-one"])
         let again = favorites.insert(path: "1_sorted/alpha/portrait/clip-one.mp4")
         #expect(!again)
-        let unparseable = favorites.insert(path: "somewhere/else/clip-three.mp4")
-        #expect(!unparseable)
         #expect(favorites.stems == ["clip-one"])
 
         let removed = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")

@@ -13,9 +13,13 @@ controls sheet. The name and the pink 5x5 lettermark follow Fun Time's.
   the pCloud HTTP API and played from an on-device LRU cache; a deep two-sided
   prefetch window keeps the neighbours resident, and "Download this browse"
   pins the whole run. The Topaz upscales stay home.
-- **Shared state**: favorites, weird marks and watch counts live on the phone
-  and stream out as a journal to a pCloud folder; a `favs.csv` dropped there is
-  imported. The weird gesture parks the clip's upscale in
+- **Shared state**: favorites and weird marks live on the phone, and every
+  event streams out as a journal to a pCloud folder. Evolver reads that
+  journal, sums it with Fun Time's own viewing, and stamps the playback weight
+  and a favorites flag back onto each video's metadata sidecar — which is where
+  the phone reads both, so neither app keeps a copy of the formula and what the
+  PC watched moves the phone's shuffle. A `favs.csv` dropped in the sync folder
+  is still imported. The weird gesture parks the clip's upscale in
   `2_outbox/kinda_weird/`, arming Evolver's purge — same as the desktop.
 
 ## Layout
@@ -24,7 +28,8 @@ controls sheet. The name and the pink 5x5 lettermark follow Fun Time's.
   clip cache, prefetcher, pCloud transport, Keychain, settings, views.
 - `WarmGunKit/` — the pure logic, Foundation-only, fully tested headlessly:
   library paths, catalog, pCloud request/response shapes, playlist filters and
-  watch-weighted shuffle, session, prefetch planning, journal, favorites.
+  watch-weighted shuffle, session, prefetch planning, journal, favorites, and
+  the metadata mirror joined to the catalog lane by lane.
 - `docs/design.md` — every decision, with the desktop code it mirrors.
 - `tools/` — `check.sh` (suite + gates + guard), `gates.py` (coupling gates),
   `fake_pcloud.py` (local API stand-in for Simulator runs), `make_icon.py`,

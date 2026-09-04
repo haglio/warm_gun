@@ -188,6 +188,13 @@ public enum LibraryPaths {
         return String(last)
     }
 
+    /// A clip's stem — its file name without the extension, in any lane. Stems
+    /// are unique library-wide, which is what lets favorites be kept by stem
+    /// and still mean one clip whichever rendition names it.
+    public static func stem(ofClip path: String) -> String? {
+        filename(ofClip: path).flatMap(dropExtension)
+    }
+
     /// The stem of a clip named the desktop's way — a path (Windows or POSIX, any
     /// prefix) to `<stem>_topaz.<ext>` — or nil when it is not an upscale name.
     /// The stem alone identifies a clip: they are unique library-wide.

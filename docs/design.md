@@ -34,7 +34,7 @@ the owner, not alone.
   third → next; top-middle → weird; bottom-middle → lock (favorite); double tap
   in the middle → the controls sheet. Same meanings as the desktop satellite's
   arrow keys.
-- **Controls sheet** (checkboxes): Landscape library (off = portrait); F-mode
+- **Controls sheet** (checkboxes): Landscape library (off = portrait); Favs
   (favorites only — on a satellite those are the same switch, `modes.py:253`);
   Shorts only; Latest (newest first, else weighted shuffle); Loop clip (repeat
   each clip instead of advancing); plus Settings (login, library path, cache
@@ -65,9 +65,13 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   loops it. The "Loop clip" checkbox is Warm Gun's addition for when one wants
   every clip to loop until tapped.
 - **Ordering**: Shuffle = the desktop's watch-weighted Efraimidis–Spirakis
-  shuffle with probabilistic inclusion (`watch_stats.py`: weight =
-  2^clamp((completions + 3·locks − skips)/3, −3, 3)); Latest = newest modified
-  first, unweighted. A filter change keeps the on-screen clip playing if it
+  shuffle with probabilistic inclusion. The weight is **read, never computed**:
+  Evolver's Watch Weights stage sums what Fun Time and Warm Gun each completed,
+  skipped and locked and stamps the result on every library video's sidecar as
+  `watch.weight` (`evolver/util/watch.py`, 2^clamp((completions + 3·locks −
+  skips)/3, −3, 3)), so one implementation serves both apps and what the PC
+  watched moves the phone's order. A sidecar with no `watch` block weighs 1.
+  Latest = newest modified first, unweighted. A filter change keeps the on-screen clip playing if it
   survives the rebuild (`session.replace_playlist`), and a filter that matches
   nothing leaves the current playlist in place instead of blanking the screen.
 - **Since v1**: seed and action loops are in (the Loop control's Seed/Action
@@ -78,13 +82,18 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   (all need the 1 341 metadata sidecars); the desktop's group-collapse of the
   browse (one clip per subject) for the same reason. Indexing the sidecars is
   the one prerequisite for all of them and is the obvious next step.
+- **Since the watch weights landed**: all three branches of the metadata mirror
+  are indexed, not just the AI one — a genau loop and a real scene have
+  sidecars too, and had none of this before. Their sidecars mirror the video
+  path with the extension dropped; an AI original's is its upscale's, source
+  and orientation nested the other way round (`LibraryPaths.MetadataBranch`).
 
 ## Shared state with the desktop
 
 The desktop's `favs.csv` and `watch_stats.json` live in the fun_time checkout
 on the PC, which is *not* in pCloud, and `watch_stats.json` prunes any key that
 is not a path on the writing machine. So Warm Gun does not write either file. It
-keeps its own stores on the phone (favorites, weird marks, watch counts), keyed
+keeps its own stores on the phone (favorites, weird marks), keyed
 by the library-relative original path, and appends every event to a journal
 (`warm-gun-journal.jsonl`, one JSON object per line: `{"t": unix seconds, "event":
 "favorite|unfavorite|weird|lock|completion|skip", "path": "<library-relative
@@ -93,6 +102,15 @@ original path>"}`) that it uploads to a pCloud folder outside the library
 stores is a later, desktop-side step. If a `favs.csv` is dropped into that same
 folder, Warm Gun imports it: the second `=HYPERLINK(...)` argument of each row is a
 Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
+
+The return leg arrives on the sidecars. Evolver reads that journal, applies the
+phone's favorites and unfavorites to `favs.csv`, and stamps every library
+video's sidecar with a `watch` block and — for a favorite — `favorite: true`.
+Warm Gun reads both: the weight is the only thing its shuffle draws on, and the
+flag is folded into its own favorites (only ever added, exactly as a `favs.csv`
+import is, because the flag is a snapshot from the last time the stage ran and
+would otherwise undo a favorite made on the phone since). The phone therefore
+keeps no watch counts of its own at all — it records events and reads a number.
 
 ## Performance design (the whole point)
 
@@ -129,7 +147,9 @@ Windows path to a `<stem>_topaz.mp4`, and the stem alone identifies the clip.
   `Catalog` + `Clip` (the index and its builder from pCloud listings),
   `PCloudAPI` (request building + response decoding, error mapping),
   `Playlist`/`BrowseOptions` (filters, ordering, weighted shuffle), `Session`
-  (index, step, discard, lock, replacePlaylist), `WatchStats` + `WatchTracker`,
+  (index, step, discard, lock, replacePlaylist), `WatchWeights` (the stamped
+  weight, and the two draw primitives) + `WatchTracker` (samples → events),
+  `Sidecar` + `GroupIndex` + `SidecarIndex` (the mirror joined to the catalog),
   `Favorites` (+ favs.csv import), `PrefetchPlanner` (window → fetch order and
   eviction), `TapZones`, `Journal`, `LinkCache`.
 - `WarmGun/` — the app: SwiftUI views, `PlayerEngine` (AVFoundation), `Downloader`

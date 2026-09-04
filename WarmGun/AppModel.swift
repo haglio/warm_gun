@@ -31,7 +31,6 @@ final class AppModel: ObservableObject {
     @Published private(set) var session = Session(playlist: [])
     @Published private(set) var favorites = Favorites()
     @Published private(set) var weird: Set<String> = []
-    @Published private(set) var stats = WatchStats()
     /// Which loop the run is in: the whole browse, one clip, or the current
     /// clip's seed family / action group — the desktop satellite's axes.
     enum LoopMode: String { case all, single, seed, action }
@@ -47,6 +46,9 @@ final class AppModel: ObservableObject {
     /// The seed/action grouping over the metadata sidecars, refreshed once per
     /// launch in the background; empty until the first fetch lands.
     private var groupIndex = GroupIndex(sidecars: [:])
+    /// The playback weights off those same sidecars — what BOTH apps did with
+    /// each clip, summed and stamped by Evolver. Neutral until they land.
+    private var weights = WatchWeights()
     private var refreshedMetadata = false
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
@@ -146,9 +148,6 @@ final class AppModel: ObservableObject {
     // MARK: - lifecycle
 
     func start() async {
-        // F-mode is shelved until the desktop's favorites reach the phone —
-        // the switch is gone from the sheet, so nothing may leave it stuck on.
-        settings.browse.favoritesOnly = false
         cached = await cache.cachedPaths()
         cacheBytes = await cache.totalBytes()
         loadPersistedState()
@@ -406,42 +405,65 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The sidecar corpus, fetched as one zip and kept beside the state files;
-    /// the launch's copy serves until the fetch lands.
+    /// The sidecar corpus — every branch of the metadata mirror, fetched as one
+    /// zip apiece and kept beside the state files; the launch's copy serves
+    /// until the fetch lands.
     private func refreshMetadata() {
-        guard !refreshedMetadata, let client else { return }
+        guard !refreshedMetadata, let client, let catalog else { return }
         refreshedMetadata = true
         let libraryPath = settings.libraryPath
+        let clipPaths = catalog.clips.map(\.path)
         Task {
-            do {
-                guard let metadataPath = LibraryPaths.metadataAIPath(forLibrary: libraryPath) else { return }
-                // One cheap listing decides whether anything moved: same count
-                // and same newest write means the persisted index still speaks
-                // for the mirror, and nothing is fetched at all.
-                let listing = try await client.listLibrary(path: metadataPath)
-                    .filter { $0.path.hasSuffix(".json") }
-                let fingerprint = MetadataFetcher.fingerprint(of: listing)
-                let stored = UserDefaults.standard.string(forKey: "warm-gun.metadata-fingerprint")
-                if fingerprint == stored, !groupIndex.isEmpty {
-                    recomputeLoopAvailability()
-                    return
-                }
-                let sidecars = try await MetadataFetcher.fetchSidecars(client: client, libraryPath: libraryPath,
-                                                                       listing: listing) { _ in }
-                guard !sidecars.isEmpty else {
-                    lastProblem = "Metadata: the metadata folder came back empty"
-                    return
-                }
-                groupIndex = GroupIndex(sidecars: sidecars)
+            // One cheap listing per branch decides whether anything moved: the
+            // same counts and the same newest writes mean the persisted corpus
+            // still speaks for the mirror, and nothing is fetched at all.
+            let branches = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
+                                                        clipPaths: clipPaths)
+            guard !branches.isEmpty else {
+                lastProblem = "Metadata: no branch of the metadata mirror answered"
+                return
+            }
+            let fingerprint = MetadataFetcher.fingerprint(of: branches)
+            let stored = UserDefaults.standard.string(forKey: Self.metadataFingerprintKey)
+            if fingerprint == stored, !groupIndex.isEmpty {
                 recomputeLoopAvailability()
-                if let data = try? JSONEncoder().encode(sidecars) {
-                    try? data.write(to: sidecarsURL, options: .atomic)
-                    UserDefaults.standard.set(fingerprint, forKey: "warm-gun.metadata-fingerprint")
-                }
-            } catch {
-                lastProblem = "Metadata: \(error.localizedDescription)"
+                return
+            }
+            let sidecars = await MetadataFetcher.fetchSidecars(client: client, branches: branches)
+            guard !sidecars.isEmpty else {
+                lastProblem = "Metadata: the metadata folders came back empty"
+                return
+            }
+            adopt(sidecars: sidecars)
+            // A run that matched nothing is a dead end this corpus can end —
+            // the favorites switch before any favorite had arrived is exactly
+            // that screen. A run in progress is left alone: a background
+            // refresh must never reshuffle what is playing.
+            if session.playlist.isEmpty { rebuild(startAtTop: true) }
+            if let data = try? JSONEncoder().encode(sidecars) {
+                try? data.write(to: sidecarsURL, options: .atomic)
+                UserDefaults.standard.set(fingerprint, forKey: Self.metadataFingerprintKey)
             }
         }
+    }
+
+    private static let metadataFingerprintKey = "warm-gun.metadata-fingerprint"
+
+    /// Everything the corpus decides, decided in one place: the groups the loop
+    /// buttons walk, the weights the shuffle draws on, and which clips the
+    /// desktop is holding.
+    ///
+    /// The favorites only ever gain here, exactly as a `favs.csv` import does:
+    /// the flag is a snapshot from the last time the stage ran, so treating it
+    /// as the whole truth would undo every favorite made on the phone since.
+    private func adopt(sidecars: [String: Sidecar]) {
+        groupIndex = GroupIndex(sidecars: sidecars)
+        weights = WatchWeights(sidecars: sidecars)
+        let starred = Set(sidecars.filter(\.value.favorite).keys.compactMap(LibraryPaths.stem(ofClip:)))
+        let before = favorites.stems.count
+        favorites.merge(stems: starred)
+        recomputeLoopAvailability()
+        if favorites.stems.count != before { persistState() }
     }
 
     /// Builds the browse from the index and hands it to the session. A change
@@ -453,7 +475,7 @@ final class AppModel: ObservableObject {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
                                              favoriteStems: favorites.stems, weird: weird,
-                                             stats: stats, measuredSeconds: measuredSeconds,
+                                             weights: weights, measuredSeconds: measuredSeconds,
                                              overlay: overlay, acts: groupIndex.actsByPath, rng: &rng)
         if playlist.isEmpty {
             // Nothing fits these switches: say exactly that on a blank screen
@@ -555,7 +577,6 @@ final class AppModel: ObservableObject {
         } else {
             session.setLocked(true)
             if favorites.insert(path: path) { journal("favorite", path) }
-            stats.record(.lock, path: path)
             journal("lock", path)
             flash("Locked", favorite: true)
         }
@@ -784,7 +805,6 @@ final class AppModel: ObservableObject {
         // points at, so they are not sampled at all.
         guard waitingFor == nil, let path = showing else { return }
         for (event, eventPath) in tracker.sample(path: path, fraction: fraction, now: Date()) {
-            stats.record(event, path: eventPath)
             journal(event.rawValue, eventPath)
         }
     }
@@ -880,7 +900,6 @@ final class AppModel: ObservableObject {
     private struct PersistedState: Codable {
         var favorites: Favorites
         var weird: Set<String>
-        var stats: WatchStats
         var playlist: [String]
         var index: Int
         var locked: Bool?  // optional so older blobs still decode
@@ -898,7 +917,7 @@ final class AppModel: ObservableObject {
     }
 
     private func persistState() {
-        let state = PersistedState(favorites: favorites, weird: weird, stats: stats,
+        let state = PersistedState(favorites: favorites, weird: weird,
                                    playlist: session.playlist, index: session.index,
                                    locked: session.locked, measuredSeconds: measuredSeconds)
         if let data = try? JSONEncoder().encode(state) {
@@ -909,19 +928,24 @@ final class AppModel: ObservableObject {
     /// A relaunch picks up where it left off: same order, same clip, minus
     /// anything the index no longer has (the desktop's `resume_playlists`).
     private func loadPersistedState() {
-        if let data = try? Data(contentsOf: sidecarsURL),
-           let sidecars = try? JSONDecoder().decode([String: Sidecar].self, from: data) {
-            groupIndex = GroupIndex(sidecars: sidecars)
-        }
         if let data = try? Data(contentsOf: catalogURL), let saved = try? JSONDecoder().decode(Catalog.self, from: data) {
             catalog = saved
             clipsByPath = Dictionary(uniqueKeysWithValues: saved.clips.map { ($0.path, $0) })
         }
+        restoreSession()
+        // Last of the three, so the corpus folds INTO the favorites just
+        // restored rather than being overwritten by them.
+        if let data = try? Data(contentsOf: sidecarsURL),
+           let sidecars = try? JSONDecoder().decode([String: Sidecar].self, from: data) {
+            adopt(sidecars: sidecars)
+        }
+    }
+
+    private func restoreSession() {
         guard let data = try? Data(contentsOf: stateURL),
               let state = try? JSONDecoder().decode(PersistedState.self, from: data) else { return }
         favorites = state.favorites
         weird = state.weird
-        stats = state.stats
         measuredSeconds = state.measuredSeconds ?? [:]
         let surviving = state.playlist.filter { clipsByPath[$0] != nil }
         var restored = Session(playlist: surviving)
@@ -934,7 +958,7 @@ final class AppModel: ObservableObject {
 
     /// Auto-advance persists through here: at most one write per fifteen
     /// seconds, on the tail edge, because every write is the whole playlist
-    /// plus all stats JSON-encoded on the main actor. Gestures persist
+    /// and the favorites JSON-encoded on the main actor. Gestures persist
     /// immediately (they call `persistState` directly), and going to the
     /// background flushes whatever is pending.
     private func persistSoon() {
