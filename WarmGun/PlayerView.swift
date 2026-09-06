@@ -309,7 +309,7 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Membership of one type in the browse. Unchecking everything is allowed
+    /// Whether one type is in the browse. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
     private func typeBinding(_ type: ClipType) -> Binding<Bool> {
         Binding(get: { model.settings.browse.types.contains(type) },

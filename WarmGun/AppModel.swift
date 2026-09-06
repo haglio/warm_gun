@@ -690,18 +690,18 @@ final class AppModel: ObservableObject {
             }
         case .seed, .action:
             guard let current = session.current else { return }
-            let members = mode == .seed ? groupIndex.seedMembers(of: current)
-                                        : groupIndex.actionMembers(of: current)
+            let clips = mode == .seed ? groupIndex.seedClips(of: current)
+                                      : groupIndex.actionClips(of: current)
             settings.loopClip = false
-            if members.count < 2 {
+            if clips.count < 2 {
                 session.setLocked(true)
                 loopMode = .all
                 flash("Locked — no group", favorite: true)
             } else {
                 session.setLocked(false)
-                session.replacePlaylist(members)
+                session.replacePlaylist(clips)
                 loopMode = mode
-                flash("\(mode == .seed ? "Seed" : "Action") loop — \(members.count) clips", favorite: false)
+                flash("\(mode == .seed ? "Seed" : "Action") loop — \(clips.count) clips", favorite: false)
             }
             sync()
         }
@@ -868,8 +868,8 @@ final class AppModel: ObservableObject {
             actionLoopAvailable = false
             return
         }
-        seedLoopAvailable = groupIndex.seedMembers(of: current).count > 1
-        actionLoopAvailable = groupIndex.actionMembers(of: current).count > 1
+        seedLoopAvailable = groupIndex.seedClips(of: current).count > 1
+        actionLoopAvailable = groupIndex.actionClips(of: current).count > 1
     }
 
     private func flash(_ text: String, favorite: Bool) {

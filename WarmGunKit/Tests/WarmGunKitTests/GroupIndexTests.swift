@@ -37,9 +37,9 @@ import Testing
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta"),
             "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "beta", videoSeed: "222"),
         ])
-        #expect(index.actionMembers(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
-        #expect(index.actionMembers(of: "1_sorted/a/portrait/three.mp4")
+        #expect(index.actionClips(of: "1_sorted/a/portrait/three.mp4")
                 == ["1_sorted/a/portrait/three.mp4"])
         #expect(!index.isEmpty)
         #expect(GroupIndex(sidecars: [:]).isEmpty)
@@ -54,7 +54,7 @@ import Testing
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "alpha", videoSeed: "222"),
             "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "beta", videoSeed: "333"),
         ])
-        #expect(index.seedMembers(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.seedClips(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
     }
 
@@ -66,10 +66,10 @@ import Testing
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta", image: true, imageSeed: "901"),
             "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "alpha", image: true, imageSeed: "902"),
         ])
-        #expect(index.actionMembers(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
         // The image family spans acts, so the seed row narrows to the anchor's.
-        #expect(index.seedMembers(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.seedClips(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/three.mp4"])
     }
 
@@ -80,9 +80,9 @@ import Testing
             "1_sorted/a/portrait/one.mp4": Self.sidecar(prompt: nil),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(videoSeed: nil),
         ])
-        #expect(index.actionMembers(of: "1_sorted/a/portrait/one.mp4") == ["1_sorted/a/portrait/one.mp4"])
-        #expect(index.seedMembers(of: "1_sorted/a/portrait/two.mp4") == ["1_sorted/a/portrait/two.mp4"])
-        #expect(index.actionMembers(of: "1_sorted/a/portrait/unknown.mp4") == ["1_sorted/a/portrait/unknown.mp4"])
+        #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4") == ["1_sorted/a/portrait/one.mp4"])
+        #expect(index.seedClips(of: "1_sorted/a/portrait/two.mp4") == ["1_sorted/a/portrait/two.mp4"])
+        #expect(index.actionClips(of: "1_sorted/a/portrait/unknown.mp4") == ["1_sorted/a/portrait/unknown.mp4"])
     }
 
     @Test func sidecarsDecodeFromTheRealJSONShape() throws {

@@ -117,8 +117,8 @@ public struct GroupIndex: Sendable, Equatable {
     private var seedKeyByPath: [String: String] = [:]
     private var actByPath: [String: String] = [:]
     private var kindByPath: [String: String] = [:]
-    private var actionMembersByKey: [String: [String]] = [:]
-    private var seedMembersByKey: [String: [String]] = [:]
+    private var actionClipsByKey: [String: [String]] = [:]
+    private var seedClipsByKey: [String: [String]] = [:]
 
     /// Every clip's normalized recorded act, for the build's act buttons.
     public var actsByPath: [String: String] {
@@ -141,39 +141,39 @@ public struct GroupIndex: Sendable, Equatable {
             kindByPath[path] = sidecar.video?["type"] ?? ""
             if let key = Self.actionGroupKey(sidecar) {
                 actionKeyByPath[path] = key
-                actionMembersByKey[key, default: []].append(path)
+                actionClipsByKey[key, default: []].append(path)
             }
             if let key = Self.seedGroupKey(sidecar) {
                 seedKeyByPath[path] = key
-                seedMembersByKey[key, default: []].append(path)
+                seedClipsByKey[key, default: []].append(path)
             }
         }
-        for key in actionMembersByKey.keys { actionMembersByKey[key]?.sort() }
-        for key in seedMembersByKey.keys { seedMembersByKey[key]?.sort() }
+        for key in actionClipsByKey.keys { actionClipsByKey[key]?.sort() }
+        for key in seedClipsByKey.keys { seedClipsByKey[key]?.sort() }
     }
 
     /// The clip's subject doing its different things — always anchored first,
     /// and never empty: a clip in no group is a group of itself.
-    public func actionMembers(of path: String) -> [String] {
-        guard let key = actionKeyByPath[path], let members = actionMembersByKey[key],
-              members.count > 1 else { return [path] }
-        return anchored(members, on: path)
+    public func actionClips(of path: String) -> [String] {
+        guard let key = actionKeyByPath[path], let clips = actionClipsByKey[key],
+              clips.count > 1 else { return [path] }
+        return anchored(clips, on: path)
     }
 
     /// The clip's act done by its different subjects: the family narrowed to
     /// the anchor's own act (normalized, so casing variants share a row) —
-    /// the narrowing the desktop applies in `seed_family_members`.
-    public func seedMembers(of path: String) -> [String] {
-        guard let key = seedKeyByPath[path], let members = seedMembersByKey[key] else { return [path] }
+    /// the narrowing the desktop applies in `seed_family_items`.
+    public func seedClips(of path: String) -> [String] {
+        guard let key = seedKeyByPath[path], let clips = seedClipsByKey[key] else { return [path] }
         let act = actByPath[path] ?? ""
-        let sameAct = members.filter { (actByPath[$0] ?? "") == act }
+        let sameAct = clips.filter { (actByPath[$0] ?? "") == act }
         guard sameAct.count > 1 else { return [path] }
         return anchored(sameAct, on: path)
     }
 
-    private func anchored(_ members: [String], on path: String) -> [String] {
-        guard let at = members.firstIndex(of: path) else { return members }
-        return [path] + members[..<at] + members[(at + 1)...]
+    private func anchored(_ clips: [String], on path: String) -> [String] {
+        guard let at = clips.firstIndex(of: path) else { return clips }
+        return [path] + clips[..<at] + clips[(at + 1)...]
     }
 
     // MARK: - the keys, verbatim from the desktop

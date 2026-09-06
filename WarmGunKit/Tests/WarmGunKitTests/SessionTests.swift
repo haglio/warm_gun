@@ -102,7 +102,7 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func playingAMemberJumpsToItWithoutGrowingTheList() {
+    @Test func playingAClipAlreadyInTheListJumpsToItWithoutGrowingIt() {
         var session = Session(playlist: Self.three)
         session.playFile(Self.three[2])
         #expect(session.index == 2)
