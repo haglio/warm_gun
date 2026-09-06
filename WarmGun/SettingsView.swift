@@ -2,7 +2,7 @@ import SwiftUI
 import WarmGunKit
 
 /// The pCloud login, and nothing else: the library is found automatically,
-/// the sync folder and cache run on their defaults, and every knob that used
+/// the sync folder and cache run on their defaults, and every dial that used
 /// to live here confused more than it configured.
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel

@@ -31,7 +31,7 @@ the owner, not alone.
   and a whole 2 MB file is under two seconds even at the 1.2 MB/s measured off
   the pCloud mount. From the cache, start is instant and a transition is gapless.
 - **Gestures** (single tap, fires immediately): left third → previous; right
-  third → next; top-middle → weird; bottom-middle → lock (favorite); double tap
+  third → next; top-middle → weird; lower-middle → lock (favorite); double tap
   in the middle → the controls sheet. Same meanings as the desktop satellite's
   arrow keys.
 - **Controls sheet** (checkboxes): Landscape library (off = portrait); Favs
@@ -138,7 +138,7 @@ keeps no watch counts of its own at all — it records events and reads a number
    library (~3.8 GB for the non-outlier originals) so nothing ever waits.
 4. **Deep, two-sided prefetch window.** The playlist is deterministic, so both
    the future and the past are knowable: the prefetcher keeps N clips ahead
-   (default 12) and M behind (default 3) resident, fetching nearest-first with
+   (default 12) and M back (default 3) resident, fetching nearest-first with
    three parallel downloads, and re-plans on every index change, filter change
    or reshuffle (cancelling what fell out of the window). A locked clip is free
    time for the window to sprint ahead.

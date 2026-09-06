@@ -19,7 +19,7 @@ final class PlayerEngine {
     var onAdvanced: ((URL) -> Void)?
     /// Called with the fraction played, a few times a second.
     var onProgress: ((Double) -> Void)?
-    /// Called when the clip played out with nothing staged behind it and no
+    /// Called when the clip played out with nothing staged after it and no
     /// loop holding it — the session's cue to move on.
     var onFinished: (() -> Void)?
     /// Called as the player enters and leaves its buffering stall — the only
@@ -72,7 +72,7 @@ final class PlayerEngine {
         }
     }
 
-    /// Shows `current`, with `next` ready behind it. Re-showing the clip already
+    /// Shows `current`, with `next` ready after it. Re-showing the clip already
     /// on screen only refreshes what is staged — it never restarts the picture.
     func show(current: URL, next: URL?, loop: Bool, autoplay: Bool = true) {
         self.loop = loop
@@ -92,7 +92,7 @@ final class PlayerEngine {
     }
 
     /// The session has moved somewhere the cache cannot serve yet: keep the
-    /// last picture looping under the spinner, but empty the queue behind it so
+    /// last picture looping under the spinner, but empty the queue after it so
     /// nothing stale can roll on and nothing half-relevant is reported up.
     func holdCurrent() {
         stage(nil)

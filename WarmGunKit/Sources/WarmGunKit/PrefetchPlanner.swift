@@ -13,15 +13,15 @@ public enum PrefetchPlanner {
     /// window that would name the same clip several times, and the cache is
     /// keyed by file, so each one is asked for once and the plan is never longer
     /// than the run itself.
-    public static func plan(playlist: [String], index: Int, ahead: Int, behind: Int) -> [String] {
+    public static func plan(playlist: [String], index: Int, ahead: Int, back: Int) -> [String] {
         guard !playlist.isEmpty else { return [] }
         // The cap is on the work, not just the answer: a window wider than the
         // run itself names nothing the run does not already hold.
         let ahead = min(ahead, playlist.count)
-        let behind = min(behind, playlist.count)
+        let back = min(back, playlist.count)
         var planned: [String] = []
         var seen: Set<String> = []
-        for offset in offsets(ahead: ahead, behind: behind) {
+        for offset in offsets(ahead: ahead, back: back) {
             let path = playlist[wrap(index + offset, playlist.count)]
             if seen.insert(path).inserted { planned.append(path) }
             if planned.count == playlist.count { break }
@@ -66,16 +66,16 @@ public enum PrefetchPlanner {
     /// two forward for every one backward, so the window leans into the future —
     /// next is the gesture of the run — without ever abandoning the past. When
     /// one side runs out the other simply carries on.
-    private static func offsets(ahead: Int, behind: Int) -> [Int] {
+    private static func offsets(ahead: Int, back: Int) -> [Int] {
         var offsets = [0]
         var forward = 1
         var backward = 1
-        while forward <= ahead || backward <= behind {
+        while forward <= ahead || backward <= back {
             for _ in 0..<2 where forward <= ahead {
                 offsets.append(forward)
                 forward += 1
             }
-            if backward <= behind {
+            if backward <= back {
                 offsets.append(-backward)
                 backward += 1
             }

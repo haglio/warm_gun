@@ -690,18 +690,18 @@ final class AppModel: ObservableObject {
             }
         case .seed, .action:
             guard let current = session.current else { return }
-            let members = mode == .seed ? groupIndex.seedMembers(of: current)
-                                        : groupIndex.actionMembers(of: current)
+            let clips = mode == .seed ? groupIndex.seedClips(of: current)
+                                      : groupIndex.actionClips(of: current)
             settings.loopClip = false
-            if members.count < 2 {
+            if clips.count < 2 {
                 session.setLocked(true)
                 loopMode = .all
                 flash("Locked — no group", favorite: true)
             } else {
                 session.setLocked(false)
-                session.replacePlaylist(members)
+                session.replacePlaylist(clips)
                 loopMode = mode
-                flash("\(mode == .seed ? "Seed" : "Action") loop — \(members.count) clips", favorite: false)
+                flash("\(mode == .seed ? "Seed" : "Action") loop — \(clips.count) clips", favorite: false)
             }
             sync()
         }
@@ -731,7 +731,7 @@ final class AppModel: ObservableObject {
         let generation = planGeneration
         // The scenes too big to cache whole are not planned — they stream.
         let plan = PrefetchPlanner.plan(playlist: session.playlist, index: session.index,
-                                        ahead: settings.prefetchAhead, behind: settings.prefetchBehind)
+                                        ahead: settings.prefetchAhead, back: settings.prefetchBehind)
             .filter { clipsByPath[$0].map { $0.size <= streamThresholdBytes } ?? true }
         let clips = clipsByPath
         Task { await prefetcher.replan(plan, clips: clips, generation: generation) }
@@ -746,7 +746,7 @@ final class AppModel: ObservableObject {
         if let clip = clipsByPath[current], clip.size > streamThresholdBytes, !cached.contains(current) {
             // Stream a scene straight off its link: playback starts on the
             // first ranges, nothing lands in the cache, nothing is staged
-            // behind it (the next clip syncs when this one finishes).
+            // after it (the next clip syncs when this one finishes).
             waitingFor = nil
             showing = current
             Task {
@@ -768,7 +768,7 @@ final class AppModel: ObservableObject {
                 showing = nil
             } else {
                 // A nav stall: the last picture keeps looping under the pill,
-                // but nothing may stay queued behind it — a stale roll-on
+                // but nothing may stay queued after it — a stale roll-on
                 // would advance a session that has already moved elsewhere.
                 engine.holdCurrent()
             }
@@ -809,7 +809,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The clip played out with nothing staged behind it — a streamed scene,
+    /// The clip played out with nothing staged after it — a streamed scene,
     /// or a cached clip whose neighbour has not landed yet. The session moves
     /// on; the picture replays or holds until the next clip is ready.
     private func finished() {
@@ -868,8 +868,8 @@ final class AppModel: ObservableObject {
             actionLoopAvailable = false
             return
         }
-        seedLoopAvailable = groupIndex.seedMembers(of: current).count > 1
-        actionLoopAvailable = groupIndex.actionMembers(of: current).count > 1
+        seedLoopAvailable = groupIndex.seedClips(of: current).count > 1
+        actionLoopAvailable = groupIndex.actionClips(of: current).count > 1
     }
 
     private func flash(_ text: String, favorite: Bool) {

@@ -178,7 +178,7 @@ private struct ControlsOverlay: View {
             edge(.leading) { iconButton("backward.frame.fill") { act(.previous) } }
             edge(.trailing) { iconButton("forward.frame.fill") { act(.next) } }
             edge(.top) { iconButton("hand.thumbsdown.fill") { act(.weird) } }
-            edge(.bottom) {
+            lowEdge {
                 iconButton(model.session.locked ? "lock.fill" : "lock.open") { act(.lock) }
             }
             // Dead center: pause, the one control with no zone of its own.
@@ -212,7 +212,7 @@ private struct ControlsOverlay: View {
     }
 
     /// Portrait stacks a cluster tall; landscape folds it into a 2x2 grid so
-    /// a four-chip row cannot reach the edge buttons at top and bottom center.
+    /// a four-chip row cannot reach the edge buttons at top and lower center.
     @ViewBuilder
     private func cluster(@ViewBuilder _ content: () -> some View) -> some View {
         if landscape {
@@ -229,13 +229,18 @@ private struct ControlsOverlay: View {
     }
 
     private func edge(_ side: Alignment, @ViewBuilder _ content: () -> some View) -> some View {
-        let alignment: Alignment = switch side {
-        case .leading: .leading
-        case .trailing: .trailing
-        case .top: .top
-        default: .bottom
+        content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: side)
+    }
+
+    /// The low edge, stacked rather than aligned.  SwiftUI's name for that
+    /// alignment is a word this project no longer writes, and a spacer above
+    /// the content leaves it in the same place.
+    private func lowEdge(@ViewBuilder _ content: () -> some View) -> some View {
+        VStack(spacing: 0) {
+            Spacer()
+            content()
         }
-        return content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func actChip(_ label: String) -> some View {
@@ -309,7 +314,7 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Membership of one type in the browse. Unchecking everything is allowed
+    /// Whether one type is in the browse. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
     private func typeBinding(_ type: ClipType) -> Binding<Bool> {
         Binding(get: { model.settings.browse.types.contains(type) },
@@ -326,7 +331,7 @@ private struct ControlsOverlay: View {
 
     /// The desktop's F-mode. It was taken off the sheet while the phone had
     /// only its own favorites to show; Evolver now flags every one of the
-    /// desktop's on the sidecars, so the switch has a library behind it again.
+    /// desktop's on the sidecars, so the switch has a library backing it again.
     private func favoritesBinding() -> Binding<Bool> {
         Binding(get: { model.settings.browse.favoritesOnly },
                 set: { value in
