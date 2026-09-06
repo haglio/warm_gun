@@ -1,8 +1,8 @@
 """Generate the Warm Gun app icon — the Fun Time lettermark, one generation on.
 
-Fun Time's icon is an F and a T sharing strokes on a 5x5 grid of pink cells;
+Fun Time's icon is an F and a T sharing strokes on a 5x5 grid of magenta cells;
 Warm Gun is its satellite, so it wears the same mark with its own initials: a W
-and a G overlaid on the same grid, the same pink, the corners rounded the same
+and a G overlaid on the same grid, the same magenta, the corners rounded the same
 way. iOS rejects alpha and rounds its own corners, so where Fun Time sits on a
 transparent square this one sits on an opaque black one — the color the player
 screen behind it is. One output:
@@ -22,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
-PINK = (200, 80, 160)   # sampled from fun_time/icon.ico
+MAGENTA = (200, 80, 160)   # sampled from fun_time/icon.ico
 BLACK = (0, 0, 0)
 
 # The two letters, LITERALLY overlaid — the union of a whole W and a whole G on
@@ -71,7 +71,7 @@ def draw_icon() -> Image.Image:
     # into one glyph instead of reading as 19 squares.
     mask = mask.filter(ImageFilter.GaussianBlur(cell * RADIUS)).point(lambda v: 255 if v >= 128 else 0)
     image = Image.new("RGB", (S, S), BLACK)
-    image.paste(Image.new("RGB", (S, S), PINK), mask=mask)
+    image.paste(Image.new("RGB", (S, S), MAGENTA), mask=mask)
     return image.resize((1024, 1024), Image.LANCZOS)
 
 
