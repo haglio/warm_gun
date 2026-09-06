@@ -1,6 +1,6 @@
 """Generate the Warm Gun app icon — the Fun Time lettermark, one generation on.
 
-Fun Time's icon is an F and a T sharing strokes on a 5x5 grid of magenta cells;
+Fun Time's icon is an F and a T sharing bars on a 5x5 grid of magenta cells;
 Warm Gun is its satellite, so it wears the same mark with its own initials: a W
 and a G overlaid on the same grid, the same magenta, the corners rounded the same
 way. iOS rejects alpha and rounds its own corners, so where Fun Time sits on a
