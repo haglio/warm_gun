@@ -17,6 +17,10 @@ struct Settings: Codable, Equatable {
     var loopClip = false
     var cacheCapMB = 2048
     var prefetchAhead = 12
+    // Named for the direction it looks, in the spelling already written into
+    // UserDefaults: this is the stored JSON key, and the synthesized decoder
+    // throws on a key it cannot find, which would drop every other setting
+    // back to its default. Renaming it needs a migration, not an edit.
     var prefetchBehind = 3
     var moveWeirdInCloud = true
 

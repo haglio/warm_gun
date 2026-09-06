@@ -7,7 +7,7 @@ import Testing
     static let ten = (0..<10).map { "1_sorted/alpha/portrait/clip-\($0).mp4" }
 
     @Test func fetchesTheClipOnScreenFirstAndThenTheOnesComingUp() {
-        #expect(PrefetchPlanner.plan(playlist: Self.ten, index: 3, ahead: 2, behind: 0)
+        #expect(PrefetchPlanner.plan(playlist: Self.ten, index: 3, ahead: 2, back: 0)
                 == [Self.ten[3], Self.ten[4], Self.ten[5]])
     }
 }
@@ -48,7 +48,7 @@ extension PrefetchPlannerTests {
 extension PrefetchPlannerTests {
     @Test func anEmptyRunAsksForNothing() {
         // Launch, before the index has been read: the planner runs anyway.
-        #expect(PrefetchPlanner.plan(playlist: [], index: 0, ahead: 12, behind: 3).isEmpty)
+        #expect(PrefetchPlanner.plan(playlist: [], index: 0, ahead: 12, back: 3).isEmpty)
     }
 }
 
@@ -57,9 +57,9 @@ extension PrefetchPlannerTests {
         // The playlist is a ring, so a window deeper than the run itself would
         // otherwise ask for the same file several times over.
         let four = Array(Self.ten.prefix(4))
-        #expect(PrefetchPlanner.plan(playlist: four, index: 3, ahead: 1, behind: 1)
+        #expect(PrefetchPlanner.plan(playlist: four, index: 3, ahead: 1, back: 1)
                 == [four[3], four[0], four[2]])
-        let planned = PrefetchPlanner.plan(playlist: four, index: 0, ahead: 12, behind: 3)
+        let planned = PrefetchPlanner.plan(playlist: four, index: 0, ahead: 12, back: 3)
         #expect(planned.count == four.count)
         #expect(Set(planned) == Set(four))
         #expect(planned.first == four[0])
@@ -70,7 +70,7 @@ extension PrefetchPlannerTests {
     @Test func spendsTwoFetchesForwardForEveryOneBackward() {
         // Next is the gesture of the run and previous the exception, so the
         // window leans into the future without ever abandoning the past.
-        let planned = PrefetchPlanner.plan(playlist: Self.ten, index: 4, ahead: 4, behind: 2)
+        let planned = PrefetchPlanner.plan(playlist: Self.ten, index: 4, ahead: 4, back: 2)
         let offsets = planned.map { Self.ten.firstIndex(of: $0)! - 4 }
         #expect(offsets == [0, 1, 2, -1, 3, 4, -2])
     }
@@ -82,7 +82,7 @@ extension PrefetchPlannerTests {
         // pathological window must not materialize millions of offsets first.
         let start = Date()
         let plan = PrefetchPlanner.plan(playlist: ["1_sorted/alpha/portrait/clip-one.mp4"],
-                                        index: 0, ahead: 50_000_000, behind: 50_000_000)
+                                        index: 0, ahead: 50_000_000, back: 50_000_000)
         #expect(plan == ["1_sorted/alpha/portrait/clip-one.mp4"])
         #expect(Date().timeIntervalSince(start) < 0.05)
     }

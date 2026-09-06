@@ -59,7 +59,7 @@ extension FavoritesTests {
 }
 
 extension FavsCSVTests {
-    @Test func survivesTheByteOrderMarkAndTheLineEndingsAnEditorLeavesBehind() {
+    @Test func survivesTheByteOrderMarkAndTheLineEndingsAnEditorAdds() {
         // The file reaches the phone through pCloud and whatever touched it on
         // the way; a BOM in front of the first row must not eat that row.
         let text = "\u{FEFF}" + [Self.firstRow, Self.secondRow].joined(separator: "\n")

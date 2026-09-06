@@ -179,7 +179,7 @@ extension SessionTests {
         // The desktop dispatcher sends UNLOCK before TRASH for the same reason it
         // does before NEXT (`command_dispatch.py`): a locked satellite is
         // repeat-one, and without the release the clip that shifts into the
-        // discarded slot would be held forever with nothing staged behind it.
+        // discarded slot would be held forever with nothing staged after it.
         var session = Session(playlist: Self.three)
         session.setLocked(true)
         #expect(session.discard() == Self.three[0])

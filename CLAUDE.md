@@ -45,6 +45,11 @@ never verify around its absence when the change is about device behavior.
 
 ## Landing
 
-No GitHub remote yet: commit to local `main`, whole `tools/check.sh` green
-first. When the repo joins `github.com/haglio`, the siblings' PR + merge-queue
-flow applies (`.github/workflows/merge-gate.yml` is already the required check).
+Same as every sibling: work in a worktree, `tools/check.sh` green first, then
+push the branch and open a PR against `github.com/haglio/warm_gun`. Auto-merge
+arms itself and the queue lands it when `.github/workflows/merge-gate.yml`,
+the required check, goes green. Never push `main` directly.
+
+The gate builds and tests `WarmGunKit` only, so nothing in `WarmGun/` is
+compiled by CI: a change to the app target is unverified until it is built in
+Xcode on a Mac.

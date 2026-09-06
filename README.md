@@ -6,7 +6,7 @@ on the phone so nothing ever waits. No OSR2, no voice — four taps and a
 controls sheet. The name and the magenta 5x5 lettermark follow Fun Time's.
 
 - **Taps**: left third = previous, right third = next, top-middle = weird,
-  bottom-middle = lock (favorite + repeat-one). Double-tap the middle for the
+  lower-middle = lock (favorite + repeat-one). Double-tap the middle for the
   controls sheet: portrait/landscape library, F-mode (favorites only), shorts
   only, latest-first, loop-each-clip, and Settings.
 - **Source**: the originals under `1_sorted/` (small H.264), fetched whole via

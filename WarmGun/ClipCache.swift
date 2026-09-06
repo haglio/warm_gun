@@ -93,7 +93,7 @@ actor ClipCache {
     }
 
     /// Trusts the index only for files that are actually present — a file the
-    /// system removed behind our back must not be promised to the player.
+    /// system removed without our knowing must not be promised to the player.
     private static func loadIndex(at directory: URL) -> [String: PrefetchPlanner.CachedFile] {
         let url = directory.appendingPathComponent("index.json")
         guard let data = try? Data(contentsOf: url),

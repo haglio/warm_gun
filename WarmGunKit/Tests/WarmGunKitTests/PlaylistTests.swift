@@ -179,7 +179,7 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// The prefetcher fetches ahead *and* behind, which only works because the
+    /// The prefetcher fetches ahead *and* back, which only works because the
     /// run is knowable in advance: one seed is one playlist, every time. It is
     /// still a shuffle — another seed gives another order.
     @Test func oneSeedAlwaysBuildsTheSamePlaylistAndAnotherSeedDoesNot() {
