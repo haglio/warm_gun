@@ -107,7 +107,7 @@ extension PlaylistTests {
 extension PlaylistTests {
     /// Shorts is a length filter, and a clip whose duration the listing never
     /// reported cannot be shown to be short — so it sits the build out, the
-    /// same way Nau's length filter drops what it cannot measure rather than
+    /// same way the main player's length filter drops what it cannot measure rather than
     /// guessing. The bound is inclusive.
     @Test func shortsKeepsClipsUpToTheBoundAndJudgesUnknownLengthBySize() {
         var rng = PlaylistSeededRNG(seed: 5)

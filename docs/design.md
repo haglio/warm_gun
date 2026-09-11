@@ -45,7 +45,7 @@ the owner, not alone.
   records one of `genau_clip` / `excerpt` / `short` / `full_length` on every
   library video's metadata sidecar (`video.type`), and `ClipType` is that
   field's vocabulary — so a clip is the same kind on the phone as it is in Fun
-  Time and Nau. The index now covers all three branches of the metadata mirror,
+  Time and the main player. The index now covers all three branches of the metadata mirror,
   so the record reaches every lane; the overlay's lanes, the source folder and
   a running time remain as fallbacks, in that order, for a clip whose sidecar
   has not arrived. The act a clip records (`video.action`) is a different axis
