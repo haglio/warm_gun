@@ -1,5 +1,36 @@
-# Xcode / SwiftPM build output
+# The family's baseline block, byte-identical in every checkout that carries it,
+# so what a routine editable install or test run drops is ignored in the repo
+# that drops it. The eleven files were written independently and covered
+# different subsets of the same artifacts, which left several trees dirty after
+# a plain `pip install -e .` -- and a dirty tree here blocks every agent's merge.
+# This repo's own entries go under the marker below, never in here.
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.eggs/
+dist/
 build/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tmp-pytest-*/
+
+# Windows shortcuts are machine-specific and embed the real install path.
+*.lnk
+
+# pCloud conflict copies (this dir syncs via pCloud). Never our files; an
+# untracked one dirties main and blocks merges. '[' escaped to match literally.
+*\[conflicted*
+
+# --- warm_gun's own ---
+
+# Xcode / SwiftPM build output. This repo is Swift; the Python patterns above are
+# the family's block unchanged, and the two tools here that are Python -- the
+# coupling gates and the whole-tree content scan -- do drop __pycache__.
 DerivedData/
 .build/
 **/.build/
@@ -9,10 +40,6 @@ xcuserdata/
 .swiftpm/
 **/.swiftpm/
 
-# Python tooling caches (the sanitize guard and the gates are Python)
-__pycache__/
-*.py[cod]
-
 # Private overlay — real values live here and never get published; the
 # committed content.example.json documents its shape. The non-AI lane folder
 # names are library content, so the real file is bundled into the app at
@@ -20,9 +47,5 @@ __pycache__/
 # at all: it sits beside the checkouts, in no repository, which is a stronger
 # promise than a .gitignore line.
 /WarmGun/content.local.json
-
-# pCloud conflict copies (the Haglio trees sync via pCloud). Never our files; an
-# untracked one dirties main and blocks merges. '[' escaped to match literally.
-*\[conflicted*
 
 .DS_Store
