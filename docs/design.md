@@ -63,10 +63,10 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 - **Weird** (up): two-step demotion. If the clip is a favorite → just remove
   it from the favorites and advance ("Unfavorited"). Otherwise → drop it from
   the playlist, advance, and move its *upscale* into `2_outbox/kinda_weird/`
-  ("Marked weird"), which is what arms Evolver's purge of the original and its
-  sidecar on the desktop's next run. Warm Gun does the same move through the pCloud
-  API (`renamefile`), so a weird on the phone is a weird everywhere — exactly
-  as irreversible as on the desktop. It never deletes the original itself.
+  ("Marked weird"), where it waits, with the original and its sidecar, to be
+  reviewed. Warm Gun does the same move through the pCloud API (`renamefile`),
+  so a weird on the phone is a weird everywhere, just as on the desktop. It
+  never deletes the original itself.
   One accepted divergence: pCloud's `renamefile` replaces a same-named
   incumbent where the desktop's `move_to_weird` walks `__dup1`, `__dup2`…
   — harmless because stems are unique library-wide and re-marking the same

@@ -20,7 +20,7 @@ controls sheet. The name and the magenta 5x5 lettermark follow Fun Time's.
   the phone reads both, so neither app keeps a copy of the formula and what the
   PC watched moves the phone's shuffle. A `favs.csv` dropped in the sync folder
   is still imported. The weird gesture parks the clip's upscale in
-  `2_outbox/kinda_weird/`, arming Evolver's purge — same as the desktop.
+  `2_outbox/kinda_weird/`, where it waits to be reviewed — same as the desktop.
 
 ## Layout
 

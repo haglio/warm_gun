@@ -40,8 +40,6 @@ public enum LibraryPaths {
 
     public static let upscaleSuffix = "_topaz"
     public static let upscaledRoot = "2_outbox/upscaled_by_orientation"
-    /// Where a clip marked weird is parked until Evolver purges it, along with
-    /// its original and its sidecar, on the desktop's next run.
     public static let weirdDir = "2_outbox/kinda_weird"
 
     /// The desktop's name for the same clip: what `favs.csv` stores and what the
