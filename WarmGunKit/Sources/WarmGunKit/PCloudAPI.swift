@@ -173,8 +173,7 @@ public enum PCloudAPI {
         ])
     }
 
-    /// The weird gesture: move a clip's upscale into `2_outbox/kinda_weird`,
-    /// which is what arms the desktop's purge of the original on its next run.
+    /// The weird gesture: move a clip's upscale into `2_outbox/kinda_weird`.
     /// `topath` is a full destination path including the filename — pCloud
     /// treats move and rename as the same operation.
     public static func renameFile(fileID: Int64, toPath: String, auth: String) -> PCloudRequest {
