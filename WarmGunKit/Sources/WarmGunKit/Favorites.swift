@@ -58,6 +58,14 @@ public struct Favorites: Codable, Equatable, Sendable {
         return held.remove(key) != nil
     }
 
+    /// Keys named the way Genau's clips folder named a clip before it split
+    /// into 2D and VR, carried to where the clip is now
+    /// (`LibraryPaths.rekeyedFlatGenau`), so the split costs no favorites.
+    public mutating func rekeyFlatGenau(against current: Set<String>) {
+        held = LibraryPaths.rekeyedFlatGenau(held, against: current)
+        released = LibraryPaths.rekeyedFlatGenau(released, against: current)
+    }
+
     /// Fold in the desktop's record — the flag Evolver stamps on the sidecars,
     /// or a `favs.csv` carried over from the PC. It only ever adds, minus what
     /// this phone has let go of: the record is a snapshot from before the trip,

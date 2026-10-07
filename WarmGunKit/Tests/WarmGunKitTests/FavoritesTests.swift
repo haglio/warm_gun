@@ -3,6 +3,17 @@ import Testing
 @testable import WarmGunKit
 
 @Suite struct FavoritesTests {
+    @Test func aGenauFavoriteFromBeforeTheSplitIsCarriedToWhereTheClipIsNow() {
+        var favorites = Favorites(held: ["genau/clips/loop-one", "clip-one"],
+                                  released: ["genau/clips/loop-two"])
+
+        favorites.rekeyFlatGenau(against: ["genau/clips/2D/AI/loop-one",
+                                           "genau/clips/2D/non_AI/loop-two"])
+
+        #expect(favorites.held == ["genau/clips/2D/AI/loop-one", "clip-one"])
+        #expect(favorites.released == ["genau/clips/2D/non_AI/loop-two"])
+    }
+
     @Test func keepsAClipByItsStemSoEitherRenditionAsksTheSameQuestion() {
         // Stems are unique library-wide, which is what lets the phone's store and
         // the desktop's favs.csv — which knows only upscale names — mean one clip.
@@ -24,18 +35,18 @@ extension FavoritesTests {
     @Test func aLoopOrASceneCanBeHeldJustAsAGeneratedClipCan() {
         var favorites = Favorites()
 
-        let heldLoop = favorites.insert(path: "genau/clips/loop-two.mp4")
+        let heldLoop = favorites.insert(path: "genau/clips/2D/AI/loop-two.mp4")
         let heldScene = favorites.insert(path: "non_AI/bucket/inner/scene-three.mkv")
         #expect(heldLoop)
         #expect(heldScene)
 
-        #expect(favorites.held == ["genau/clips/loop-two", "non_AI/bucket/inner/scene-three"])
-        #expect(favorites.contains(path: "genau/clips/loop-two.mp4"))
+        #expect(favorites.held == ["genau/clips/2D/AI/loop-two", "non_AI/bucket/inner/scene-three"])
+        #expect(favorites.contains(path: "genau/clips/2D/AI/loop-two.mp4"))
         #expect(favorites.contains(path: "non_AI/bucket/inner/scene-three.mkv"))
 
-        let dropped = favorites.remove(path: "genau/clips/loop-two.mp4")
+        let dropped = favorites.remove(path: "genau/clips/2D/AI/loop-two.mp4")
         #expect(dropped)
-        #expect(!favorites.contains(path: "genau/clips/loop-two.mp4"))
+        #expect(!favorites.contains(path: "genau/clips/2D/AI/loop-two.mp4"))
         // A path naming no file names no clip.
         let nothing = favorites.insert(path: "genau/clips/")
         #expect(!nothing)
@@ -76,7 +87,7 @@ extension FavsCSVTests {
     /// (`evolver/tasks/genau_deliver.py`), so stripping the suffix on the
     /// strength of the name alone would file it under a clip that is not it.
     @Test func readsOnlyTheUpscaleRowsAndNotAGenauLoopThatMerelyLooksLikeOne() {
-        let loop = #""=HYPERLINK(""file:///D:/lib/videos/genau/clips/loop-two_topaz.mp4"";""D:\lib\videos\genau\clips\loop-two_topaz.mp4"")",""""#
+        let loop = #""=HYPERLINK(""file:///D:/lib/videos/genau/clips/2D/AI/loop-two_topaz.mp4"";""D:\lib\videos\genau\clips\2D\AI\loop-two_topaz.mp4"")",""""#
         let scene = #""=HYPERLINK(""file:///D:/lib/videos/2D/non_AI/bucket/scene-three.mkv"";""D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"")",""""#
 
         let keys = FavsCSV.keys(in: [Self.header, Self.firstRow, loop, scene].joined(separator: "\r\n"))
@@ -203,16 +214,16 @@ extension FavoritesTests {
     /// is skipped, so absence from THAT record means the lane was missing —
     /// reading it as agreement would hand a dropped favorite straight back.
     @Test func aRefusalOutsideWhatTheRecordCoveredIsKept() {
-        var favorites = Favorites(held: ["clip-one", "genau/clips/loop-two"])
+        var favorites = Favorites(held: ["clip-one", "genau/clips/2D/AI/loop-two"])
         _ = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
-        _ = favorites.remove(path: "genau/clips/loop-two.mp4")
+        _ = favorites.remove(path: "genau/clips/2D/AI/loop-two.mp4")
 
         // Only the genau branch answered this time.
-        favorites.adopt(flagged: [], covering: ["genau/clips/loop-two"])
+        favorites.adopt(flagged: [], covering: ["genau/clips/2D/AI/loop-two"])
 
         // The loop's refusal is settled; the clip's is still owed an answer.
-        favorites.adopt(flagged: ["clip-one", "genau/clips/loop-two"],
-                        covering: ["clip-one", "genau/clips/loop-two"])
-        #expect(favorites.held == ["genau/clips/loop-two"])
+        favorites.adopt(flagged: ["clip-one", "genau/clips/2D/AI/loop-two"],
+                        covering: ["clip-one", "genau/clips/2D/AI/loop-two"])
+        #expect(favorites.held == ["genau/clips/2D/AI/loop-two"])
     }
 }

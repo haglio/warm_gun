@@ -395,7 +395,7 @@ extension PlaylistTests {
         // A genau loop has no orientation folder — it plays whichever way the
         // phone is held; and a measured duration must beat the size stand-in.
         var rng = PlaylistSeededRNG(seed: 11)
-        let genau = LibraryFile(path: "genau/clips/loop-one.mp4", fileID: 9, size: 2_000_000,
+        let genau = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9, size: 2_000_000,
                                 modified: Date(timeIntervalSince1970: 0), duration: nil,
                                 videoCodec: nil, width: 1920, height: 1080)
         let catalog = Catalog(files: [
@@ -406,7 +406,7 @@ extension PlaylistTests {
         options.types = [.genauClip]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
-                == ["genau/clips/loop-one.mp4"])
+                == ["genau/clips/2D/AI/loop-one.mp4"])
         options.types = [.fullLength]
         // Measured as 40 s, the small file stops reading as a short.
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],

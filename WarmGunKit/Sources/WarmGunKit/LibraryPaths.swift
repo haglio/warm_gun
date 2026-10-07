@@ -85,17 +85,41 @@ public enum LibraryPaths {
         }
     }
 
-    /// Where Evolver delivers the genau loops: `videos/genau/clips`, a sibling
-    /// of the `videos/videos` tree the library path points into — so it is
-    /// reachable from the library path by construction, three components up.
+    /// Genau's clips folder, `videos/genau/clips`: a sibling of the
+    /// `videos/videos` tree the library path points into — so it is reachable
+    /// from the library path by construction, three components up. It is laid
+    /// out as the library's videos are, a `2D` folder (split into `AI` and
+    /// `non_AI`) and a `VR` folder.
     public static func genauClipsPath(forLibrary libraryPath: String) -> String? {
         let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
         guard parts.count >= 4 else { return nil }
         return "/" + (parts.dropLast(3) + ["genau", "clips"]).joined(separator: "/")
     }
 
-    /// The prefix the app files genau loops under in its own catalog paths.
+    /// The prefix the app files genau clips under in its own catalog paths.
     public static let genauPrefix = "genau/clips/"
+
+    /// Where the 2D clips are under that prefix -- the ones a phone plays.
+    public static let genauFlatPrefix = genauPrefix + "2D/"
+
+    /// *entries* with each one named the way Genau's clips folder named a clip
+    /// before it split into 2D and VR — `genau/clips/<file>` — renamed to the
+    /// one entry of *current* that ends in that same file name. One that
+    /// matches none, or more than one, is left as it was.
+    public static func rekeyedFlatGenau(_ entries: Set<String>, against current: Set<String>) -> Set<String> {
+        var byFileName: [String: [String]] = [:]
+        for entry in current where entry.hasPrefix(genauPrefix) {
+            guard let name = entry.split(separator: "/").last.map(String.init) else { continue }
+            byFileName[name, default: []].append(entry)
+        }
+        return Set(entries.map { entry in
+            guard entry.hasPrefix(genauPrefix) else { return entry }
+            let rest = String(entry.dropFirst(genauPrefix.count))
+            guard !rest.isEmpty, !rest.contains("/"),
+                  let matches = byFileName[rest], matches.count == 1 else { return entry }
+            return matches[0]
+        })
+    }
 
     /// The non-AI library — the real scenes — beside the AI folder: "full
     /// length" in Fun Time's sense IS this tree, `2D/non_AI`.
@@ -154,10 +178,8 @@ public enum LibraryPaths {
                     + "/\(original.source)/\(original.stem)\(LibraryPaths.upscaleSuffix)"
             case .genau:
                 guard clipPath.hasPrefix(LibraryPaths.genauPrefix) else { return nil }
-                let name = String(clipPath.dropFirst(LibraryPaths.genauPrefix.count))
-                // The delivery is one flat folder; anything nested is not a loop.
-                guard !name.contains("/") else { return nil }
-                return LibraryPaths.dropExtension(name)
+                return LibraryPaths.dropExtension(
+                    String(clipPath.dropFirst(LibraryPaths.genauPrefix.count)))
             case .nonAI:
                 guard clipPath.hasPrefix(LibraryPaths.nonAIPrefix) else { return nil }
                 let inner = String(clipPath.dropFirst(LibraryPaths.nonAIPrefix.count))
