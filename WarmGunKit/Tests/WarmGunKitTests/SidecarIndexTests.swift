@@ -8,7 +8,7 @@ import Testing
     static let clips = [
         "1_sorted/alpha/portrait/clip-one.mp4",
         "1_sorted/beta/landscape/clip-two.mp4",
-        "genau/clips/loop-three.mp4",
+        "genau/clips/2D/AI/loop-three.mp4",
         "non_AI/bucket/inner/scene-four.mkv",
     ]
 
@@ -38,11 +38,12 @@ extension SidecarIndexTests {
     /// extension it has — the sidecar drops it, so the join cannot assume .mp4.
     @Test func theGenauAndNonAILanesJoinOnTheMirroredPath() {
         let genau = SidecarIndex(branch: .genau, clipPaths: Self.clips,
-                                 listing: ["loop-three.json", "loop-absent.json"])
+                                 listing: ["2D/AI/loop-three.json", "2D/AI/loop-absent.json"])
         let scenes = SidecarIndex(branch: .nonAI, clipPaths: Self.clips,
                                   listing: ["bucket/inner/scene-four.json", "bucket/other.json"])
 
-        #expect(genau.clipsByListedSidecar == ["loop-three.json": "genau/clips/loop-three.mp4"])
+        #expect(genau.clipsByListedSidecar
+                == ["2D/AI/loop-three.json": "genau/clips/2D/AI/loop-three.mp4"])
         #expect(scenes.clipsByListedSidecar
                 == ["bucket/inner/scene-four.json": "non_AI/bucket/inner/scene-four.mkv"])
     }

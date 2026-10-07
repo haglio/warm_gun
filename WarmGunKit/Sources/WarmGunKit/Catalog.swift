@@ -72,18 +72,18 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
                 orientation = .landscape
             }
             stem = bare
-        } else if file.path.hasPrefix(LibraryPaths.genauPrefix) {
-            // A genau loop: no orientation folder — its pixels decide when the
-            // listing has them, and portrait stands in when it does not (the
-            // browse lets genau loops through either way).
+        } else if file.path.hasPrefix(LibraryPaths.genauFlatPrefix) {
+            // A 2D genau clip: no orientation folder — its pixels decide when
+            // the listing has them, and portrait stands in when it does not
+            // (the browse lets genau clips through either way).
             source = "genau"
             if let w = file.width, let h = file.height {
                 orientation = h >= w ? .portrait : .landscape
             } else {
                 orientation = .portrait
             }
-            let name = String(file.path.dropFirst(LibraryPaths.genauPrefix.count))
-            guard !name.contains("/"), let dot = name.lastIndex(of: "."), dot != name.startIndex else { return nil }
+            guard let name = LibraryPaths.filename(ofClip: file.path),
+                  let dot = name.lastIndex(of: "."), dot != name.startIndex else { return nil }
             stem = String(name[..<dot])
         } else {
             return nil

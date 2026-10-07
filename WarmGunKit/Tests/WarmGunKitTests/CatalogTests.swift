@@ -25,21 +25,33 @@ import Testing
 
 extension CatalogTests {
     @Test func aGenauClipJoinsTheCatalogUnderItsOwnSource() {
-        // Genau loops live outside the sorted tree, carry no orientation
+        // Genau's clips live outside the sorted tree, carry no orientation
         // folders, and are filed under the source "genau" — orientation comes
         // from their pixels when the listing has them, portrait otherwise.
-        let wide = LibraryFile(path: "genau/clips/loop-one.mp4", fileID: 1, size: 2_000_000,
+        let wide = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 1, size: 2_000_000,
                                modified: Date(timeIntervalSince1970: 0), duration: nil,
                                videoCodec: nil, width: 1920, height: 1080)
-        let unknown = LibraryFile(path: "genau/clips/loop-two.mp4", fileID: 2, size: 2_000_000,
-                                  modified: Date(timeIntervalSince1970: 0), duration: nil,
-                                  videoCodec: nil, width: nil, height: nil)
+        let unknown = LibraryFile(path: "genau/clips/2D/non_AI/loop-two.mp4", fileID: 2,
+                                  size: 2_000_000, modified: Date(timeIntervalSince1970: 0),
+                                  duration: nil, videoCodec: nil, width: nil, height: nil)
         let catalog = Catalog(files: [wide, unknown])
         #expect(catalog.clips.count == 2)
         #expect(catalog.clips[0].source == "genau")
         #expect(catalog.clips[0].orientation == .landscape)
         #expect(catalog.clips[0].stem == "loop-one")
         #expect(catalog.clips[1].orientation == .portrait)
+    }
+
+    @Test func onlyGenausTwoDClipsReachThePhone() {
+        // Genau's clips folder holds a 2D folder and a VR folder, as the
+        // library's videos do; a VR clip is for the headset, and a file still
+        // at the top of the folder is from before the split.
+        let catalog = Catalog(files: [
+            Self.file("genau/clips/2D/AI/loop-one.mp4", id: 1),
+            Self.file("genau/clips/VR/scene-one_180.mp4", id: 2),
+            Self.file("genau/clips/loop-two.mp4", id: 3),
+        ])
+        #expect(catalog.clips.map(\.path) == ["genau/clips/2D/AI/loop-one.mp4"])
     }
 }
 

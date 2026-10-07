@@ -69,7 +69,7 @@ extension WatchWeightsTests {
             "1_sorted/alpha/portrait/clip-one.mp4":
                 Sidecar(video: ["action": "waving"], sourceImage: nil,
                         watch: Sidecar.Watch(weight: 0.125), favorite: true),
-            "genau/clips/loop-two.mp4":
+            "genau/clips/2D/AI/loop-two.mp4":
                 Sidecar(video: ["action": "turning"], sourceImage: nil),
         ]
 
@@ -79,8 +79,8 @@ extension WatchWeightsTests {
         #expect(read == corpus)
         #expect(read["1_sorted/alpha/portrait/clip-one.mp4"]?.watchWeight == 0.125)
         #expect(read["1_sorted/alpha/portrait/clip-one.mp4"]?.favorite == true)
-        #expect(read["genau/clips/loop-two.mp4"]?.watchWeight == nil)
-        #expect(read["genau/clips/loop-two.mp4"]?.favorite == false)
+        #expect(read["genau/clips/2D/AI/loop-two.mp4"]?.watchWeight == nil)
+        #expect(read["genau/clips/2D/AI/loop-two.mp4"]?.favorite == false)
     }
 }
 
@@ -94,12 +94,12 @@ extension WatchWeightsTests {
                 Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 8.0)),
             "1_sorted/beta/landscape/clip-two.mp4":
                 Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125)),
-            "genau/clips/loop-three.mp4": Sidecar(video: nil, sourceImage: nil),
+            "genau/clips/2D/AI/loop-three.mp4": Sidecar(video: nil, sourceImage: nil),
         ])
 
         #expect(weights.weight(for: "1_sorted/alpha/portrait/clip-one.mp4") == 8.0)
         #expect(weights.weight(for: "1_sorted/beta/landscape/clip-two.mp4") == 0.125)
-        #expect(weights.weight(for: "genau/clips/loop-three.mp4") == 1.0)
+        #expect(weights.weight(for: "genau/clips/2D/AI/loop-three.mp4") == 1.0)
         #expect(weights.weight(for: "non_AI/bucket/scene-four.mp4") == 1.0)
     }
 }

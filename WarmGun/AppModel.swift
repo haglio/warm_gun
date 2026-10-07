@@ -380,9 +380,9 @@ final class AppModel: ObservableObject {
         if catalog == nil { phase = .indexing }
         do {
             var files = try await client.listLibrary(path: settings.libraryPath)
-            // The genau loops live beside the library, not inside it — Evolver
-            // delivers them out of the pipeline into videos/genau/clips. A
-            // missing folder is fine; the source simply contributes nothing.
+            // Genau's clips live beside the library, not inside it, in
+            // videos/genau/clips. A missing folder is fine; the source simply
+            // contributes nothing.
             if let genauPath = LibraryPaths.genauClipsPath(forLibrary: settings.libraryPath),
                let loops = try? await client.listLibrary(path: genauPath) {
                 files += loops.map { $0.prefixed(LibraryPaths.genauPrefix) }
@@ -394,6 +394,7 @@ final class AppModel: ObservableObject {
                 files += scenes.map { $0.prefixed(LibraryPaths.nonAIPrefix) }
             }
             let fresh = Catalog(files: files)
+            carryFlatGenauNames(to: Set(fresh.clips.map(\.path)))
             let changed = fresh != catalog
             catalog = fresh
             clipsByPath = Dictionary(uniqueKeysWithValues: fresh.clips.map { ($0.path, $0) })
@@ -419,6 +420,15 @@ final class AppModel: ObservableObject {
         } catch {
             if catalog == nil { phase = .failed(error.localizedDescription) } else { lastProblem = error.localizedDescription }
         }
+    }
+
+    /// What this phone remembers of a genau clip by its name from before
+    /// Genau's clips folder split into 2D and VR, carried to where the clip is.
+    private func carryFlatGenauNames(to paths: Set<String>) {
+        let before = (weird, favorites)
+        weird = LibraryPaths.rekeyedFlatGenau(weird, against: paths)
+        favorites.rekeyFlatGenau(against: Set(paths.compactMap(LibraryPaths.favoriteKey(forClip:))))
+        if before != (weird, favorites) { persistState() }
     }
 
     /// The sidecar corpus — every branch of the metadata mirror, fetched as one
