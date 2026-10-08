@@ -33,10 +33,14 @@ xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
 
 APP="build/Build/Products/Debug-iphoneos/WarmGun.app"
 
+# devicectl lists the Simulator's devices beside the real ones, so the phone is
+# picked by what it is rather than by the shape of its identifier: a simulated
+# iPhone's identifier looks just like a plugged-in one's. The table prints a
+# sentence where no device matches, so the identifier is read out of the JSON.
 if [[ -z "${DEVICE:-}" ]]; then
-  DEVICE=$(xcrun devicectl list devices 2>/dev/null \
-    | grep -Eo '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}|[0-9a-f]{8}-[0-9a-f]{16}' \
-    | head -1)
+  DEVICE=$(xcrun devicectl list devices --quiet --json-output - \
+    --filter "properties.hardware.platform == 'iOS' AND properties.hardware.reality != 'simulated'" 2>/dev/null \
+    | python3 -c 'import json, sys; found = json.load(sys.stdin)["result"]["devices"]; print(found[0]["identifier"] if found else "")')
 fi
 if [[ -z "$DEVICE" ]]; then
   echo "No iPhone found. Plug it in (unlock it), or pass DEVICE=<udid>." >&2
