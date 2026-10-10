@@ -8,9 +8,8 @@ import Foundation
 /// full-length landscape scene.
 ///
 /// The lanes are a *fallback*: the desktop records every video's kind on its
-/// sidecar, and the phone's index carries only the AI branch of those, so the
-/// non-AI scenes are the clips whose kind still has to be read off their
-/// folder.
+/// sidecar, and a lane answers only for a clip whose sidecar the phone has not
+/// read.
 public struct ContentOverlay: Codable, Equatable, Sendable {
     public struct Lane: Codable, Equatable, Sendable {
         /// Library-relative path prefix, e.g. `non_AI/<bucket>/<folder>`.
@@ -19,15 +18,11 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
         /// Set when the folder dictates one (a portrait-cuts folder); nil
         /// leaves the clip's own pixels in charge.
         public let orientation: Orientation?
-        /// The checkbox title for an `.excerpt` lane — the word itself is
-        /// library vocabulary, so it lives here, not in source.
-        public let label: String?
 
-        public init(prefix: String, type: ClipType, orientation: Orientation?, label: String?) {
+        public init(prefix: String, type: ClipType, orientation: Orientation?) {
             self.prefix = prefix
             self.type = type
             self.orientation = orientation
-            self.label = label
         }
     }
 
@@ -99,10 +94,5 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
     public func lane(for path: String) -> Lane? {
         lanes.filter { path.hasPrefix($0.prefix) }
             .max { $0.prefix.count < $1.prefix.count }
-    }
-
-    /// What the excerpts checkbox is called, when any lane defines one at all.
-    public var excerptLabel: String? {
-        lanes.first { $0.type == .excerpt }?.label
     }
 }
