@@ -387,8 +387,7 @@ final class AppModel: ObservableObject {
                let loops = try? await client.listLibrary(path: genauPath) {
                 files += loops.map { $0.prefixed(LibraryPaths.genauPrefix) }
             }
-            // The real scenes — "full length" in Fun Time's sense is the
-            // non-AI library, the AI folder's sibling.
+            // The real scenes: the non-AI library, the AI folder's sibling.
             if let nonAIPath = LibraryPaths.nonAIPath(forLibrary: settings.libraryPath),
                let scenes = try? await client.listLibrary(path: nonAIPath) {
                 files += scenes.map { $0.prefixed(LibraryPaths.nonAIPrefix) }
