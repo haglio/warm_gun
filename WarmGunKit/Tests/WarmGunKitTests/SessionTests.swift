@@ -207,7 +207,7 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func aRebuildThatLosesTheHeldClipReleasesTheHold() {
-        // The desktop cancels the lock on every rebuild that touches the player
+        // The desktop cancels the lock on every rebuild that touches the Funestra
         // (`command_dispatch.py` `_cancel_lock`): repeat-one must never be
         // inherited by whatever clip happens to land at the top of a new list.
         var session = Session(playlist: Self.three, index: 1)
