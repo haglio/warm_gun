@@ -134,14 +134,9 @@ private struct ControlsOverlay: View {
             // flat, where height is the scarce direction.
             corner(.topLeading) {
                 cluster {
-                    chip("Genau", on: typeBinding(.genauClip))
-                    chip("Shorts", on: typeBinding(.short))
-                    // The excerpts lane's name is library vocabulary: it
-                    // exists only when the bundled overlay defines it.
-                    if let label = model.overlay.excerptLabel {
-                        chip(label, on: typeBinding(.excerpt))
-                    }
-                    chip("Full", on: typeBinding(.fullLength))
+                    chip("Genau", on: typesBinding([.genauClip]))
+                    chip("Clips", on: typesBinding(ClipType.clips))
+                    chip("Full", on: typesBinding([.fullLength]))
                 }
             }
             corner(.topTrailing) {
@@ -314,17 +309,13 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Whether one type is in the browse. Unchecking everything is allowed
+    /// Whether every kind a chip covers is in the browse. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
-    private func typeBinding(_ type: ClipType) -> Binding<Bool> {
-        Binding(get: { model.settings.browse.types.contains(type) },
+    private func typesBinding(_ kinds: Set<ClipType>) -> Binding<Bool> {
+        Binding(get: { model.settings.browse.includes(kinds) },
                 set: { value in
                     var browse = model.settings.browse
-                    if value {
-                        browse.types.insert(type)
-                    } else {
-                        browse.types.remove(type)
-                    }
+                    browse.setIncluded(kinds, value)
                     model.update(browse: browse)
                 })
     }

@@ -109,8 +109,6 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     @Test func namesTheNonAITreeBesideTheLibrary() {
-        // "Full length" in Fun Time's sense IS the non-AI library — the real
-        // scenes under 2D/non_AI, the AI folder's sibling.
         #expect(LibraryPaths.nonAIPath(forLibrary: "/alpha/videos/videos/2D/AI")
                 == "/alpha/videos/videos/2D/non_AI")
         #expect(LibraryPaths.nonAIPath(forLibrary: "/") == nil)

@@ -430,8 +430,8 @@ extension PlaylistTests {
         // orientation. Everything unmatched under non_AI is a full-length
         // scene.
         let overlay = ContentOverlay(lanes: [
-            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, orientation: .landscape, label: "Special"),
-            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait, label: nil),
+            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, orientation: .landscape),
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait),
         ])
         let special = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4")]).clips[0]
         let tall = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
@@ -439,7 +439,6 @@ extension PlaylistTests {
         #expect(ClipType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .excerpt)
         #expect(ClipType.classify(plain, shortsMaxSeconds: 10, overlay: overlay) == .fullLength)
         #expect(overlay.lane(for: tall.path)?.orientation == .portrait)
-        #expect(overlay.excerptLabel == "Special")
 
         var rng = PlaylistSeededRNG(seed: 13)
         var options = BrowseOptions(orientation: .landscape)
@@ -456,7 +455,7 @@ extension PlaylistTests {
         // the size ceiling exists to keep legacy monsters out of the AI
         // originals — a 300 MB real scene must not be filtered by it.
         let overlay = ContentOverlay(lanes: [
-            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait, label: nil),
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait),
         ])
         var rng = PlaylistSeededRNG(seed: 17)
         let catalog = Catalog(files: [
@@ -480,17 +479,44 @@ extension PlaylistTests {
         let json = Data(#"""
         {"lanes": [
            {"prefix": "non_AI/alpha/carved", "type": "excerpt",
-            "orientation": "landscape", "label": "Carved"},
+            "orientation": "landscape"},
            {"prefix": "non_AI/tall", "type": "full_length",
-            "orientation": "portrait", "label": null}],
+            "orientation": "portrait"}],
          "act_filters": [{"label": "AL", "queries": ["alpha"]}]}
         """#.utf8)
 
         let overlay = try JSONDecoder().decode(ContentOverlay.self, from: json)
 
         #expect(overlay.lanes.map(\.type) == [.excerpt, .fullLength])
-        #expect(overlay.excerptLabel == "Carved")
         #expect(overlay.actFilters.map(\.label) == ["AL"])
+    }
+
+    @Test func anOverlayStillNamingTheExcerptsChipDecodesTheSame() throws {
+        let json = Data(#"""
+        {"lanes": [{"prefix": "non_AI/alpha/carved", "type": "excerpt",
+                    "orientation": "landscape", "label": "Carved"}]}
+        """#.utf8)
+
+        let overlay = try JSONDecoder().decode(ContentOverlay.self, from: json)
+
+        #expect(overlay.lanes.map(\.type) == [.excerpt])
+    }
+
+    @Test func theClipsChipTakesTheShortsAndTheCarvedScenesInAndOutTogether() {
+        var options = BrowseOptions(types: [.genauClip, .fullLength])
+        #expect(!options.includes(ClipType.clips))
+
+        options.setIncluded(ClipType.clips, true)
+        #expect(options.types == Set(ClipType.allCases))
+        #expect(options.includes(ClipType.clips))
+
+        options.setIncluded(ClipType.clips, false)
+        #expect(options.types == [.genauClip, .fullLength])
+    }
+
+    @Test func aBrowseHoldingOnlyOneOfTheTwoReadsAsClipsOff() {
+        #expect(!BrowseOptions(types: [.short]).includes(ClipType.clips))
+        #expect(!BrowseOptions(types: [.excerpt]).includes(ClipType.clips))
     }
 
     @Test func aPersistedBrowseKeepsItsCheckboxesThroughTheRename() throws {

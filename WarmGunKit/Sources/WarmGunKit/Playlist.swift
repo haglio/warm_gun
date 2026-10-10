@@ -20,6 +20,8 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     case short
     case fullLength = "full_length"
 
+    public static let clips: Set<ClipType> = [.short, .excerpt]
+
     public static func classify(_ clip: Clip, shortsMaxSeconds: Double,
                                 recorded: String? = nil,
                                 measuredSeconds: Double? = nil,
@@ -114,6 +116,18 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
         try c.encode(latest, forKey: .latest)
         try c.encode(disabledActs, forKey: .disabledActs)
         try c.encode(maxBytes, forKey: .maxBytes)
+    }
+
+    public func includes(_ kinds: Set<ClipType>) -> Bool {
+        types.isSuperset(of: kinds)
+    }
+
+    public mutating func setIncluded(_ kinds: Set<ClipType>, _ included: Bool) {
+        if included {
+            types.formUnion(kinds)
+        } else {
+            types.subtract(kinds)
+        }
     }
 }
 

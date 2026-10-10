@@ -121,8 +121,8 @@ public enum LibraryPaths {
         })
     }
 
-    /// The non-AI library — the real scenes — beside the AI folder: "full
-    /// length" in Fun Time's sense IS this tree, `2D/non_AI`.
+    /// The non-AI library — the real scenes, full videos and the clips cut
+    /// out of them — beside the AI folder: `2D/non_AI`.
     public static func nonAIPath(forLibrary libraryPath: String) -> String? {
         let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
         guard parts.count >= 2 else { return nil }
