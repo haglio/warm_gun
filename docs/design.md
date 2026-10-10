@@ -1,7 +1,7 @@
 # Warm Gun — the phone satellite
 
 Written 2026-08-23 at kickoff. Warm Gun is an iPhone app that does what one of Fun
-Time's satellite players does — an endless, silent, auto-advancing run of the AI
+Time's Satellite Funestras does — an endless, silent, auto-advancing run of the AI
 library's clips with four gestures — on a phone, away from home, off travel
 wifi. No OSR2, no voice, no dashboard. The decisions below were made against the
 research in this session (Fun Time's satellite/dispatch code, the library as it
@@ -45,7 +45,7 @@ the owner, not alone.
   records one of `genau_clip` / `excerpt` / `short` / `full_length` on every
   library video's metadata sidecar (`video.type`), and `ClipType` is that
   field's vocabulary — so a clip is the same kind on the phone as it is in Fun
-  Time and the main player. The index now covers all three branches of the metadata mirror,
+  Time and the Main Funestra. The index now covers all three branches of the metadata mirror,
   so the record reaches every lane; the overlay's lanes, the source folder and
   a running time remain as fallbacks, in that order, for a clip whose sidecar
   has not arrived. The act a clip records (`video.action`) is a different axis

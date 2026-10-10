@@ -91,7 +91,7 @@ public struct Session: Equatable, Sendable {
         } else {
             // The held clip is gone, and repeat-one must not be inherited by
             // whatever lands at the top — the desktop cancels the lock on
-            // every rebuild that moves a player for the same reason.
+            // every rebuild that moves a Funestra for the same reason.
             index = 0
             locked = false
         }
