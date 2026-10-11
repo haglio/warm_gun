@@ -26,7 +26,7 @@ public struct LibraryFile: Equatable, Sendable {
 }
 
 public extension LibraryFile {
-    /// The same file, filed under an app-side prefix — how the genau and
+    /// The same file, filed under an app-side prefix — how the Genau and
     /// non-AI listings join the one catalog namespace.
     func prefixed(_ prefix: String) -> LibraryFile {
         LibraryFile(path: prefix + path, fileID: fileID, size: size, modified: modified,
@@ -73,9 +73,9 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
             }
             stem = bare
         } else if file.path.hasPrefix(LibraryPaths.genauFlatPrefix) {
-            // A 2D genau clip: no orientation folder — its pixels decide when
+            // A 2D Genau flick: no orientation folder — its pixels decide when
             // the listing has them, and portrait stands in when it does not
-            // (the browse lets genau clips through either way).
+            // (the browse lets Genau's flicks through either way).
             source = "genau"
             if let w = file.width, let h = file.height {
                 orientation = h >= w ? .portrait : .landscape

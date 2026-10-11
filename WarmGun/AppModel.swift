@@ -380,12 +380,12 @@ final class AppModel: ObservableObject {
         if catalog == nil { phase = .indexing }
         do {
             var files = try await client.listLibrary(path: settings.libraryPath)
-            // Genau's clips live beside the library, not inside it, in
-            // videos/genau/clips. A missing folder is fine; the source simply
+            // Genau's flicks live beside the library, not inside it, in
+            // videos/genau. A missing folder is fine; the source simply
             // contributes nothing.
             if let genauPath = LibraryPaths.genauClipsPath(forLibrary: settings.libraryPath),
-               let loops = try? await client.listLibrary(path: genauPath) {
-                files += loops.map { $0.prefixed(LibraryPaths.genauPrefix) }
+               let flicks = try? await client.listLibrary(path: genauPath) {
+                files += flicks.map { $0.prefixed(LibraryPaths.genauPrefix) }
             }
             // The real scenes: the non-AI library, the AI folder's sibling.
             if let nonAIPath = LibraryPaths.nonAIPath(forLibrary: settings.libraryPath),
@@ -421,8 +421,8 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// What this phone remembers of a genau clip by its name from before
-    /// Genau's clips folder split into 2D and VR, carried to where the clip is.
+    /// What this phone remembers of a Genau flick by its name from before
+    /// Genau's flicks folder split into 2D and VR, carried to where the flick is.
     private func carryFlatGenauNames(to paths: Set<String>) {
         let before = (weird, favorites)
         weird = LibraryPaths.rekeyedFlatGenau(weird, against: paths)
@@ -587,14 +587,14 @@ final class AppModel: ObservableObject {
     }
 
     /// Does the clip on screen belong to a different orientation than the
-    /// browse asks for? Genau loops play either way; a lane's orientation
+    /// browse asks for? Genau's flicks play either way; a lane's orientation
     /// outranks the pixels, as in the build itself.
     private func currentClipFightsBrowse() -> Bool {
         guard let current = session.current, let clip = clipsByPath[current] else { return false }
         let type = ClipType.classify(clip, shortsMaxSeconds: settings.browse.shortsMaxSeconds,
                                      recorded: groupIndex.kindsByPath[current],
                                      measuredSeconds: measuredSeconds[current], overlay: overlay)
-        guard type != .genauClip else { return false }
+        guard type != .genauFlick else { return false }
         let orientation = overlay.lane(for: current)?.orientation ?? clip.orientation
         return orientation != settings.browse.orientation
     }

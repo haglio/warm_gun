@@ -24,8 +24,8 @@ import Testing
 }
 
 extension CatalogTests {
-    @Test func aGenauClipJoinsTheCatalogUnderItsOwnSource() {
-        // Genau's clips live outside the sorted tree, carry no orientation
+    @Test func aGenauFlickJoinsTheCatalogUnderItsOwnSource() {
+        // Genau's flicks live outside the sorted tree, carry no orientation
         // folders, and are filed under the source "genau" — orientation comes
         // from their pixels when the listing has them, portrait otherwise.
         let wide = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 1, size: 2_000_000,
@@ -42,8 +42,8 @@ extension CatalogTests {
         #expect(catalog.clips[1].orientation == .portrait)
     }
 
-    @Test func onlyGenausTwoDClipsReachThePhone() {
-        // Genau's clips folder holds a 2D folder and a VR folder, as the
+    @Test func onlyGenausTwoDFlicksReachThePhone() {
+        // Genau's flicks folder holds a 2D folder and a VR folder, as the
         // library's videos do; a VR clip is for the headset, and a file still
         // at the top of the folder is from before the split.
         let catalog = Catalog(files: [

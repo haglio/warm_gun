@@ -85,7 +85,7 @@ public enum LibraryPaths {
         }
     }
 
-    /// Genau's clips folder, `videos/genau/clips`: a sibling of the
+    /// Genau's flicks folder, `videos/genau/clips`: a sibling of the
     /// `videos/videos` tree the library path points into — so it is reachable
     /// from the library path by construction, three components up. It is laid
     /// out as the library's videos are, a `2D` folder (split into `AI` and
@@ -96,13 +96,13 @@ public enum LibraryPaths {
         return "/" + (parts.dropLast(3) + ["genau", "clips"]).joined(separator: "/")
     }
 
-    /// The prefix the app files genau clips under in its own catalog paths.
+    /// The prefix the app files Genau's flicks under in its own catalog paths.
     public static let genauPrefix = "genau/clips/"
 
     /// Where the 2D clips are under that prefix -- the ones a phone plays.
     public static let genauFlatPrefix = genauPrefix + "2D/"
 
-    /// *entries* with each one named the way Genau's clips folder named a clip
+    /// *entries* with each one named the way Genau's flicks folder named a flick
     /// before it split into 2D and VR — `genau/clips/<file>` — renamed to the
     /// one entry of *current* that ends in that same file name. One that
     /// matches none, or more than one, is left as it was.
@@ -220,7 +220,7 @@ public enum LibraryPaths {
     /// this store can both say, and because `1_sorted` and `2_outbox` are in
     /// total correspondence the stem is unique across that lane. Nothing makes
     /// the same promise for the other two: the non-AI tree is walked
-    /// recursively on both sides, and the genau folder holds clips carved by
+    /// recursively on both sides, and Genau's folder holds flicks carved by
     /// hand beside generated ones, so two same-named files are perfectly
     /// possible. Those are filed under their whole path, which the library
     /// itself keeps unique — so one star can never cover two clips.
@@ -234,10 +234,10 @@ public enum LibraryPaths {
     /// or POSIX, any prefix) to `<stem>_topaz.<ext>` — or nil when the
     /// reference is not one.
     ///
-    /// The suffix alone does not settle it: a genau loop is delivered into the
+    /// The suffix alone does not settle it: a Genau flick is delivered into the
     /// clips folder under the upscale's own name, `_topaz` and all
     /// (`evolver/tasks/genau_deliver.py`), and its stem IS that whole name. So
-    /// a reference inside a genau clips folder is not an upscale reference,
+    /// a reference inside Genau's flicks folder is not an upscale reference,
     /// whatever it is called.
     public static func stem(ofUpscaleReference reference: String) -> String? {
         let normalized = reference.replacingOccurrences(of: "\\", with: "/")

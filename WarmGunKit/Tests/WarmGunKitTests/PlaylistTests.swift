@@ -252,7 +252,7 @@ extension PlaylistTests {
     /// The controls sheet is where it was left: the switches are saved between
     /// launches, so the whole record has to survive a JSON round trip.
     @Test func theBrowseSwitchesSurviveAJSONRoundTrip() throws {
-        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genauClip],
+        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
                                     shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
 
         let data = try JSONEncoder().encode(options)
@@ -300,7 +300,7 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func everyClipFallsIntoExactlyOneType() {
-        // Genau loops are named by their source folder (the desktop delivers
+        // Genau's flicks are named by their source folder (the desktop delivers
         // them from origenerator's genau lane); shorts are by running time; the
         // rest — unknown durations included — are full length. Act-based types
         // wait on the metadata sidecar index and classify nowhere yet.
@@ -309,7 +309,7 @@ extension PlaylistTests {
         let long = PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)
         let unknown = PlaylistTests.file("1_sorted/alpha/portrait/clip-d.mp4", size: 20_000_000, seconds: nil)
         let clips = Catalog(files: [genau, short, long, unknown]).clips
-        #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genauClip)
+        #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genauFlick)
         #expect(ClipType.classify(clips[1], shortsMaxSeconds: 10) == .short)
         #expect(ClipType.classify(clips[2], shortsMaxSeconds: 10) == .fullLength)
         #expect(ClipType.classify(clips[3], shortsMaxSeconds: 10) == .fullLength)
@@ -359,7 +359,7 @@ extension PlaylistTests {
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-b.mp4"])
-        options.types = [.genauClip, .fullLength]
+        options.types = [.genauFlick, .fullLength]
         let both = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                          weird: [], weights: WatchWeights(), rng: &rng)
         #expect(Set(both) == ["1_sorted/alpha_genau/portrait/clip-a.mp4",
@@ -392,7 +392,7 @@ extension PlaylistTests {
     }
 
     @Test func genauLoopsIgnoreTheOrientationFilterAndMeasuredTimesReachTheBuild() {
-        // A genau loop has no orientation folder — it plays whichever way the
+        // A Genau flick has no orientation folder — it plays whichever way the
         // phone is held; and a measured duration must beat the size stand-in.
         var rng = PlaylistSeededRNG(seed: 11)
         let genau = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9, size: 2_000_000,
@@ -403,7 +403,7 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 2_000_000, seconds: nil),
         ])
         var options = BrowseOptions(orientation: .portrait)
-        options.types = [.genauClip]
+        options.types = [.genauFlick]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       weird: [], weights: WatchWeights(), rng: &rng)
                 == ["genau/clips/2D/AI/loop-one.mp4"])
@@ -503,7 +503,7 @@ extension PlaylistTests {
     }
 
     @Test func theClipsChipTakesTheShortsAndTheCarvedScenesInAndOutTogether() {
-        var options = BrowseOptions(types: [.genauClip, .fullLength])
+        var options = BrowseOptions(types: [.genauFlick, .fullLength])
         #expect(!options.includes(ClipType.clips))
 
         options.setIncluded(ClipType.clips, true)
@@ -511,7 +511,7 @@ extension PlaylistTests {
         #expect(options.includes(ClipType.clips))
 
         options.setIncluded(ClipType.clips, false)
-        #expect(options.types == [.genauClip, .fullLength])
+        #expect(options.types == [.genauFlick, .fullLength])
     }
 
     @Test func aBrowseHoldingOnlyOneOfTheTwoReadsAsClipsOff() {
@@ -526,7 +526,22 @@ extension PlaylistTests {
 
         let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)
 
-        #expect(restored.types == [.genauClip, .excerpt, .fullLength])
+        #expect(restored.types == [.genauFlick, .excerpt, .fullLength])
+    }
+
+    @Test func aBrowsePersistedBeforeGenausClipsWereCalledFlicksKeepsItsGenauCheckbox() throws {
+        let old = Data(#"{"orientation":"portrait","types":["genau_clip","short"]}"#.utf8)
+
+        let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)
+
+        #expect(restored.types == [.genauFlick, .short])
+    }
+
+    @Test func aSidecarRecordedBeforeGenausClipsWereCalledFlicksStillNamesAFlick() {
+        let clip = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 4)]).clips[0]
+
+        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, recorded: "genau_clip") == .genauFlick)
+        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, recorded: "genau_flick") == .genauFlick)
     }
 }
 

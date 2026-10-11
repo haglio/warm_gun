@@ -3,7 +3,7 @@ import Testing
 @testable import WarmGunKit
 
 @Suite struct FavoritesTests {
-    @Test func aGenauFavoriteFromBeforeTheSplitIsCarriedToWhereTheClipIsNow() {
+    @Test func aGenauFavoriteFromBeforeTheSplitIsCarriedToWhereTheFlickIsNow() {
         var favorites = Favorites(held: ["genau/clips/loop-one", "clip-one"],
                                   released: ["genau/clips/loop-two"])
 
@@ -83,7 +83,7 @@ extension FavsCSVTests {
     /// three lanes — but only the upscale rows can be turned into a key here,
     /// because the other two lanes are filed under a library-relative path a
     /// Windows absolute path cannot be reduced to. The trap is that a delivered
-    /// genau loop keeps the upscale's own name, `_topaz` and all
+    /// Genau flick keeps the upscale's own name, `_topaz` and all
     /// (`evolver/tasks/genau_deliver.py`), so stripping the suffix on the
     /// strength of the name alone would file it under a clip that is not it.
     @Test func readsOnlyTheUpscaleRowsAndNotAGenauLoopThatMerelyLooksLikeOne() {
