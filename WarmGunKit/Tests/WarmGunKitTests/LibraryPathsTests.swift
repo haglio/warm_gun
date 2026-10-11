@@ -36,6 +36,9 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
         #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\clips\2D\AI\loop-two_topaz.mp4"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/portrait/genau/a_b_c_topaz.mp4")
+                == "a_b_c")
         #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"#) == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/1_sorted/beta/landscape/a_b_c.mp4") == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: "no-extension") == nil)
@@ -97,13 +100,34 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    @Test func namesTheGenauClipsFolderBesideTheLibrary() {
+    @Test func namesGenausFolderBesideTheLibrary() {
         // Evolver delivers Genau's flicks OUT of the pipeline into
-        // videos/genau/clips — a sibling of the videos/videos tree the library
-        // path points into, reachable from it by construction.
-        #expect(LibraryPaths.genauClipsPath(forLibrary: "/alpha/videos/videos/2D/AI")
-                == "/alpha/videos/genau/clips")
-        #expect(LibraryPaths.genauClipsPath(forLibrary: "/AI") == nil)
+        // videos/genau — a sibling of the videos/videos tree the library path
+        // points into, reachable from it by construction.
+        #expect(LibraryPaths.genauPath(forLibrary: "/alpha/videos/videos/2D/AI") == "/alpha/videos/genau")
+        #expect(LibraryPaths.genauPath(forLibrary: "/AI") == nil)
+    }
+
+    @Test func findsGenausFlicksByTheShapeOfTheirFolderWhateverItIsCalled() {
+        func genau(holdingFlicksIn name: String) -> PCloudEntry {
+            Self.folder("genau", [
+                Self.folder("audio"),
+                Self.folder(name, [Self.folder("2D", [Self.folder("AI"), Self.folder("non_AI")]), Self.folder("VR")]),
+                Self.folder("weird", [Self.folder("2D"), Self.folder("VR")]),
+            ])
+        }
+
+        #expect(LibraryPaths.genauFlicksFolder(in: genau(holdingFlicksIn: "clips")) == "clips")
+        #expect(LibraryPaths.genauFlicksFolder(in: genau(holdingFlicksIn: "flicks")) == "flicks")
+    }
+
+    @Test func findsNoGenauFlicksWhereNoFolderOrMoreThanOneHasTheirShape() {
+        let none = Self.folder("genau", [Self.folder("audio"), Self.folder("weird", [Self.folder("2D")])])
+        let two = Self.folder("genau", [Self.folder("alpha", [Self.folder("2D")]),
+                                        Self.folder("beta", [Self.folder("2D")])])
+
+        #expect(LibraryPaths.genauFlicksFolder(in: none) == nil)
+        #expect(LibraryPaths.genauFlicksFolder(in: two) == nil)
     }
 }
 
@@ -175,14 +199,22 @@ extension LibraryPathsTests {
     @Test func theThreeMetadataBranchesSitBesideTheVideoTree() {
         let library = "/alpha/videos/videos/2D/AI"
 
-        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: library)
+        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: library, genauFlicksFolder: "flicks")
                 == "/alpha/videos/metadata/2D/AI")
-        #expect(LibraryPaths.MetadataBranch.genau.path(forLibrary: library)
-                == "/alpha/videos/metadata/genau/clips")
-        #expect(LibraryPaths.MetadataBranch.nonAI.path(forLibrary: library)
+        #expect(LibraryPaths.MetadataBranch.genau.path(forLibrary: library, genauFlicksFolder: "flicks")
+                == "/alpha/videos/metadata/genau/flicks")
+        #expect(LibraryPaths.MetadataBranch.nonAI.path(forLibrary: library, genauFlicksFolder: "flicks")
                 == "/alpha/videos/metadata/2D/non_AI")
         #expect(LibraryPaths.MetadataBranch.allCases.count == 3)
-        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: "/x") == nil)
+        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: "/x", genauFlicksFolder: "flicks") == nil)
+    }
+
+    @Test func genausMetadataBranchIsNowhereUntilItsFlicksFolderIsFound() {
+        let library = "/alpha/videos/videos/2D/AI"
+
+        #expect(LibraryPaths.MetadataBranch.genau.path(forLibrary: library, genauFlicksFolder: nil) == nil)
+        #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: library, genauFlicksFolder: nil)
+                == "/alpha/videos/metadata/2D/AI")
     }
 }
 

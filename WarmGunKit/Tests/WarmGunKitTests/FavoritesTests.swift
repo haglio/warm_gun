@@ -86,11 +86,11 @@ extension FavsCSVTests {
     /// Genau flick keeps the upscale's own name, `_topaz` and all
     /// (`evolver/tasks/genau_deliver.py`), so stripping the suffix on the
     /// strength of the name alone would file it under a clip that is not it.
-    @Test func readsOnlyTheUpscaleRowsAndNotAGenauLoopThatMerelyLooksLikeOne() {
-        let loop = #""=HYPERLINK(""file:///D:/lib/videos/genau/clips/2D/AI/loop-two_topaz.mp4"";""D:\lib\videos\genau\clips\2D\AI\loop-two_topaz.mp4"")",""""#
+    @Test func readsOnlyTheUpscaleRowsAndNotAGenauFlickThatMerelyLooksLikeOne() {
+        let flick = #""=HYPERLINK(""file:///D:/lib/videos/genau/clips/2D/AI/loop-two_topaz.mp4"";""D:\lib\videos\genau\clips\2D\AI\loop-two_topaz.mp4"")",""""#
         let scene = #""=HYPERLINK(""file:///D:/lib/videos/2D/non_AI/bucket/scene-three.mkv"";""D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"")",""""#
 
-        let keys = FavsCSV.keys(in: [Self.header, Self.firstRow, loop, scene].joined(separator: "\r\n"))
+        let keys = FavsCSV.keys(in: [Self.header, Self.firstRow, flick, scene].joined(separator: "\r\n"))
 
         #expect(keys == ["clip-one"])
     }
