@@ -42,7 +42,7 @@ the owner, not alone.
   sits under the pause button — the sheet is the one place the app says which
   file this is.
 - **What kind a clip is comes from the desktop, not from here.** Evolver
-  records one of `genau_clip` / `excerpt` / `short` / `full_length` on every
+  records one of `genau_flick` / `excerpt` / `short` / `full_length` on every
   library video's metadata sidecar (`video.type`), and `ClipType` is that
   field's vocabulary — so a clip is the same kind on the phone as it is in Fun
   Time and the Main Funestra. The index now covers all three branches of the metadata mirror,
@@ -93,7 +93,7 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   browse (one clip per subject) for the same reason. Indexing the sidecars is
   the one prerequisite for all of them and is the obvious next step.
 - **Since the watch weights landed**: all three branches of the metadata mirror
-  are indexed, not just the AI one — a genau loop and a real scene have
+  are indexed, not just the AI one — a Genau flick and a real scene have
   sidecars too, and had none of this before. Their sidecars mirror the video
   path with the extension dropped; an AI original's is its upscale's, source
   and orientation nested the other way round (`LibraryPaths.MetadataBranch`).

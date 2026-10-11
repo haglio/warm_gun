@@ -7,12 +7,12 @@ import Foundation
 /// field's own words.
 ///
 /// Everything after the record is a fallback for a clip the phone has no
-/// sidecar for — the non-AI scenes and the genau loops, whose records the
+/// sidecar for — the non-AI scenes and Genau's flicks, whose records the
 /// index does not carry: the overlay's lanes first, then the source folder,
 /// then a running time. They are how this app answered the question before the
 /// field existed, kept only for where the field cannot reach.
 public enum ClipType: String, Codable, CaseIterable, Sendable {
-    case genauClip = "genau_clip"
+    case genauFlick = "genau_flick"
     /// A scene carved out of a longer one. Which folders hold them — and what
     /// the checkbox is called — is library vocabulary, defined only by the
     /// overlay.
@@ -26,9 +26,9 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
                                 recorded: String? = nil,
                                 measuredSeconds: Double? = nil,
                                 overlay: ContentOverlay = .empty) -> ClipType {
-        if let recorded, let kind = ClipType(rawValue: recorded) { return kind }
+        if let recorded, let kind = ClipType(named: recorded) { return kind }
         if let lane = overlay.lane(for: clip.path) { return lane.type }
-        if clip.source.localizedCaseInsensitiveContains("genau") { return .genauClip }
+        if clip.source.localizedCaseInsensitiveContains("genau") { return .genauFlick }
         if clip.source == "non_AI" { return .fullLength }
         if let seconds = measuredSeconds ?? clip.duration {
             return seconds <= shortsMaxSeconds ? .short : .fullLength
@@ -41,10 +41,16 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     }
 
     /// What a kind was called in a browse persisted before the desktop's
-    /// vocabulary arrived. An app update must never cost the saved controls.
+    /// vocabulary arrived, and in a sidecar recorded before Genau's clips were
+    /// called flicks. An app update must never cost the saved controls.
     static let retiredNames: [String: ClipType] = [
-        "genau": .genauClip, "acts": .excerpt, "fullLength": .fullLength,
+        "genau": .genauFlick, "genau_clip": .genauFlick, "acts": .excerpt, "fullLength": .fullLength,
     ]
+
+    init?(named name: String) {
+        guard let kind = ClipType(rawValue: name) ?? Self.retiredNames[name] else { return nil }
+        self = kind
+    }
 
     private static let estimatedBytesPerSecond = 500_000.0
 }
@@ -94,7 +100,7 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? defaults.orientation
         favoritesOnly = try c.decodeIfPresent(Bool.self, forKey: .favoritesOnly) ?? defaults.favoritesOnly
         if let saved = try c.decodeIfPresent([String].self, forKey: .types) {
-            types = Set(saved.compactMap { ClipType(rawValue: $0) ?? ClipType.retiredNames[$0] })
+            types = Set(saved.compactMap(ClipType.init(named:)))
         } else if try c.decodeIfPresent(Bool.self, forKey: .shortsOnly) == true {
             types = [.short]
         } else {
@@ -181,7 +187,7 @@ public enum PlaylistBuilder {
                                         _ overlay: ContentOverlay, _ act: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measured, overlay: overlay)
-        // A lane's orientation outranks the pixels; a genau loop has no
+        // A lane's orientation outranks the pixels; a Genau flick has no
         // orientation of its own and plays whichever way the phone is held.
         let orientation = overlay.lane(for: clip.path)?.orientation ?? clip.orientation
         // The size ceiling exists to keep the legacy monsters out of the AI
@@ -191,7 +197,7 @@ public enum PlaylistBuilder {
         if let bucket = overlay.actBucket(for: act), options.disabledActs.contains(bucket) {
             return false
         }
-        return (orientation == options.orientation || type == .genauClip)
+        return (orientation == options.orientation || type == .genauFlick)
             && !weird.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)
             && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)

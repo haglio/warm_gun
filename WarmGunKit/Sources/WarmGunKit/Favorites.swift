@@ -3,7 +3,7 @@ import Foundation
 /// The clips held onto, each under the key its lane is filed by
 /// (`LibraryPaths.favoriteKey`): a generated clip's stem, which is the one name
 /// the desktop's `favs.csv` and this store can both say, and the whole path for
-/// a genau loop or a real scene, where nothing promises two files do not share
+/// a Genau flick or a real scene, where nothing promises two files do not share
 /// a name. Every lane can be held, which is what lets the flag the desktop
 /// stamps on their sidecars land here.
 public struct Favorites: Codable, Equatable, Sendable {
@@ -58,7 +58,7 @@ public struct Favorites: Codable, Equatable, Sendable {
         return held.remove(key) != nil
     }
 
-    /// Keys named the way Genau's clips folder named a clip before it split
+    /// Keys named the way Genau's flicks folder named a flick before it split
     /// into 2D and VR, carried to where the clip is now
     /// (`LibraryPaths.rekeyedFlatGenau`), so the split costs no favorites.
     public mutating func rekeyFlatGenau(against current: Set<String>) {

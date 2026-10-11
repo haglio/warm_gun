@@ -29,7 +29,7 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     /// The desktop names whichever file IT plays, and only one of the three
-    /// lanes can be read back from that name. A delivered genau loop keeps the
+    /// lanes can be read back from that name. A delivered Genau flick keeps the
     /// upscale's own name, `_topaz` and all, so the suffix alone does not make
     /// a reference an upscale reference — the folder it sits in decides.
     @Test func readsTheStemOfAnUpscaleReferenceAndOfNothingElse() {
@@ -98,7 +98,7 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     @Test func namesTheGenauClipsFolderBesideTheLibrary() {
-        // Evolver delivers genau loops OUT of the pipeline into
+        // Evolver delivers Genau's flicks OUT of the pipeline into
         // videos/genau/clips — a sibling of the videos/videos tree the library
         // path points into, reachable from it by construction.
         #expect(LibraryPaths.genauClipsPath(forLibrary: "/alpha/videos/videos/2D/AI")
@@ -128,7 +128,7 @@ extension LibraryPathsTests {
 extension LibraryPathsTests {
     /// Every lane the phone plays from has a sidecar, and the three of them are
     /// filed differently: an AI original is spoken for by its UPSCALE's sidecar
-    /// (source and orientation the other way round), while a genau loop and a
+    /// (source and orientation the other way round), while a Genau flick and a
     /// real scene mirror straight across. The extension is dropped either way,
     /// so a scene that is not an .mp4 still finds its file.
     @Test func eachLaneKnowsWhichBranchHoldsItsSidecarAndWhereInIt() {
@@ -152,8 +152,8 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     /// What the phone remembers by name -- the clips marked weird, the
-    /// favorites -- outlives the split of Genau's clips folder into 2D and VR:
-    /// a name from before it is carried to the one clip with that file name.
+    /// favorites -- outlives the split of Genau's flicks folder into 2D and VR:
+    /// a name from before it is carried to the one flick with that file name.
     @Test func aNameFromBeforeGenausFolderSplitIsCarriedToWhereTheClipIsNow() {
         let now: Set<String> = ["genau/clips/2D/AI/loop-one.mp4", "genau/clips/2D/AI/twin.mp4",
                                 "genau/clips/2D/non_AI/twin.mp4"]

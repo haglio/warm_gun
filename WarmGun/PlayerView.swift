@@ -134,7 +134,7 @@ private struct ControlsOverlay: View {
             // flat, where height is the scarce direction.
             corner(.topLeading) {
                 cluster {
-                    chip("Genau", on: typesBinding([.genauClip]))
+                    chip("Genau", on: typesBinding([.genauFlick]))
                     chip("Clips", on: typesBinding(ClipType.clips))
                     chip("Full", on: typesBinding([.fullLength]))
                 }
