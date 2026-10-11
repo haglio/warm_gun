@@ -54,6 +54,7 @@ final class AppModel: ObservableObject {
     /// and replacing rather than folding would make its silence erase the lane.
     private var sidecars: [String: Sidecar] = [:]
     private var refreshedMetadata = false
+    private var genauFlicksFolder: String?
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
     /// The video layer has a frame on the glass. False is the truthful "you
@@ -383,8 +384,11 @@ final class AppModel: ObservableObject {
             // Genau's flicks live beside the library, not inside it, in
             // videos/genau. A missing folder is fine; the source simply
             // contributes nothing.
-            if let genauPath = LibraryPaths.genauClipsPath(forLibrary: settings.libraryPath),
-               let flicks = try? await client.listLibrary(path: genauPath) {
+            if let genauPath = LibraryPaths.genauPath(forLibrary: settings.libraryPath),
+               let genau = try? await client.folderSkeleton(path: genauPath),
+               let folder = LibraryPaths.genauFlicksFolder(in: genau),
+               let flicks = try? await client.listLibrary(path: genauPath + "/" + folder) {
+                genauFlicksFolder = folder
                 files += flicks.map { $0.prefixed(LibraryPaths.genauPrefix) }
             }
             // The real scenes: the non-AI library, the AI folder's sibling.
@@ -437,12 +441,14 @@ final class AppModel: ObservableObject {
         guard !refreshedMetadata, let client, let catalog else { return }
         refreshedMetadata = true
         let libraryPath = settings.libraryPath
+        let flicksFolder = self.genauFlicksFolder
         let clipPaths = catalog.clips.map(\.path)
         Task {
             // One cheap listing per branch decides whether anything moved: the
             // same counts and the same newest writes mean the persisted corpus
             // still speaks for the mirror, and nothing is fetched at all.
             let branches = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
+                                                        genauFlicksFolder: flicksFolder,
                                                         clipPaths: clipPaths)
             guard !branches.isEmpty else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"

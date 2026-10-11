@@ -19,11 +19,11 @@ enum MetadataFetcher {
     /// One cheap listing per branch. A branch that is absent or refuses to list
     /// simply contributes nothing — the corpus is still worth having without
     /// it, and the alternative is one missing folder costing every weight.
-    static func survey(client: PCloudClient, libraryPath: String,
+    static func survey(client: PCloudClient, libraryPath: String, genauFlicksFolder: String?,
                        clipPaths: [String]) async -> [Branch] {
         var branches: [Branch] = []
         for branch in LibraryPaths.MetadataBranch.allCases {
-            guard let path = branch.path(forLibrary: libraryPath),
+            guard let path = branch.path(forLibrary: libraryPath, genauFlicksFolder: genauFlicksFolder),
                   let files = try? await client.listLibrary(path: path) else { continue }
             let index = SidecarIndex(branch: branch, clipPaths: clipPaths,
                                      listing: files.map(\.path))

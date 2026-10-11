@@ -85,16 +85,23 @@ public enum LibraryPaths {
         }
     }
 
-    /// Genau's flicks folder, `videos/genau/clips`: a sibling of the
-    /// `videos/videos` tree the library path points into — so it is reachable
-    /// from the library path by construction, three components up. It is laid
-    /// out as the library's videos are, a `2D` folder (split into `AI` and
-    /// `non_AI`) and a `VR` folder.
-    public static func genauClipsPath(forLibrary libraryPath: String) -> String? {
+    public static func genauPath(forLibrary libraryPath: String) -> String? {
         let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
         guard parts.count >= 4 else { return nil }
-        return "/" + (parts.dropLast(3) + ["genau", "clips"]).joined(separator: "/")
+        return "/" + (parts.dropLast(3) + ["genau"]).joined(separator: "/")
     }
+
+    /// What the folder holding Genau's flicks is called is the account's own
+    /// vocabulary, like the library's path, so it is found by its skeleton.
+    public static func genauFlicksFolder(in genau: PCloudEntry) -> String? {
+        let fitting = (genau.contents ?? []).filter { folder in
+            folder.isfolder && folder.name != genauWeirdFolder
+                && (folder.contents ?? []).contains { $0.isfolder && $0.name == "2D" }
+        }
+        return fitting.count == 1 ? fitting[0].name : nil
+    }
+
+    static let genauWeirdFolder = "weird"
 
     /// The prefix the app files Genau's flicks under in its own catalog paths.
     public static let genauPrefix = "genau/clips/"
@@ -155,13 +162,13 @@ public enum LibraryPaths {
         case nonAI
 
         /// The pCloud folder this branch's sidecars live in.
-        public func path(forLibrary libraryPath: String) -> String? {
+        public func path(forLibrary libraryPath: String, genauFlicksFolder: String?) -> String? {
             guard let root = LibraryPaths.metadataRoot(forLibrary: libraryPath) else { return nil }
             switch self {
             case .ai: return root + "/2D/AI"
-            // Not under 2D: the loops are delivered beside the library rather
-            // than into it, and the mirror follows them there.
-            case .genau: return root + "/genau/clips"
+            // Not under 2D: Genau's flicks are delivered beside the library
+            // rather than into it, and the mirror follows them there.
+            case .genau: return genauFlicksFolder.map { root + "/genau/" + $0 }
             case .nonAI: return root + "/2D/non_AI"
             }
         }
@@ -234,16 +241,20 @@ public enum LibraryPaths {
     /// or POSIX, any prefix) to `<stem>_topaz.<ext>` — or nil when the
     /// reference is not one.
     ///
-    /// The suffix alone does not settle it: a Genau flick is delivered into the
-    /// clips folder under the upscale's own name, `_topaz` and all
+    /// The suffix alone does not settle it: a Genau flick is delivered into
+    /// Genau's folder under the upscale's own name, `_topaz` and all
     /// (`evolver/tasks/genau_deliver.py`), and its stem IS that whole name. So
-    /// a reference inside Genau's flicks folder is not an upscale reference,
-    /// whatever it is called.
+    /// a reference inside Genau's folder is not an upscale reference, whatever
+    /// it is called.
     public static func stem(ofUpscaleReference reference: String) -> String? {
-        let normalized = reference.replacingOccurrences(of: "\\", with: "/")
-        guard !normalized.contains(genauPrefix) else { return nil }
-        let file = normalized.split(separator: "/").last.map(String.init) ?? normalized
-        guard let stem = dropExtension(file), stem.hasSuffix(upscaleSuffix) else { return nil }
+        let components = reference.replacingOccurrences(of: "\\", with: "/").split(separator: "/")
+        guard !isInsideGenausFolder(components),
+              let file = components.last.map(String.init),
+              let stem = dropExtension(file), stem.hasSuffix(upscaleSuffix) else { return nil }
         return String(stem.dropLast(upscaleSuffix.count))
+    }
+
+    private static func isInsideGenausFolder(_ components: [Substring]) -> Bool {
+        zip(components, components.dropFirst()).contains { $0 == "videos" && $1 == "genau" }
     }
 }
