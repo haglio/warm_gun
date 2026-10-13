@@ -75,6 +75,7 @@ struct PlayerView: View {
                                     onAnyInteraction: keepControlsAlive)
                         .transition(.opacity)
                 }
+                KeyboardShortcuts()
             }
             .onChange(of: geometry.size) { _, size in
                 model.deviceRotated(landscape: size.width > size.height)
@@ -132,13 +133,6 @@ private struct ControlsOverlay: View {
             // flat, where height is the scarce direction.
             corner(.topLeading) {
                 cluster {
-                    if !Platform.screenTurns {
-                        // A laptop's screen never turns, so which library
-                        // plays is a pair of chips here instead of a rotation
-                        // — first, so the pair shares a row of the grid.
-                        chip("Portrait", on: orientationBinding(.portrait))
-                        chip("Landscape", on: orientationBinding(.landscape))
-                    }
                     chip("Genau", on: typesBinding([.genauFlick]))
                     chip("Clips", on: typesBinding(ClipType.clips))
                     chip("Full", on: typesBinding([.fullLength]))
@@ -337,11 +331,6 @@ private struct ControlsOverlay: View {
                 })
     }
 
-    private func orientationBinding(_ orientation: Orientation) -> Binding<Bool> {
-        Binding(get: { model.settings.browse.orientation == orientation },
-                set: { _ in model.setOrientation(orientation) })
-    }
-
     private func orderBinding(latest: Bool) -> Binding<Bool> {
         Binding(get: { model.settings.browse.latest == latest },
                 set: { _ in
@@ -349,6 +338,30 @@ private struct ControlsOverlay: View {
                     browse.latest = latest
                     model.update(browse: browse)
                 })
+    }
+}
+
+/// The keyboard, where there is one: space pauses and plays, and P and L
+/// pick the portrait or the landscape library — a laptop's screen never
+/// turns, so this is how the Mac does what turning the phone does. Buttons
+/// SwiftUI never draws, so each key equivalent has somewhere to land whatever
+/// is on screen; the login form is a different screen and never sees them.
+private struct KeyboardShortcuts: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        Group {
+            Button("Pause") { model.togglePause() }
+                .keyboardShortcut(.space, modifiers: [])
+            Button("Portrait") { model.setOrientation(.portrait) }
+                .keyboardShortcut("p", modifiers: [])
+            Button("Landscape") { model.setOrientation(.landscape) }
+                .keyboardShortcut("l", modifiers: [])
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
