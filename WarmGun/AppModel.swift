@@ -461,19 +461,23 @@ final class AppModel: ObservableObject {
                                                         clipPaths: clipPaths)
             guard !branches.isEmpty else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"
+                MetadataFetcher.log.error("no branch of the metadata mirror answered")
                 return
             }
             let fingerprint = MetadataFetcher.fingerprint(of: branches)
             let stored = UserDefaults.standard.string(forKey: Self.metadataFingerprintKey)
             if fingerprint == stored, !groupIndex.isEmpty {
+                MetadataFetcher.log.info("mirror unchanged, the corpus on disk serves")
                 recomputeLoopAvailability()
                 return
             }
             let fetched = await MetadataFetcher.fetchSidecars(client: client, branches: branches)
             guard !fetched.isEmpty else {
                 lastProblem = "Metadata: the metadata folders came back empty"
+                MetadataFetcher.log.error("the metadata folders came back empty")
                 return
             }
+            MetadataFetcher.log.info("adopting \(fetched.count) sidecars")
             // Folded in, never substituted: a branch that did not answer this
             // run keeps whatever it contributed to the last one.
             adopt(sidecars: sidecars.merging(fetched) { _, new in new })

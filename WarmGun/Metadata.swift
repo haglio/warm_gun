@@ -1,6 +1,7 @@
 import Compression
 import Foundation
 import WarmGunKit
+import os
 
 /// Fetches the sidecar corpus — one getzip per branch of the metadata mirror,
 /// with a one-file-at-a-time road when the server will not zip — and turns it
@@ -8,6 +9,11 @@ import WarmGunKit
 /// favorites are all read off. The zip walking lives in the Kit; only the raw
 /// DEFLATE step is here, because it needs Apple's Compression framework.
 enum MetadataFetcher {
+    /// The corpus arrives in the background and nothing on the glass says how
+    /// it went, so the unified log is where "why are there no groups" is
+    /// answered: `log show --predicate 'subsystem == "com.cmloegcmluin.warmgun"'`.
+    static let log = Logger(subsystem: "com.cmloegcmluin.warmgun", category: "metadata")
+
     /// One branch as the survey found it: where it is, what it holds, and which
     /// of that speaks for a clip the phone can play.
     struct Branch {
@@ -23,10 +29,20 @@ enum MetadataFetcher {
                        clipPaths: [String]) async -> [Branch] {
         var branches: [Branch] = []
         for branch in LibraryPaths.MetadataBranch.allCases {
-            guard let path = branch.path(forLibrary: libraryPath, genauFlicksFolder: genauFlicksFolder),
-                  let files = try? await client.listLibrary(path: path) else { continue }
+            guard let path = branch.path(forLibrary: libraryPath, genauFlicksFolder: genauFlicksFolder) else {
+                log.info("\(String(describing: branch)) branch: no path for this library")
+                continue
+            }
+            let files: [LibraryFile]
+            do {
+                files = try await client.listLibrary(path: path)
+            } catch {
+                log.error("\(String(describing: branch)) branch would not list: \(error.localizedDescription)")
+                continue
+            }
             let index = SidecarIndex(branch: branch, clipPaths: clipPaths,
                                      listing: files.map(\.path))
+            log.info("\(String(describing: branch)) branch: \(files.count) files listed, \(index.clipsByListedSidecar.count) speak for a clip")
             guard !index.clipsByListedSidecar.isEmpty else { continue }
             branches.append(Branch(path: path, files: files, index: index))
         }
@@ -52,11 +68,14 @@ enum MetadataFetcher {
             let fetched: [String: Sidecar]
             do {
                 fetched = try await fetchViaZip(client: client, branch: branch)
+                log.info("\(branch.path, privacy: .private): \(fetched.count) sidecars by zip")
             } catch {
                 // getzip has already failed against the real server once (it
                 // takes a folderid, not a path) — never trust it as the only
                 // road.
+                log.error("\(branch.path, privacy: .private): zip failed (\(error.localizedDescription)), fetching singly")
                 fetched = await fetchSingly(client: client, branch: branch)
+                log.info("\(branch.path, privacy: .private): \(fetched.count) of \(branch.index.clipsByListedSidecar.count) sidecars singly")
             }
             sidecars.merge(fetched) { _, new in new }
         }
