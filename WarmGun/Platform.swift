@@ -70,18 +70,10 @@ enum Platform {
     static let defaultOrientation = Orientation.landscape
     #endif
 
-    /// Posted when the app has stepped aside and when it is back in front.
-    /// On the phone stepping aside is the background; a Mac app can sit under
-    /// another app for a day and never background, so there it is losing the
-    /// front — the picture pauses, the journal leaves for the cloud. And the
-    /// last word before the process ends, the last chance to write.
+    /// Posted as the process is about to end — the last chance to write.
     #if os(iOS)
-    static let steppedAside = UIApplication.didEnterBackgroundNotification
-    static let cameToFront = UIApplication.didBecomeActiveNotification
     static let willTerminate = UIApplication.willTerminateNotification
     #else
-    static let steppedAside = NSApplication.didResignActiveNotification
-    static let cameToFront = NSApplication.didBecomeActiveNotification
     static let willTerminate = NSApplication.willTerminateNotification
     #endif
 
@@ -110,6 +102,48 @@ enum Platform {
         return ProcessInfo.processInfo.environment[name]
         #else
         return nil
+        #endif
+    }
+}
+
+/// Whether the picture is on screen and in front — the one fact that decides
+/// whether the run plays, the display stays lit, and the journal leaves.
+///
+/// On the phone that is "not in the background": iOS suspends a backgrounded
+/// app anyway, and a passing banner must not stop the run. A Mac app is never
+/// suspended, so there it is the app being active AND a window being visible:
+/// minimized, closed, covered or on another Space, the run would otherwise
+/// play on and book completions nobody watched.
+@MainActor
+final class Presence {
+    private var observers: [NSObjectProtocol] = []
+    private var present = false
+
+    func observe(_ onChange: @escaping @MainActor (Bool) -> Void) {
+        #if os(iOS)
+        let names = [UIApplication.didBecomeActiveNotification, UIApplication.didEnterBackgroundNotification]
+        #else
+        let names = [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification,
+                     NSWindow.didChangeOcclusionStateNotification]
+        #endif
+        observers = names.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    let now = Self.isPresent()
+                    guard now != self.present else { return }
+                    self.present = now
+                    onChange(now)
+                }
+            }
+        }
+    }
+
+    private static func isPresent() -> Bool {
+        #if os(iOS)
+        return UIApplication.shared.applicationState != .background
+        #else
+        return NSApp.isActive && NSApp.windows.contains { $0.occlusionState.contains(.visible) }
         #endif
     }
 }
