@@ -109,6 +109,13 @@ final class AppModel: ObservableObject {
     /// fast tap run reads better over motion than over black.
     private var clearOnNextWait = false
     private var noticeTask: Task<Void, Never>?
+    private var launched = false
+    /// Nothing is written over the state files until they have been read:
+    /// a step-aside in the first instant of a launch must not save an empty
+    /// run over the one on disk.
+    private var stateLoaded = false
+    private var syncInFlight: Task<Void, Never>?
+    private var syncWanted = false
 
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: ClipCache? = nil) {
         // A bundle with no overlay is ordinary — the app is meant to run without
@@ -149,6 +156,14 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - lifecycle
+
+    /// The window's first appearance. A Mac window can be closed and opened
+    /// again, which places the view again; the run must not start twice.
+    func launch() async {
+        guard !launched else { return }
+        launched = true
+        await start()
+    }
 
     func start() async {
         cached = await cache.cachedPaths()
@@ -267,6 +282,7 @@ final class AppModel: ObservableObject {
 
     func logout() {
         Keychain.forget()
+        UserDefaults.standard.removeObject(forKey: Self.journalUploadedKey)
         eventPump?.cancel()
         client = nil
         prefetcher = nil
@@ -858,10 +874,19 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The scene is back on screen; AVPlayer does not resume by itself. A
-    /// clip he paused stays paused — a return to the app is not a tap.
+    /// The app is back in front; AVPlayer does not resume by itself. A clip
+    /// he paused stays paused — a return to the app is not a tap.
     func becameActive() {
         if !paused { engine.resume() }
+    }
+
+    /// The app has stepped aside: the picture stops — a run nobody is
+    /// watching must not book completions — what is pending is written, and
+    /// the journal leaves for the cloud.
+    func steppedAside() {
+        engine.pause()
+        flushState()
+        Task { await syncWithCloud() }
     }
 
     /// The listing never times the clips, so each one is measured the moment
@@ -912,7 +937,7 @@ final class AppModel: ObservableObject {
     }
 
     private var journalDirty: Bool {
-        journalBytes > UserDefaults.standard.integer(forKey: Self.journalUploadedKey)
+        journalBytes != UserDefaults.standard.integer(forKey: Self.journalUploadedKey)
     }
 
     private func journal(_ event: String, _ path: String) {
@@ -927,9 +952,27 @@ final class AppModel: ObservableObject {
     }
 
     /// Pushes the journal to the sync folder and pulls a `favs.csv` from it if
-    /// one is there. Called when the app goes to the background and from
-    /// Settings; never in the way of playback.
+    /// one is there. Called when the app steps aside and at a launch with
+    /// lines waiting; never in the way of playback.
+    ///
+    /// One at a time: two whole-file uploads in flight can land in either
+    /// order, and the size recorded last would then overstate what the cloud
+    /// holds. A call during a sync asks for one more after it.
     func syncWithCloud() async {
+        if syncInFlight != nil {
+            syncWanted = true
+            return
+        }
+        repeat {
+            syncWanted = false
+            let sync = Task { await performCloudSync() }
+            syncInFlight = sync
+            await sync.value
+            syncInFlight = nil
+        } while syncWanted
+    }
+
+    private func performCloudSync() async {
         guard let client, !settings.syncFolder.isEmpty else { return }
         // The caller is usually the step-aside transition, which on the phone
         // would suspend the app mid-upload.
@@ -981,6 +1024,7 @@ final class AppModel: ObservableObject {
     }
 
     private func persistState() {
+        guard stateLoaded else { return }
         let state = PersistedState(favorites: favorites, weird: weird,
                                    playlist: session.playlist, index: session.index,
                                    locked: session.locked, measuredSeconds: measuredSeconds)
@@ -1003,6 +1047,7 @@ final class AppModel: ObservableObject {
            let sidecars = try? JSONDecoder().decode([String: Sidecar].self, from: data) {
             adopt(sidecars: sidecars)
         }
+        stateLoaded = true
     }
 
     private func restoreSession() {

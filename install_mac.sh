@@ -12,14 +12,19 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source tools/require_overlay.sh
 
+# generic/platform=macOS names the native Mac build and nothing else; a bare
+# platform=macOS can also match the "Designed for iPhone" variant.
 xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
-  -destination "platform=macOS,arch=arm64" \
+  -destination "generic/platform=macOS" \
   -configuration Release \
   -derivedDataPath build build
 
 APP="build/Build/Products/Release/WarmGun.app"
 DEST="$HOME/Applications/WarmGun.app"
 mkdir -p "$HOME/Applications"
+# A copy still running would keep the old build on screen and `open` would
+# only bring it to the front.
+pkill -f "$DEST/Contents/MacOS/WarmGun" 2>/dev/null || true
 rm -rf "$DEST"
 ditto "$APP" "$DEST"
 echo "Installed $DEST"

@@ -9,9 +9,11 @@ clicks, and a Portrait/Landscape pair on the overlay stands in for turning
 the phone.
 
 - **Taps**: left third = previous, right third = next, top-middle = weird,
-  lower-middle = lock (favorite + repeat-one). Double-tap the middle for the
-  controls sheet: portrait/landscape library, F-mode (favorites only), the
-  Genau, Clips and Full checkboxes, latest-first, loop-each-clip, and Settings.
+  lower-middle = lock (favorite + repeat-one). Tap the middle for the
+  controls overlay — the kind chips (Genau, Clips, Full), Shuffle/Latest and
+  Favs, the Loop control, the act buttons, the four gestures as buttons and
+  pause in the center, with Portrait/Landscape on the Mac — and double-tap
+  it to pause.
 - **Source**: the originals under `1_sorted/` (small H.264), fetched whole via
   the pCloud HTTP API and played from an on-device LRU cache; a deep two-sided
   prefetch window keeps the neighbours resident, and "Download this browse"

@@ -6,7 +6,6 @@ import WarmGunKit
 /// to live here confused more than it configured.
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.dismiss) private var dismiss
     @State private var username = ""
     @State private var password = ""
     @State private var verificationCode = ""
@@ -62,9 +61,6 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
             .onAppear {
                 if username.isEmpty { username = model.settings.username }
                 if password.isEmpty { password = Keychain.pendingPassword() ?? "" }

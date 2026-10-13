@@ -132,15 +132,16 @@ private struct ControlsOverlay: View {
             // flat, where height is the scarce direction.
             corner(.topLeading) {
                 cluster {
-                    chip("Genau", on: typesBinding([.genauFlick]))
-                    chip("Clips", on: typesBinding(ClipType.clips))
-                    chip("Full", on: typesBinding([.fullLength]))
                     if !Platform.screenTurns {
                         // A laptop's screen never turns, so which library
-                        // plays is a pair of chips here instead of a rotation.
+                        // plays is a pair of chips here instead of a rotation
+                        // — first, so the pair shares a row of the grid.
                         chip("Portrait", on: orientationBinding(.portrait))
                         chip("Landscape", on: orientationBinding(.landscape))
                     }
+                    chip("Genau", on: typesBinding([.genauFlick]))
+                    chip("Clips", on: typesBinding(ClipType.clips))
+                    chip("Full", on: typesBinding([.fullLength]))
                 }
             }
             corner(.topTrailing) {

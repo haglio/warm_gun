@@ -15,9 +15,11 @@ is a failing exit. The invariants, from docs/design.md:
    values and intents; ``model.<actor>.<anything>`` from a view couples the
    view to machinery the model exists to own.
 5. The phone and the Mac part ways in ``Platform.swift`` and nowhere else:
-   every ``#if os(...)`` / ``targetEnvironment`` / ``canImport`` and every
-   UIKit or AppKit import outside it is a second place the two can drift
-   apart, and the one place is what keeps the app above it one program.
+   every ``#if`` but ``DEBUG`` and every UIKit, AppKit or Cocoa import
+   outside it (the Kit included) is a second place the two can drift apart,
+   and the one place is what keeps the app above it one program. Any ``#if``,
+   not only ``os(...)``: a custom compilation condition set per SDK would
+   spell the same fork differently.
 
 Run: ``python3 tools/gates.py`` (exit 0 = all gates hold).
 """
@@ -35,9 +37,11 @@ APP = ROOT / "WarmGun"
 KIT_ALLOWED_IMPORTS = {"Foundation"}
 MODEL_FILE = "AppModel.swift"
 PLATFORM_FILE = "Platform.swift"
-PLATFORM_CONDITION = re.compile(r"#\s*(if|elseif)\b.*\b(os|targetEnvironment|canImport)\s*\(")
-# `@_exported import UIKit` and `import class UIKit.UIDevice` are the same import.
-PLATFORM_IMPORT = re.compile(r"^\s*(@\w+\s+)*import\s+(\w+\s+)?(UIKit|AppKit)\b")
+# Any conditional compilation but DEBUG, however the condition is spelled.
+PLATFORM_CONDITION = re.compile(r"#\s*(if|elseif)\b(?!\s*!?DEBUG\s*$)")
+# `@_exported import UIKit`, `@_spi(X) import AppKit`, `import class UIKit.UIDevice`
+# and an import after a semicolon are all the same import.
+PLATFORM_IMPORT = re.compile(r"(^|;)\s*(@\w+(\([^)]*\))?\s+)*import\s+(\w+\s+)?(UIKit|AppKit|Cocoa)\b")
 # The reference-typed machinery the model owns; views may not reach into it.
 ACTORS = ("engine", "cache", "prefetcher", "client")
 
@@ -102,11 +106,12 @@ def gate_views_stay_out_of_actors() -> list[str]:
 
 def gate_platform_seam() -> list[str]:
     hits = []
-    for path in swift_files(APP):
+    for path in swift_files(KIT_SOURCES) + swift_files(APP):
         if path.name == PLATFORM_FILE:
             continue
         for number, line in code_lines(path):
-            if PLATFORM_CONDITION.search(line) or PLATFORM_IMPORT.match(line):
+            code = line.split("//", 1)[0]  # a trailing comment is prose too
+            if PLATFORM_CONDITION.search(code) or PLATFORM_IMPORT.search(code):
                 hits.append(f"{path.relative_to(ROOT)}:{number}: {line.strip()}")
     return hits
 

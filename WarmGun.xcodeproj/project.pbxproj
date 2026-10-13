@@ -220,6 +220,7 @@
 				);
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cmloegcmluin.warmgun;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.cmloegcmluin.warmgun.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				SWIFT_VERSION = 5.0;
