@@ -50,13 +50,9 @@ enum Keychain {
     }
 
     static func token() -> String? {
-        #if targetEnvironment(simulator)
-        // The Simulator runs against tools/fake_pcloud.py, which accepts any
-        // token — letting a launch environment stand in for the Keychain is
-        // what makes the whole app drivable headlessly in verification. Device
-        // builds compile this out.
-        if let injected = ProcessInfo.processInfo.environment["WARMGUN_TOKEN"] { return injected }
-        #endif
+        // A development run against tools/fake_pcloud.py takes its token from
+        // the launch environment instead (see `Platform.developmentToken`).
+        if let injected = Platform.developmentToken { return injected }
         var q = query
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne

@@ -18,11 +18,16 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 - Everything local in one command: `sh tools/check.sh` — the suite, the
   coupling gates (`tools/gates.py`, counts with a target of 0 that fail the
   build), and the sanitize guard swept over the whole tree.
-- End-to-end without credentials or library writes: build for the Simulator,
-  run `python3 tools/fake_pcloud.py --root "<pCloud Drive mount>" --scratch
-  <tmp> --no-probe`, and launch with the `WARMGUN_TOKEN` environment variable
-  set (the simulator-only Keychain stand-in) and the API host
-  `http://localhost:8765`.
+- End-to-end without credentials or library writes: build for the Simulator
+  or for the Mac (`-destination 'platform=macOS,arch=arm64'`, Debug), run
+  `python3 tools/fake_pcloud.py --root "<pCloud Drive mount>" --scratch
+  <tmp> --no-probe`, and launch with `WARMGUN_TOKEN` and
+  `WARMGUN_API_HOST=http://localhost:8765` in the environment (the
+  development stand-ins for the Keychain and the host; device and Release
+  builds compile them out). A Mac debug build runs with `open --env ...`.
+- The Mac app goes full screen only once its window becomes key, which a
+  locked screen never allows: with the Mac locked, the window stays at its
+  launch size however correct the code is, so judge that part unlocked.
 
 ## The phone does not self-update
 
@@ -52,4 +57,6 @@ the required check, goes green. Never push `main` directly.
 
 The gate builds and tests `WarmGunKit` only, so nothing in `WarmGun/` is
 compiled by CI: a change to the app target is unverified until it is built in
-Xcode on a Mac.
+Xcode on a Mac — for BOTH destinations now, the iOS Simulator and the Mac,
+since the one target compiles for both and `Platform.swift` is the only file
+allowed to tell them apart (a gate counts the rest).

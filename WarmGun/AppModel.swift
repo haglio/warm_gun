@@ -1,5 +1,4 @@
 import AVFoundation
-import UIKit
 import Foundation
 import WarmGunKit
 
@@ -104,7 +103,6 @@ final class AppModel: ObservableObject {
     private var persistTask: Task<Void, Never>?
     private var clipsByPath: [String: Clip] = [:]
     private var rng = SystemRandomNumberGenerator()
-    private var journalDirty = false
     /// A browse/filter change whose new clip is not on disk yet must VISIBLY
     /// take effect: the old picture clears to the spinner instead of looping
     /// on as if the switch did nothing. Nav stalls keep the old picture — a
@@ -138,20 +136,8 @@ final class AppModel: ObservableObject {
         engine.onAdvanced = { [weak self] url in self?.advanced(to: url) }
         engine.onFinished = { [weak self] in self?.finished() }
         engine.onBuffering = { [weak self] stalled in self?.buffering(stalled) }
-        // The library follows the physical rotation. The view's geometry hook
-        // also reports this, but the device notification arrives even when a
-        // layout pass does not, so both roads lead here.
-        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-        NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification,
-                                               object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in
-                switch UIDevice.current.orientation {
-                case .portrait, .portraitUpsideDown: self?.deviceRotated(landscape: false)
-                case .landscapeLeft, .landscapeRight: self?.deviceRotated(landscape: true)
-                default: break  // face up/down says nothing about the screen
-                }
-            }
-        }
+        // The library follows the physical rotation, where there is one.
+        Platform.observeRotation { [weak self] landscape in self?.deviceRotated(landscape: landscape) }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
         lastProblem = overlayProblem
@@ -175,6 +161,9 @@ final class AppModel: ObservableObject {
             phase = .failed(error.localizedDescription)
             return
         }
+        // Lines the last run never got to upload — a Mac is quit from the
+        // front as often as not, with no step-aside to upload on.
+        if journalDirty { Task { await syncWithCloud() } }
         if settings.libraryPath.isEmpty {
             // Nobody should have to TELL the app where the library is: it is
             // the one folder in the account holding both pipeline stages, so
@@ -223,10 +212,10 @@ final class AppModel: ObservableObject {
             if let tfaToken, !trimmed.isEmpty {
                 // The second leg: exchange the challenge token and the code.
                 // Recovery codes are long; pCloud tells them apart by length.
-                response = try await PCloudClient.tfaLogin(apiHost: settings.apiHost, token: tfaToken,
+                response = try await PCloudClient.tfaLogin(apiHost: apiHost, token: tfaToken,
                                                            code: trimmed, isRecovery: trimmed.count >= 16)
             } else {
-                response = try await PCloudClient.login(apiHost: settings.apiHost, username: username, password: password,
+                response = try await PCloudClient.login(apiHost: apiHost, username: username, password: password,
                                                         code: trimmed.isEmpty ? nil : trimmed)
             }
             Keychain.store(token: response.auth)
@@ -269,7 +258,7 @@ final class AppModel: ObservableObject {
     func sendTFACode(viaSMS: Bool) async {
         guard let tfaToken else { return }
         do {
-            try await PCloudClient.sendTFACode(apiHost: settings.apiHost, token: tfaToken, viaSMS: viaSMS)
+            try await PCloudClient.sendTFACode(apiHost: apiHost, token: tfaToken, viaSMS: viaSMS)
             lastProblem = viaSMS ? "Code sent by SMS." : "Code sent — check the pCloud app on your other machines."
         } catch {
             lastProblem = error.localizedDescription
@@ -322,8 +311,12 @@ final class AppModel: ObservableObject {
         return nil
     }
 
+    /// A development run against the stand-in server is pointed at it from
+    /// the launch environment; everything else goes where the settings say.
+    private var apiHost: String { Platform.developmentAPIHost ?? settings.apiHost }
+
     private func connect(token: String) throws {
-        let client = try PCloudClient(apiHost: settings.apiHost, auth: token)
+        let client = try PCloudClient(apiHost: apiHost, auth: token)
         self.client = client
         let prefetcher = Prefetcher(client: client, cache: cache, capBytes: settings.cacheCapBytes)
         self.prefetcher = prefetcher
@@ -606,9 +599,16 @@ final class AppModel: ObservableObject {
     }
 
     /// The phone was turned: the browse follows the screen, portrait clips
-    /// upright and landscape clips wide, with no switch to remember.
+    /// upright and landscape clips wide, with no switch to remember. A
+    /// laptop's screen never turns, and its window's shape says nothing about
+    /// which library is wanted — there the chip decides, through the road below.
     func deviceRotated(landscape: Bool) {
-        let orientation: Orientation = landscape ? .landscape : .portrait
+        guard Platform.screenTurns else { return }
+        setOrientation(landscape ? .landscape : .portrait)
+    }
+
+    /// Which library plays: the chip's road on a Mac, the rotation's on a phone.
+    func setOrientation(_ orientation: Orientation) {
         guard settings.browse.orientation != orientation else { return }
         var browse = settings.browse
         browse.orientation = orientation
@@ -642,7 +642,7 @@ final class AppModel: ObservableObject {
         // desktop arms note_discard before it knows which half the press is.
         tracker.noteDiscard()
         if favorites.contains(path: path) {
-            favorites.remove(path: path)
+            _ = favorites.remove(path: path)
             journal("unfavorite", path)
             session.step(1)
             flash("Unfavorited", favorite: true)
@@ -858,9 +858,10 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The scene is back on screen; AVPlayer does not resume by itself.
+    /// The scene is back on screen; AVPlayer does not resume by itself. A
+    /// clip he paused stays paused — a return to the app is not a tap.
     func becameActive() {
-        engine.resume()
+        if !paused { engine.resume() }
     }
 
     /// The listing never times the clips, so each one is measured the moment
@@ -901,6 +902,19 @@ final class AppModel: ObservableObject {
 
     private var journalURL: URL { stateDirectory.appendingPathComponent("warm-gun-journal.jsonl") }
 
+    /// How much of the journal has reached the cloud, kept across launches so
+    /// a run can tell whether lines are still waiting: the file only ever
+    /// grows, so its size against the size last uploaded is the whole answer.
+    private static let journalUploadedKey = "warm-gun.journal-uploaded-bytes"
+
+    private var journalBytes: Int {
+        (try? FileManager.default.attributesOfItem(atPath: journalURL.path)[.size] as? Int) ?? 0
+    }
+
+    private var journalDirty: Bool {
+        journalBytes > UserDefaults.standard.integer(forKey: Self.journalUploadedKey)
+    }
+
     private func journal(_ event: String, _ path: String) {
         let line = Journal.line(JournalEvent(t: Int(Date().timeIntervalSince1970), event: event, path: path)) + "\n"
         if let handle = try? FileHandle(forWritingTo: journalURL) {
@@ -910,7 +924,6 @@ final class AppModel: ObservableObject {
         } else {
             try? Data(line.utf8).write(to: journalURL)
         }
-        journalDirty = true
     }
 
     /// Pushes the journal to the sync folder and pulls a `favs.csv` from it if
@@ -918,15 +931,15 @@ final class AppModel: ObservableObject {
     /// Settings; never in the way of playback.
     func syncWithCloud() async {
         guard let client, !settings.syncFolder.isEmpty else { return }
-        // The caller is usually the background transition; without an assertion
-        // iOS suspends the app mid-upload and the journal never leaves.
-        let assertion = UIApplication.shared.beginBackgroundTask()
-        defer { if assertion != .invalid { UIApplication.shared.endBackgroundTask(assertion) } }
+        // The caller is usually the step-aside transition, which on the phone
+        // would suspend the app mid-upload.
+        let release = Platform.holdForBackgroundWork()
+        defer { release() }
         do {
             try await client.createFolderIfNotExists(path: settings.syncFolder)
             if journalDirty, let data = try? Data(contentsOf: journalURL) {
-                try await client.upload(data: data, folderPath: settings.syncFolder, filename: "warm-gun-journal.jsonl")
-                journalDirty = false
+                try await client.upload(data: data, folderPath: settings.syncFolder, filename: Platform.journalFileName)
+                UserDefaults.standard.set(data.count, forKey: Self.journalUploadedKey)
             }
             let files = try await client.listLibrary(path: settings.syncFolder)
             if let favs = files.first(where: { $0.path.lowercased() == "favs.csv" }) {

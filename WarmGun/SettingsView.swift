@@ -19,8 +19,7 @@ struct SettingsView: View {
                     if Keychain.token() == nil {
                         TextField("pCloud email", text: $username)
                             .textContentType(.username)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
+                            .emailEntry()
                             .autocorrectionDisabled()
                         SecureField("pCloud password", text: $password)
                             .textContentType(.password)
@@ -62,9 +61,9 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .onAppear {
                 if username.isEmpty { username = model.settings.username }

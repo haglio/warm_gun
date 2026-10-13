@@ -1,4 +1,3 @@
-import AVFoundation
 import SwiftUI
 import WarmGunKit
 
@@ -86,8 +85,7 @@ struct PlayerView: View {
         }
         .animation(.easeOut(duration: 0.2), value: model.notice)
         .animation(.easeOut(duration: 0.15), value: showingControls)
-        .statusBarHidden(true)
-        .persistentSystemOverlays(.hidden)
+        .claimingTheWholeScreen()
     }
 
     private func revealControls() {
@@ -137,6 +135,12 @@ private struct ControlsOverlay: View {
                     chip("Genau", on: typesBinding([.genauFlick]))
                     chip("Clips", on: typesBinding(ClipType.clips))
                     chip("Full", on: typesBinding([.fullLength]))
+                    if !Platform.screenTurns {
+                        // A laptop's screen never turns, so which library
+                        // plays is a pair of chips here instead of a rotation.
+                        chip("Portrait", on: orientationBinding(.portrait))
+                        chip("Landscape", on: orientationBinding(.landscape))
+                    }
                 }
             }
             corner(.topTrailing) {
@@ -332,6 +336,11 @@ private struct ControlsOverlay: View {
                 })
     }
 
+    private func orientationBinding(_ orientation: Orientation) -> Binding<Bool> {
+        Binding(get: { model.settings.browse.orientation == orientation },
+                set: { _ in model.setOrientation(orientation) })
+    }
+
     private func orderBinding(latest: Bool) -> Binding<Bool> {
         Binding(get: { model.settings.browse.latest == latest },
                 set: { _ in
@@ -385,40 +394,5 @@ private struct TapLayer: View {
 
     private func action(at point: CGPoint, in size: CGSize) -> TapAction {
         TapZones.action(x: point.x, y: point.y, width: size.width, height: size.height)
-    }
-}
-
-/// AVPlayerLayer in a UIView, aspect-fit so a landscape clip on a portrait
-/// phone (or the reverse) letterboxes rather than crops.
-struct VideoSurface: UIViewRepresentable {
-    let player: AVPlayer
-    /// Fires with the layer's own is-a-frame-on-the-glass fact — the only
-    /// signal that does not lie during a big file's black opening seconds.
-    let onReadyForDisplay: (Bool) -> Void
-
-    func makeUIView(context: Context) -> PlayerLayerView {
-        let view = PlayerLayerView()
-        view.playerLayer.player = player
-        view.playerLayer.videoGravity = .resizeAspect
-        view.backgroundColor = .black
-        view.observeReadiness(onReadyForDisplay)
-        return view
-    }
-
-    func updateUIView(_ uiView: PlayerLayerView, context: Context) {
-        if uiView.playerLayer.player !== player { uiView.playerLayer.player = player }
-    }
-
-    final class PlayerLayerView: UIView {
-        override static var layerClass: AnyClass { AVPlayerLayer.self }
-        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-        private var readiness: NSKeyValueObservation?
-
-        func observeReadiness(_ onChange: @escaping (Bool) -> Void) {
-            readiness = playerLayer.observe(\.isReadyForDisplay, options: [.initial, .new]) { layer, _ in
-                let ready = layer.isReadyForDisplay
-                DispatchQueue.main.async { onChange(ready) }
-            }
-        }
     }
 }
