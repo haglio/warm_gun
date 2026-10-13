@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct WarmGunApp: App {
     @StateObject private var model = AppModel()
+    @State private var presence = Presence()
     @State private var displayLock = DisplayLock()
 
     var body: some Scene {
@@ -11,16 +12,14 @@ struct WarmGunApp: App {
                 .environmentObject(model)
                 .preferredColorScheme(.dark)
                 .task { await model.launch() }
-                // The screen stays lit only while the app is on it; the
-                // picture pauses and the journal leaves for the cloud whenever
-                // the app steps aside.
-                .onReceive(NotificationCenter.default.publisher(for: Platform.cameToFront)) { _ in
-                    displayLock.hold(true)
-                    model.becameActive()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: Platform.steppedAside)) { _ in
-                    displayLock.hold(false)
-                    model.steppedAside()
+                .onAppear {
+                    // The screen stays lit only while the picture is on it;
+                    // the picture pauses and the journal leaves for the cloud
+                    // whenever the app steps aside.
+                    presence.observe { present in
+                        displayLock.hold(present)
+                        if present { model.becameActive() } else { model.steppedAside() }
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: Platform.willTerminate)) { _ in
                     model.flushState()
