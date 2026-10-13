@@ -19,12 +19,14 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
   coupling gates (`tools/gates.py`, counts with a target of 0 that fail the
   build), and the sanitize guard swept over the whole tree.
 - End-to-end without credentials or library writes: build for the Simulator
-  or for the Mac (`-destination 'platform=macOS,arch=arm64'`, Debug), run
+  or for the Mac (`-destination 'generic/platform=macOS'`, Debug), run
   `python3 tools/fake_pcloud.py --root "<pCloud Drive mount>" --scratch
   <tmp> --no-probe`, and launch with `WARMGUN_TOKEN` and
   `WARMGUN_API_HOST=http://localhost:8765` in the environment (the
-  development stand-ins for the Keychain and the host; device and Release
-  builds compile them out). A Mac debug build runs with `open --env ...`.
+  development stand-ins for the Keychain and the host; device builds and a
+  Mac Release build compile them out). A Mac debug build runs with
+  `open --env ...` and has a bundle id of its own, so its container, cache
+  and journal never meet the installed app's.
 - The Mac app goes full screen only once its window becomes key, which a
   locked screen never allows: with the Mac locked, the window stays at its
   launch size however correct the code is, so judge that part unlocked.

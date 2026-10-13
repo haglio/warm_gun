@@ -72,17 +72,36 @@ the App Sandbox with a container of its own.
   phone sets it by turning, the Mac by the Portrait/Landscape chips in the
   top-left cluster of the overlay, which appear only where the screen does not
   turn. Both roads reach `setOrientation`; the window's shape never does.
-- **Full screen on arrival.** The window has no title bar and takes the whole
-  screen the first time it becomes key after the player appears — once, so
-  leaving full screen by hand sticks. A locked screen never makes a window
-  key, so under a lock the window stays at its launch size.
+- **Full screen on arrival.** The one window (a `Window` scene, so there is
+  no New Window and no second run on the one model) has no title bar and
+  takes the whole screen the first time it becomes key after the player
+  appears — once, so leaving full screen by hand sticks. A locked screen
+  never makes a window key, so under a lock the window stays at its launch
+  size. A fresh install opens on the landscape library, the shape of the
+  screen.
+- **Stepping aside pauses the picture.** The phone's run stops when iOS
+  suspends the app; a Mac's would play on under another app and keep booking
+  completions nobody watched. So both machines answer the same two
+  notifications — stepped aside (the phone's background, the Mac's resign
+  active) and came to front — and stepping aside pauses the engine, flushes
+  the state and uploads the journal; coming to front resumes, unless he had
+  paused himself.
 - **The journal has a name per machine.** Both upload into the same sync
   folder, and Evolver reads every `.jsonl` there, so the Mac writes
   `warm-gun-journal-mac.jsonl` beside the phone's. And because a Mac is quit
   from the front as often as not — no step-aside to upload on — the size last
   uploaded is kept across launches and a launch with lines waiting uploads
-  them first thing. On the Mac a step-aside is losing the front, not only the
-  background, since a window can sit inactive for a day.
+  them first thing; uploads run one at a time so the size recorded is the
+  size the cloud holds. **Open on the Evolver side:** its Watch Weights stage
+  applies favorites through one time cursor across every journal
+  (`evolver/tasks/watch_weights.py`, `applied_through`), which was safe while
+  one machine wrote in time order; a Mac line that reaches the folder after
+  the phone's later lines have been applied is skipped. The cursor wants to
+  be per journal file before the Mac's favorites are relied on.
+- **A debug Mac build is a different app.** It carries the bundle id
+  `com.cmloegcmluin.warmgun.debug`, so a run against the fake server has a
+  container, cache, settings and journal of its own, and a fixture line can
+  never reach the real account through the installed app.
 - **Everything else is the same code**: AVPlayerLayer in an NSView instead of
   a UIView, a process activity instead of the idle timer, no audio session
   and no background assertion to hold. Returning to the app no longer unpauses

@@ -13,7 +13,7 @@ struct Settings: Codable, Equatable {
     var username = ""
     var libraryPath = ""
     var syncFolder = "/WarmGun"
-    var browse = BrowseOptions()
+    var browse = BrowseOptions(orientation: Platform.defaultOrientation)
     var loopClip = false
     var cacheCapMB = 2048
     var prefetchAhead = 12

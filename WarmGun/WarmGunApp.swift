@@ -4,29 +4,28 @@ import SwiftUI
 struct WarmGunApp: App {
     @StateObject private var model = AppModel()
     @State private var displayLock = DisplayLock()
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
-        WindowGroup {
+        Platform.window {
             RootView()
                 .environmentObject(model)
                 .preferredColorScheme(.dark)
-                .task { await model.start() }
-                .onChange(of: scenePhase) { _, phase in
-                    // The screen stays lit only while the app is on it; the
-                    // journal leaves for the cloud whenever the app steps aside.
-                    displayLock.hold(phase == .active)
-                    if phase == .active { model.becameActive() }
-                    if Platform.isSteppingAside(phase) {
-                        model.flushState()
-                        Task { await model.syncWithCloud() }
-                    }
+                .task { await model.launch() }
+                // The screen stays lit only while the app is on it; the
+                // picture pauses and the journal leaves for the cloud whenever
+                // the app steps aside.
+                .onReceive(NotificationCenter.default.publisher(for: Platform.cameToFront)) { _ in
+                    displayLock.hold(true)
+                    model.becameActive()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: Platform.steppedAside)) { _ in
+                    displayLock.hold(false)
+                    model.steppedAside()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: Platform.willTerminate)) { _ in
                     model.flushState()
                 }
         }
-        .playerWindow()
     }
 }
 

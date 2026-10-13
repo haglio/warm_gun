@@ -1,5 +1,6 @@
 import AVFoundation
 import SwiftUI
+import WarmGunKit
 #if os(iOS)
 import UIKit
 #else
@@ -61,22 +62,26 @@ enum Platform {
         #endif
     }
 
-    /// The phase that means the app has stepped aside, when the journal
-    /// leaves for the cloud. On the phone that is the background; a Mac app
-    /// can sit inactive under another window for a day and never background,
-    /// so there losing the front is the moment.
-    static func isSteppingAside(_ phase: ScenePhase) -> Bool {
-        #if os(iOS)
-        return phase == .background
-        #else
-        return phase == .inactive || phase == .background
-        #endif
-    }
-
-    /// Posted as the process is about to end — the last chance to write.
+    /// Which library a fresh install opens on: the phone is held upright,
+    /// the laptop's screen is wide.
     #if os(iOS)
+    static let defaultOrientation = Orientation.portrait
+    #else
+    static let defaultOrientation = Orientation.landscape
+    #endif
+
+    /// Posted when the app has stepped aside and when it is back in front.
+    /// On the phone stepping aside is the background; a Mac app can sit under
+    /// another app for a day and never background, so there it is losing the
+    /// front — the picture pauses, the journal leaves for the cloud. And the
+    /// last word before the process ends, the last chance to write.
+    #if os(iOS)
+    static let steppedAside = UIApplication.didEnterBackgroundNotification
+    static let cameToFront = UIApplication.didBecomeActiveNotification
     static let willTerminate = UIApplication.willTerminateNotification
     #else
+    static let steppedAside = NSApplication.didResignActiveNotification
+    static let cameToFront = NSApplication.didBecomeActiveNotification
     static let willTerminate = NSApplication.willTerminateNotification
     #endif
 
@@ -92,8 +97,8 @@ enum Platform {
     /// The Keychain stand-in for development: the Simulator and a Mac debug
     /// build run against `tools/fake_pcloud.py`, which accepts any token, and
     /// letting the launch environment supply it is what makes the whole app
-    /// drivable headlessly with no credentials. Device and release builds
-    /// compile this out.
+    /// drivable headlessly with no credentials. Device builds and a Mac
+    /// Release build compile this out.
     static var developmentToken: String? { developmentOverride("WARMGUN_TOKEN") }
 
     /// The API origin for the same runs — `http://localhost:8765` for the
@@ -131,13 +136,15 @@ final class DisplayLock {
     }
 }
 
-extension Scene {
-    /// The Mac's window: nothing but the picture, no title bar over it.
-    func playerWindow() -> some Scene {
+extension Platform {
+    /// The app's one window. On the Mac it is exactly one — no New Window,
+    /// no second run on the one model — with no title bar over the picture.
+    static func window<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some Scene {
         #if os(macOS)
-        windowStyle(.hiddenTitleBar)
+        Window("Warm Gun", id: "player") { content() }
+            .windowStyle(.hiddenTitleBar)
         #else
-        self
+        WindowGroup { content() }
         #endif
     }
 }
