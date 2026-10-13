@@ -1,45 +1,45 @@
 import Testing
 @testable import WarmGunKit
 
-/// The desktop's E key, one step around seed, action and off.
+/// The E key: one step clockwise around the Loop control's four stops.
 struct LoopCycleTests {
-    @Test func nothingRunningStartsASeedLoop() {
-        #expect(LoopCycle.step(running: nil, locked: false, canLoop: { _ in true }) == .loop(.seed))
+    @Test func noLoopStepsToLoopingTheOneClip() {
+        #expect(LoopCycle.next(after: .all, canLoop: { _ in true }) == .single)
     }
 }
 
 extension LoopCycleTests {
-    @Test func aSeedLoopStepsOnToTheActionLoop() {
-        #expect(LoopCycle.step(running: .seed, locked: false, canLoop: { _ in true }) == .loop(.action))
+    @Test func theOneClipLoopStepsToTheSeedLoop() {
+        #expect(LoopCycle.next(after: .single, canLoop: { _ in true }) == .seed)
     }
 }
 
 extension LoopCycleTests {
-    @Test func anActionLoopStepsOnToOff() {
-        #expect(LoopCycle.step(running: .action, locked: false, canLoop: { _ in true }) == .off)
+    @Test func theSeedLoopStepsToTheActionLoop() {
+        #expect(LoopCycle.next(after: .seed, canLoop: { _ in true }) == .action)
     }
 }
 
 extension LoopCycleTests {
-    @Test func anAxisWhoseGroupIsThisClipAloneIsSteppedOver() {
-        #expect(LoopCycle.step(running: nil, locked: false, canLoop: { $0 == .action }) == .loop(.action))
+    @Test func theActionLoopStepsBackToNoLoop() {
+        #expect(LoopCycle.next(after: .action, canLoop: { _ in true }) == .all)
     }
 }
 
 extension LoopCycleTests {
-    @Test func aSeedLoopWithNoActionGroupStepsStraightToOff() {
-        #expect(LoopCycle.step(running: .seed, locked: false, canLoop: { $0 == .seed }) == .off)
+    @Test func aSeedFamilyOfOneIsSteppedOver() {
+        #expect(LoopCycle.next(after: .single, canLoop: { $0 == .action }) == .action)
     }
 }
 
 extension LoopCycleTests {
-    @Test func withNoGroupToLoopThePressLocksTheClip() {
-        #expect(LoopCycle.step(running: nil, locked: false, canLoop: { _ in false }) == .lock)
+    @Test func anActionGroupOfOneIsSteppedOver() {
+        #expect(LoopCycle.next(after: .seed, canLoop: { $0 == .seed }) == .all)
     }
 }
 
 extension LoopCycleTests {
-    @Test func andTheNextPressLetsItGo() {
-        #expect(LoopCycle.step(running: nil, locked: true, canLoop: { _ in false }) == .unlock)
+    @Test func withNoGroupToLoopTheKeyIsATwoStopCycle() {
+        #expect(LoopCycle.next(after: .single, canLoop: { _ in false }) == .all && LoopCycle.next(after: .all, canLoop: { _ in false }) == .single)
     }
 }

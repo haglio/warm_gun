@@ -1,38 +1,24 @@
 import Foundation
 
-/// The two group axes a clip can be looped on: its seed family, or every
-/// clip of its action.
-public enum LoopAxis: Equatable, Sendable, CaseIterable {
-    case seed, action
+/// Which loop the run is in — the Loop control's four stops, in the order the
+/// control draws them: the whole browse, one clip, the current clip's seed
+/// family, its action group.
+public enum LoopMode: String, CaseIterable, Sendable {
+    case all, single, seed, action
 }
 
-/// What one press of the desktop's E key does next.
-public enum LoopStep: Equatable, Sendable {
-    case loop(LoopAxis)
-    case off
-    case lock
-    case unlock
-}
-
-/// The desktop satellite's loop cycle (`fun_time/satellite_groups.py`,
-/// `loop_cycle`): one step around seed, action, off.
+/// The E key: one step clockwise around the Loop control, `all` → `single` →
+/// `seed` → `action` → `all`. A group stop whose group holds only this clip
+/// has no loop to offer and is stepped over; the one-clip loop always has.
 public enum LoopCycle {
-    private static let cycle: [LoopAxis?] = [.seed, .action, nil]
-
-    /// The next stop from *running* (nil when no group is looping). An axis
-    /// whose group holds only this clip has no loop to offer and is stepped
-    /// over; "off" is only a stop while something is on. When neither axis
-    /// can loop, the press locks the clip, or lets a locked one go — a
-    /// one-stop cycle would hold a clip the only key on it could not release.
-    public static func step(running: LoopAxis?, locked: Bool, canLoop: (LoopAxis) -> Bool) -> LoopStep {
-        let start = running.flatMap { cycle.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
-        for offset in 0..<cycle.count {
-            guard let axis = cycle[(start + offset) % cycle.count] else {
-                if running != nil { return .off }
-                continue
-            }
-            if canLoop(axis) { return .loop(axis) }
+    public static func next(after running: LoopMode, canLoop: (LoopMode) -> Bool) -> LoopMode {
+        let stops = LoopMode.allCases
+        let start = stops.firstIndex(of: running)! + 1
+        for offset in 0..<stops.count {
+            let stop = stops[(start + offset) % stops.count]
+            if stop == .seed || stop == .action, !canLoop(stop) { continue }
+            return stop
         }
-        return locked ? .unlock : .lock
+        return .all
     }
 }
