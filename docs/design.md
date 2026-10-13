@@ -69,10 +69,13 @@ the App Sandbox with a container of its own.
   anywhere else (target 0). The app above it asks one vocabulary — does the
   screen turn, hold the display awake, which journal file is mine, is this
   phase a step-aside — and never knows which machine answers.
-- **Orientation is a key.** The browse still has one orientation; the phone
-  sets it by turning, the Mac by the P and L keys (a chip pair on the overlay
-  came first and read as one more filter, so it went). Space pauses and
-  plays. Both roads reach `setOrientation`; the window's shape never does.
+- **The keyboard is the desktop's.** The arrows mean what they mean on the
+  desktop satellite — left previous, right next, up weird, down lock — and
+  WASD is the same four for the other hand; space and Esc pause and play. The
+  browse still has one orientation: the phone sets it by turning, the Mac by
+  the P and L keys (a chip pair on the overlay came first and read as one
+  more filter, so it went). Both roads reach `setOrientation`; the window's
+  shape never does.
 - **Full screen on arrival.** The one window (a `Window` scene, so there is
   no New Window and no second run on the one model) has no title bar and
   takes the whole screen the first time it becomes key after the player
