@@ -12,6 +12,8 @@ enum MetadataFetcher {
     /// The corpus arrives in the background and nothing on the glass says how
     /// it went, so the unified log is where "why are there no groups" is
     /// answered: `log show --predicate 'subsystem == "com.cmloegcmluin.warmgun"'`.
+    /// Notices, not info: info lines are not kept once the process is gone,
+    /// and this is read after the fact.
     static let log = Logger(subsystem: "com.cmloegcmluin.warmgun", category: "metadata")
 
     /// One branch as the survey found it: where it is, what it holds, and which
@@ -30,7 +32,7 @@ enum MetadataFetcher {
         var branches: [Branch] = []
         for branch in LibraryPaths.MetadataBranch.allCases {
             guard let path = branch.path(forLibrary: libraryPath, genauFlicksFolder: genauFlicksFolder) else {
-                log.info("\(String(describing: branch)) branch: no path for this library")
+                log.notice("\(String(describing: branch)) branch: no path for this library")
                 continue
             }
             let files: [LibraryFile]
@@ -42,7 +44,7 @@ enum MetadataFetcher {
             }
             let index = SidecarIndex(branch: branch, clipPaths: clipPaths,
                                      listing: files.map(\.path))
-            log.info("\(String(describing: branch)) branch: \(files.count) files listed, \(index.clipsByListedSidecar.count) speak for a clip")
+            log.notice("\(String(describing: branch)) branch: \(files.count) files listed, \(index.clipsByListedSidecar.count) speak for a clip")
             guard !index.clipsByListedSidecar.isEmpty else { continue }
             branches.append(Branch(path: path, files: files, index: index))
         }
@@ -68,14 +70,14 @@ enum MetadataFetcher {
             let fetched: [String: Sidecar]
             do {
                 fetched = try await fetchViaZip(client: client, branch: branch)
-                log.info("\(branch.path, privacy: .private): \(fetched.count) sidecars by zip")
+                log.notice("\(branch.path, privacy: .private): \(fetched.count) sidecars by zip")
             } catch {
                 // getzip has already failed against the real server once (it
                 // takes a folderid, not a path) — never trust it as the only
                 // road.
                 log.error("\(branch.path, privacy: .private): zip failed (\(error.localizedDescription)), fetching singly")
                 fetched = await fetchSingly(client: client, branch: branch)
-                log.info("\(branch.path, privacy: .private): \(fetched.count) of \(branch.index.clipsByListedSidecar.count) sidecars singly")
+                log.notice("\(branch.path, privacy: .private): \(fetched.count) of \(branch.index.clipsByListedSidecar.count) sidecars singly")
             }
             sidecars.merge(fetched) { _, new in new }
         }
