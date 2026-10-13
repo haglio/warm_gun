@@ -151,12 +151,15 @@ private struct ControlsOverlay: View {
                     chip("Favs", on: favoritesBinding())
                 }
             }
+            // The Loop control, laid so that E's cycle (all, 1, seed, action)
+            // runs clockwise round the landscape grid: All and 1 on top,
+            // Seed under 1 and Action under All.
             corner(.bottomLeading) {
                 cluster {
                     loopChip("All", .all)
                     loopChip("1", .single)
-                    loopChip("Seed", .seed, enabled: model.seedLoopAvailable)
                     loopChip("Action", .action, enabled: model.actionLoopAvailable)
+                    loopChip("Seed", .seed, enabled: model.seedLoopAvailable)
                 }
             }
             // The combinable act buttons, overlay-defined: 2 wide and 4 tall in
