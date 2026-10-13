@@ -55,7 +55,8 @@ the owner, not alone.
 
 The same target builds against the macOS SDK and runs on the owner's laptop,
 asked for as "the same app, full screen, with a way to switch between the
-portrait and landscape libraries since a laptop cannot tell its orientation".
+portrait and landscape libraries since a laptop cannot tell its orientation"
+— which became the P and L keys, with space for pause.
 Not Mac Catalyst and not "Designed for iPhone": the first is a translation
 layer with its own quirks, and the second needs the Mac registered in the
 team's provisioning profile, which that day needed a new Program License
@@ -68,10 +69,10 @@ the App Sandbox with a container of its own.
   anywhere else (target 0). The app above it asks one vocabulary — does the
   screen turn, hold the display awake, which journal file is mine, is this
   phase a step-aside — and never knows which machine answers.
-- **Orientation is a chip pair.** The browse still has one orientation; the
-  phone sets it by turning, the Mac by the Portrait/Landscape chips in the
-  top-left cluster of the overlay, which appear only where the screen does not
-  turn. Both roads reach `setOrientation`; the window's shape never does.
+- **Orientation is a key.** The browse still has one orientation; the phone
+  sets it by turning, the Mac by the P and L keys (a chip pair on the overlay
+  came first and read as one more filter, so it went). Space pauses and
+  plays. Both roads reach `setOrientation`; the window's shape never does.
 - **Full screen on arrival.** The one window (a `Window` scene, so there is
   no New Window and no second run on the one model) has no title bar and
   takes the whole screen the first time it becomes key after the player

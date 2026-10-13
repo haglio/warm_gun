@@ -5,15 +5,14 @@ auto-advancing run of the AI library's clips, streamed from pCloud and cached
 on the phone so nothing ever waits. No OSR2, no voice — four taps and a
 controls sheet. The name and the magenta 5x5 lettermark follow Fun Time's.
 The same app builds for the Mac, where it takes the whole screen, taps are
-clicks, and a Portrait/Landscape pair on the overlay stands in for turning
-the phone.
+clicks, and the P and L keys stand in for turning the phone.
 
 - **Taps**: left third = previous, right third = next, top-middle = weird,
   lower-middle = lock (favorite + repeat-one). Tap the middle for the
   controls overlay — the kind chips (Genau, Clips, Full), Shuffle/Latest and
   Favs, the Loop control, the act buttons, the four gestures as buttons and
-  pause in the center, with Portrait/Landscape on the Mac — and double-tap
-  it to pause.
+  pause in the center — and double-tap it to pause. On the Mac, space pauses
+  and plays, and the P and L keys pick the portrait or the landscape library.
 - **Source**: the originals under `1_sorted/` (small H.264), fetched whole via
   the pCloud HTTP API and played from an on-device LRU cache; a deep two-sided
   prefetch window keeps the neighbours resident, and "Download this browse"

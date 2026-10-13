@@ -617,13 +617,14 @@ final class AppModel: ObservableObject {
     /// The phone was turned: the browse follows the screen, portrait clips
     /// upright and landscape clips wide, with no switch to remember. A
     /// laptop's screen never turns, and its window's shape says nothing about
-    /// which library is wanted — there the chip decides, through the road below.
+    /// which library is wanted — there the keys decide, through the road below.
     func deviceRotated(landscape: Bool) {
         guard Platform.screenTurns else { return }
         setOrientation(landscape ? .landscape : .portrait)
     }
 
-    /// Which library plays: the chip's road on a Mac, the rotation's on a phone.
+    /// Which library plays: the P and L keys' road on a Mac, the rotation's
+    /// on a phone.
     func setOrientation(_ orientation: Orientation) {
         guard settings.browse.orientation != orientation else { return }
         var browse = settings.browse
