@@ -80,12 +80,12 @@ the App Sandbox with a container of its own.
   size. A fresh install opens on the landscape library, the shape of the
   screen.
 - **Stepping aside pauses the picture.** The phone's run stops when iOS
-  suspends the app; a Mac's would play on under another app and keep booking
-  completions nobody watched. So both machines answer the same two
-  notifications — stepped aside (the phone's background, the Mac's resign
-  active) and came to front — and stepping aside pauses the engine, flushes
-  the state and uploads the journal; coming to front resumes, unless he had
-  paused himself.
+  suspends the app; a Mac's would play on under another app, minimized, or
+  with its window closed, and keep booking completions nobody watched. So
+  both machines keep one fact, `Presence` — on the phone "not in the
+  background", on the Mac "active and a window visible" (activation and
+  window occlusion) — and losing it pauses the engine, flushes the state and
+  uploads the journal; regaining it resumes, unless he had paused himself.
 - **The journal has a name per machine.** Both upload into the same sync
   folder, and Evolver reads every `.jsonl` there, so the Mac writes
   `warm-gun-journal-mac.jsonl` beside the phone's. And because a Mac is quit
