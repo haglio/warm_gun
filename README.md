@@ -13,8 +13,8 @@ clicks, and the P and L keys stand in for turning the phone.
   Favs, the Loop control, the act buttons, the four gestures as buttons and
   pause in the center — and double-tap it to pause. On the Mac the keyboard
   does the same: the arrows and WASD are previous, next, weird and lock (left,
-  right, up, down), space and Esc pause and play, and P and L pick the
-  portrait or the landscape library.
+  right, up, down), E steps the loop around seed, action and off, space and
+  Esc pause and play, and P and L pick the portrait or the landscape library.
 - **Source**: the originals under `1_sorted/` (small H.264), fetched whole via
   the pCloud HTTP API and played from an on-device LRU cache; a deep two-sided
   prefetch window keeps the neighbours resident, and "Download this browse"

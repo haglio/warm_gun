@@ -739,6 +739,24 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// The desktop's E key: one step around seed, action, off (the Kit's
+    /// `LoopCycle`), each stop meaning what the Loop control's segment means.
+    func cycleLoop() {
+        guard let current = session.current else { return }
+        let running: LoopAxis? = loopMode == .seed ? .seed : loopMode == .action ? .action : nil
+        let step = LoopCycle.step(running: running, locked: session.locked) { axis in
+            (axis == .seed ? groupIndex.seedClips(of: current) : groupIndex.actionClips(of: current)).count > 1
+        }
+        switch step {
+        case .loop(.seed): setLoop(.seed)
+        case .loop(.action): setLoop(.action)
+        case .off: setLoop(.all)
+        // A group of one makes a seed loop mean a lock, exactly as the segment does.
+        case .lock: setLoop(.seed)
+        case .unlock: toggleLock()
+        }
+    }
+
     func update(cacheCapMB: Int) {
         settings.cacheCapMB = cacheCapMB
         Task { await prefetcher?.setCap(bytes: settings.cacheCapBytes) }
