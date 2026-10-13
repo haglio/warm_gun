@@ -32,7 +32,6 @@ final class AppModel: ObservableObject {
     @Published private(set) var weird: Set<String> = []
     /// Which loop the run is in: the whole browse, one clip, or the current
     /// clip's seed family / action group — the desktop satellite's axes.
-    enum LoopMode: String { case all, single, seed, action }
     @Published private(set) var loopMode: LoopMode = .all
     /// Whether the CURRENT clip has a group to loop — the sheet greys the
     /// segment out rather than letting a press dead-end.
@@ -762,22 +761,13 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The desktop's E key: one step around seed, action, off (the Kit's
-    /// `LoopCycle`), each stop meaning what the Loop control's segment means.
+    /// The E key: one step clockwise around the Loop control (the Kit's
+    /// `LoopCycle`), each stop meaning what the control's segment means.
     func cycleLoop() {
         guard let current = session.current else { return }
-        let running: LoopAxis? = loopMode == .seed ? .seed : loopMode == .action ? .action : nil
-        let step = LoopCycle.step(running: running, locked: session.locked) { axis in
-            (axis == .seed ? groupIndex.seedClips(of: current) : groupIndex.actionClips(of: current)).count > 1
-        }
-        switch step {
-        case .loop(.seed): setLoop(.seed)
-        case .loop(.action): setLoop(.action)
-        case .off: setLoop(.all)
-        // A group of one makes a seed loop mean a lock, exactly as the segment does.
-        case .lock: setLoop(.seed)
-        case .unlock: toggleLock()
-        }
+        setLoop(LoopCycle.next(after: loopMode) { stop in
+            (stop == .seed ? groupIndex.seedClips(of: current) : groupIndex.actionClips(of: current)).count > 1
+        })
     }
 
     func update(cacheCapMB: Int) {

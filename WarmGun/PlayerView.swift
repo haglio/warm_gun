@@ -284,7 +284,7 @@ private struct ControlsOverlay: View {
         .contentShape(Capsule())
     }
 
-    private func loopChip(_ label: String, _ mode: AppModel.LoopMode, enabled: Bool = true) -> some View {
+    private func loopChip(_ label: String, _ mode: LoopMode, enabled: Bool = true) -> some View {
         let selected = model.loopMode == mode
         return Button {
             onAnyInteraction()
@@ -349,9 +349,9 @@ private struct ControlsOverlay: View {
 
 /// The keyboard, where there is one. The arrows are the desktop satellite's
 /// — left previous, right next, up weird, down lock — and WASD is the same
-/// hand on the same four; E steps the loop around seed, action and off as it
-/// does there; space and Esc pause and play; P and L pick the portrait or
-/// the landscape library, since a laptop's screen never turns.
+/// hand on the same four; E steps the Loop control clockwise, all, 1, seed,
+/// action; space and Esc pause and play; P and L pick the portrait or the
+/// landscape library, since a laptop's screen never turns.
 /// Buttons SwiftUI never draws, so each key equivalent has somewhere to land
 /// whatever is on screen; the login form is a different screen and never
 /// sees them.
