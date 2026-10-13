@@ -48,7 +48,7 @@ the phone.
 
 - Tests: `cd WarmGunKit && swift test`; everything: `sh tools/check.sh`.
 - Phone: `./install.sh` with the iPhone plugged in and unlocked.
-- Mac: `./install_mac.sh` builds a Release app into `~/Applications/WarmGun.app`
+- Mac: `./install_mac.sh` builds a Release app into `~/Applications/Warm Gun.app`
   and opens it. It signs with the development certificate alone, so there is
   no device registration and no Apple-side step.
 - Simulator or a Mac debug build, no credentials: `python3 tools/fake_pcloud.py

@@ -6,7 +6,7 @@
 # development certificate alone (no provisioning profile, so no device
 # registration and no Apple-side step), sandboxed, with its own container.
 #
-#   ./install_mac.sh             # build, install to ~/Applications/WarmGun.app, open it
+#   ./install_mac.sh             # build, install to "~/Applications/Warm Gun.app", open it
 #   OPEN=0 ./install_mac.sh      # build and install without opening
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -19,12 +19,12 @@ xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
   -configuration Release \
   -derivedDataPath build build
 
-APP="build/Build/Products/Release/WarmGun.app"
-DEST="$HOME/Applications/WarmGun.app"
+APP="build/Build/Products/Release/Warm Gun.app"
+DEST="$HOME/Applications/Warm Gun.app"
 mkdir -p "$HOME/Applications"
 # A copy still running would keep the old build on screen and `open` would
 # only bring it to the front.
-pkill -f "$DEST/Contents/MacOS/WarmGun" 2>/dev/null || true
+pkill -f "$DEST/Contents/MacOS/Warm Gun" 2>/dev/null || true
 rm -rf "$DEST"
 ditto "$APP" "$DEST"
 echo "Installed $DEST"

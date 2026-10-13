@@ -258,7 +258,7 @@ keeps no watch counts of its own at all — it records events and reads a number
   files read-only through the fake; and 2026-10-12 on the Mac against a
   fabricated fixture library: index, prefetch, playback, auto-advance, in the
   sandbox container).
-- The Mac: `./install_mac.sh` builds Release into `~/Applications/WarmGun.app`.
+- The Mac: `./install_mac.sh` builds Release into `~/Applications/Warm Gun.app`.
 - The phone: `./install.sh` with the iPhone plugged in and unlocked (same
   flow as Highdeas' `ios/resign.sh`; the wildcard team profile already covers
   any bundle id under the team). Until that has run, nothing is on the phone.
