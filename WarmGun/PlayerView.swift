@@ -341,18 +341,26 @@ private struct ControlsOverlay: View {
     }
 }
 
-/// The keyboard, where there is one: space pauses and plays, and P and L
-/// pick the portrait or the landscape library — a laptop's screen never
-/// turns, so this is how the Mac does what turning the phone does. Buttons
-/// SwiftUI never draws, so each key equivalent has somewhere to land whatever
-/// is on screen; the login form is a different screen and never sees them.
+/// The keyboard, where there is one. The arrows are the desktop satellite's
+/// — left previous, right next, up weird, down lock — and WASD is the same
+/// hand on the same four; space and Esc pause and play; P and L pick the
+/// portrait or the landscape library, since a laptop's screen never turns.
+/// Buttons SwiftUI never draws, so each key equivalent has somewhere to land
+/// whatever is on screen; the login form is a different screen and never
+/// sees them.
 private struct KeyboardShortcuts: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
         Group {
+            gesture(.previous, .leftArrow, "a")
+            gesture(.next, .rightArrow, "d")
+            gesture(.weird, .upArrow, "w")
+            gesture(.lock, .downArrow, "s")
             Button("Pause") { model.togglePause() }
                 .keyboardShortcut(.space, modifiers: [])
+            Button("Pause") { model.togglePause() }
+                .keyboardShortcut(.escape, modifiers: [])
             Button("Portrait") { model.setOrientation(.portrait) }
                 .keyboardShortcut("p", modifiers: [])
             Button("Landscape") { model.setOrientation(.landscape) }
@@ -362,6 +370,14 @@ private struct KeyboardShortcuts: View {
         .frame(width: 0, height: 0)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func gesture(_ action: TapAction, _ arrow: KeyEquivalent, _ letter: KeyEquivalent) -> some View {
+        Button(String(describing: action)) { model.tap(action) }
+            .keyboardShortcut(arrow, modifiers: [])
+        Button(String(describing: action)) { model.tap(action) }
+            .keyboardShortcut(letter, modifiers: [])
     }
 }
 
