@@ -71,7 +71,10 @@ the App Sandbox with a container of its own.
   phase a step-aside — and never knows which machine answers.
 - **The keyboard is the desktop's.** The arrows mean what they mean on the
   desktop satellite — left previous, right next, up weird, down lock — and
-  WASD is the same four for the other hand; space and Esc pause and play. The
+  WASD is the same four for the other hand; E is the desktop's loop cycle
+  (seed, action, off, skipping an axis whose group is this clip alone, and a
+  lock-then-unlock when neither can loop — `LoopCycle` in the Kit, tested);
+  space and Esc pause and play. The
   browse still has one orientation: the phone sets it by turning, the Mac by
   the P and L keys (a chip pair on the overlay came first and read as one
   more filter, so it went). Both roads reach `setOrientation`; the window's
@@ -220,6 +223,7 @@ keeps no watch counts of its own at all — it records events and reads a number
   (index, step, discard, lock, replacePlaylist), `WatchWeights` (the stamped
   weight, and the two draw primitives) + `WatchTracker` (samples → events),
   `Sidecar` + `GroupIndex` + `SidecarIndex` (the mirror joined to the catalog),
+  `LoopCycle` (the E key's seed/action/off step),
   `Favorites` (+ favs.csv import; a generated clip is filed under its stem,
   which is the only name the desktop's file can say, and the other two lanes
   under their whole path, where nothing promises two files differ by name),
