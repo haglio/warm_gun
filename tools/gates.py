@@ -14,6 +14,10 @@ is a failing exit. The invariants, from docs/design.md:
 4. Views do not reach through the model into its actors. The model hands out
    values and intents; ``model.<actor>.<anything>`` from a view couples the
    view to machinery the model exists to own.
+5. The phone and the Mac part ways in ``Platform.swift`` and nowhere else:
+   every ``#if os(...)`` / ``targetEnvironment`` / ``canImport`` and every
+   UIKit or AppKit import outside it is a second place the two can drift
+   apart, and the one place is what keeps the app above it one program.
 
 Run: ``python3 tools/gates.py`` (exit 0 = all gates hold).
 """
@@ -30,6 +34,10 @@ APP = ROOT / "WarmGun"
 
 KIT_ALLOWED_IMPORTS = {"Foundation"}
 MODEL_FILE = "AppModel.swift"
+PLATFORM_FILE = "Platform.swift"
+PLATFORM_CONDITION = re.compile(r"#\s*(if|elseif)\b.*\b(os|targetEnvironment|canImport)\s*\(")
+# `@_exported import UIKit` and `import class UIKit.UIDevice` are the same import.
+PLATFORM_IMPORT = re.compile(r"^\s*(@\w+\s+)*import\s+(\w+\s+)?(UIKit|AppKit)\b")
 # The reference-typed machinery the model owns; views may not reach into it.
 ACTORS = ("engine", "cache", "prefetcher", "client")
 
@@ -92,12 +100,24 @@ def gate_views_stay_out_of_actors() -> list[str]:
     return hits
 
 
+def gate_platform_seam() -> list[str]:
+    hits = []
+    for path in swift_files(APP):
+        if path.name == PLATFORM_FILE:
+            continue
+        for number, line in code_lines(path):
+            if PLATFORM_CONDITION.search(line) or PLATFORM_IMPORT.match(line):
+                hits.append(f"{path.relative_to(ROOT)}:{number}: {line.strip()}")
+    return hits
+
+
 def main() -> int:
     gates = {
         "kit non-Foundation imports": gate_kit_purity(),
         "@Published outside AppModel": gate_published_ownership(),
         "stored static var": gate_no_static_mutable(),
         "view reach-through into model actors": gate_views_stay_out_of_actors(),
+        f"platform-specific code outside {PLATFORM_FILE}": gate_platform_seam(),
     }
     failed = False
     for name, hits in gates.items():

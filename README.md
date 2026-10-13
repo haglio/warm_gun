@@ -4,6 +4,9 @@ An iPhone satellite player for the Fun Time library: a never-ending,
 auto-advancing run of the AI library's clips, streamed from pCloud and cached
 on the phone so nothing ever waits. No OSR2, no voice — four taps and a
 controls sheet. The name and the magenta 5x5 lettermark follow Fun Time's.
+The same app builds for the Mac, where it takes the whole screen, taps are
+clicks, and a Portrait/Landscape pair on the overlay stands in for turning
+the phone.
 
 - **Taps**: left third = previous, right third = next, top-middle = weird,
   lower-middle = lock (favorite + repeat-one). Double-tap the middle for the
@@ -25,7 +28,8 @@ controls sheet. The name and the magenta 5x5 lettermark follow Fun Time's.
 ## Layout
 
 - `WarmGun/` — the SwiftUI app: player engine (AVQueuePlayer), downloader,
-  clip cache, prefetcher, pCloud transport, Keychain, settings, views.
+  clip cache, prefetcher, pCloud transport, Keychain, settings, views, and
+  `Platform.swift`, the one file where the phone and the Mac part ways.
 - `WarmGunKit/` — the pure logic, Foundation-only, fully tested headlessly:
   library paths, catalog, pCloud request/response shapes, playlist filters and
   watch-weighted shuffle, session, prefetch planning, journal, favorites, and
@@ -42,9 +46,13 @@ controls sheet. The name and the magenta 5x5 lettermark follow Fun Time's.
 
 - Tests: `cd WarmGunKit && swift test`; everything: `sh tools/check.sh`.
 - Phone: `./install.sh` with the iPhone plugged in and unlocked.
-- Simulator, no credentials: `python3 tools/fake_pcloud.py --root "<pCloud
-  Drive mount>" --scratch /tmp/wg-scratch --no-probe`, then launch the app
-  with `WARMGUN_TOKEN=dev-token` and API host `http://localhost:8765`.
+- Mac: `./install_mac.sh` builds a Release app into `~/Applications/WarmGun.app`
+  and opens it. It signs with the development certificate alone, so there is
+  no device registration and no Apple-side step.
+- Simulator or a Mac debug build, no credentials: `python3 tools/fake_pcloud.py
+  --root "<pCloud Drive mount>" --scratch /tmp/wg-scratch --no-probe`, then
+  launch the app with `WARMGUN_TOKEN=dev-token` and
+  `WARMGUN_API_HOST=http://localhost:8765` in its environment.
 
 On first run on the phone: log in to pCloud in Settings (the password is used
 once for a token; only the token is kept, in the Keychain), enter the library

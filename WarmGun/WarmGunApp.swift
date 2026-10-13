@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct WarmGunApp: App {
     @StateObject private var model = AppModel()
+    @State private var displayLock = DisplayLock()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -14,14 +15,18 @@ struct WarmGunApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     // The screen stays lit only while the app is on it; the
                     // journal leaves for the cloud whenever the app steps aside.
-                    UIApplication.shared.isIdleTimerDisabled = phase == .active
+                    displayLock.hold(phase == .active)
                     if phase == .active { model.becameActive() }
-                    if phase == .background {
+                    if Platform.isSteppingAside(phase) {
                         model.flushState()
                         Task { await model.syncWithCloud() }
                     }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: Platform.willTerminate)) { _ in
+                    model.flushState()
+                }
         }
+        .playerWindow()
     }
 }
 

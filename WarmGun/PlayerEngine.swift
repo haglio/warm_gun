@@ -41,10 +41,7 @@ final class PlayerEngine {
     private var statusObservations: [NSKeyValueObservation] = []
 
     init() {
-        // Ambient, mixed: this player is muted video — it must never barge in
-        // on whatever the phone is already playing (the default solo-ambient
-        // session pauses other audio the moment playback starts).
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        Platform.configureSilentPlayback()
         player.automaticallyWaitsToMinimizeStalling = false
         player.actionAtItemEnd = .advance
         player.isMuted = true

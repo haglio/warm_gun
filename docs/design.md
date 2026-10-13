@@ -51,6 +51,43 @@ the owner, not alone.
   has not arrived. The act a clip records (`video.action`) is a different axis
   and belongs to the act buttons; it never decides a kind.
 
+## The Mac (2026-10-12)
+
+The same target builds against the macOS SDK and runs on the owner's laptop,
+asked for as "the same app, full screen, with a way to switch between the
+portrait and landscape libraries since a laptop cannot tell its orientation".
+Not Mac Catalyst and not "Designed for iPhone": the first is a translation
+layer with its own quirks, and the second needs the Mac registered in the
+team's provisioning profile, which that day needed a new Program License
+Agreement accepted on the developer site. A native build needs neither —
+it is signed with the development certificate alone, no profile — and runs in
+the App Sandbox with a container of its own.
+
+- **One program, one seam.** Every `#if os(...)` and every UIKit/AppKit
+  import lives in `WarmGun/Platform.swift`, and a coupling gate counts them
+  anywhere else (target 0). The app above it asks one vocabulary — does the
+  screen turn, hold the display awake, which journal file is mine, is this
+  phase a step-aside — and never knows which machine answers.
+- **Orientation is a chip pair.** The browse still has one orientation; the
+  phone sets it by turning, the Mac by the Portrait/Landscape chips in the
+  top-left cluster of the overlay, which appear only where the screen does not
+  turn. Both roads reach `setOrientation`; the window's shape never does.
+- **Full screen on arrival.** The window has no title bar and takes the whole
+  screen the first time it becomes key after the player appears — once, so
+  leaving full screen by hand sticks. A locked screen never makes a window
+  key, so under a lock the window stays at its launch size.
+- **The journal has a name per machine.** Both upload into the same sync
+  folder, and Evolver reads every `.jsonl` there, so the Mac writes
+  `warm-gun-journal-mac.jsonl` beside the phone's. And because a Mac is quit
+  from the front as often as not — no step-aside to upload on — the size last
+  uploaded is kept across launches and a launch with lines waiting uploads
+  them first thing. On the Mac a step-aside is losing the front, not only the
+  background, since a window can sit inactive for a day.
+- **Everything else is the same code**: AVPlayerLayer in an NSView instead of
+  a UIView, a process activity instead of the idle timer, no audio session
+  and no background assertion to hold. Returning to the app no longer unpauses
+  a clip he paused, on either machine.
+
 ## Fidelity to the desktop satellite (what each gesture really does)
 
 From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
@@ -167,8 +204,10 @@ keeps no watch counts of its own at all — it records events and reads a number
   eviction), `TapZones`, `Journal`, `LinkCache`.
 - `WarmGun/` — the app: SwiftUI views, `PlayerEngine` (AVFoundation), `Downloader`
   (URLSession), `ClipCache` (disk), `PCloudClient` (transport), `Keychain`,
-  `AppModel` (the one `ObservableObject`, owns the Kit state). Views hold no
-  domain state; they read the model and post intents.
+  `AppModel` (the one `ObservableObject`, owns the Kit state), `Platform`
+  (the one file that knows whether this is the phone or the Mac; gate: no
+  `#if os` and no UIKit/AppKit import anywhere else). Views hold no domain
+  state; they read the model and post intents.
 - No module shares mutable state with another: the Kit types are value types or
   single-owner classes handed in by the model; the app's actors own their own
   storage and talk through async methods.
@@ -192,11 +231,15 @@ keeps no watch counts of its own at all — it records events and reads a number
   `renamefile` into a scratch folder, `uploadfile`), so the whole app can be
   driven end-to-end in the Simulator with no credentials and no writes to the
   real library.
-- The Simulator flow needs no credentials: the simulator-only `WARMGUN_TOKEN`
-  launch variable stands in for the Keychain, so the whole app boots straight
+- The Simulator flow needs no credentials: the `WARMGUN_TOKEN` launch
+  variable stands in for the Keychain and `WARMGUN_API_HOST` for the host
+  (Simulator and Mac debug builds only), so the whole app boots straight
   into playback against the fake server (verified 2026-08-24: index, prefetch,
   playback, auto-advance, watch journal upload, all against the real library
-  files read-only through the fake).
+  files read-only through the fake; and 2026-10-12 on the Mac against a
+  fabricated fixture library: index, prefetch, playback, auto-advance, in the
+  sandbox container).
+- The Mac: `./install_mac.sh` builds Release into `~/Applications/WarmGun.app`.
 - The phone: `./install.sh` with the iPhone plugged in and unlocked (same
   flow as Highdeas' `ios/resign.sh`; the wildcard team profile already covers
   any bundle id under the team). Until that has run, nothing is on the phone.
