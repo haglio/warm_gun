@@ -53,6 +53,10 @@ final class AppModel: ObservableObject {
     /// and replacing rather than folding would make its silence erase the lane.
     private var sidecars: [String: Sidecar] = [:]
     private var refreshedMetadata = false
+    /// A fetch that failed is tried again, a minute later, a few times: a
+    /// launch into a bad moment on the network used to cost the whole run its
+    /// groups, since nothing asked again until the next launch.
+    private var metadataAttempts = 0
     private var genauFlicksFolder: String?
     @Published private(set) var notice: Notice?
     @Published private(set) var paused = false
@@ -449,6 +453,7 @@ final class AppModel: ObservableObject {
     private func refreshMetadata() {
         guard !refreshedMetadata, let client, let catalog else { return }
         refreshedMetadata = true
+        metadataAttempts += 1
         let libraryPath = settings.libraryPath
         let flicksFolder = self.genauFlicksFolder
         let clipPaths = catalog.clips.map(\.path)
@@ -462,12 +467,13 @@ final class AppModel: ObservableObject {
             guard !branches.isEmpty else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"
                 MetadataFetcher.log.error("no branch of the metadata mirror answered")
+                retryMetadataLater()
                 return
             }
             let fingerprint = MetadataFetcher.fingerprint(of: branches)
             let stored = UserDefaults.standard.string(forKey: Self.metadataFingerprintKey)
             if fingerprint == stored, !groupIndex.isEmpty {
-                MetadataFetcher.log.info("mirror unchanged, the corpus on disk serves")
+                MetadataFetcher.log.notice("mirror unchanged, the corpus on disk serves")
                 recomputeLoopAvailability()
                 return
             }
@@ -475,9 +481,10 @@ final class AppModel: ObservableObject {
             guard !fetched.isEmpty else {
                 lastProblem = "Metadata: the metadata folders came back empty"
                 MetadataFetcher.log.error("the metadata folders came back empty")
+                retryMetadataLater()
                 return
             }
-            MetadataFetcher.log.info("adopting \(fetched.count) sidecars")
+            MetadataFetcher.log.notice("adopting \(fetched.count) sidecars")
             // Folded in, never substituted: a branch that did not answer this
             // run keeps whatever it contributed to the last one.
             adopt(sidecars: sidecars.merging(fetched) { _, new in new })
@@ -502,6 +509,18 @@ final class AppModel: ObservableObject {
     }
 
     private static let metadataFingerprintKey = "warm-gun.metadata-fingerprint"
+
+    private func retryMetadataLater() {
+        guard metadataAttempts < 5 else {
+            MetadataFetcher.log.error("giving up on the metadata until the next launch")
+            return
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(60))
+            refreshedMetadata = false
+            refreshMetadata()
+        }
+    }
 
     /// Everything the corpus decides, decided in one place: the groups the loop
     /// buttons walk, the weights the shuffle draws on, and which clips the
