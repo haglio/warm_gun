@@ -80,6 +80,12 @@ struct PlayerView: View {
             .onChange(of: geometry.size) { _, size in
                 model.deviceRotated(landscape: size.width > size.height)
             }
+            // A pointer, where there is one: moving it wakes the controls and
+            // keeps them awake, the way a touch does. A finger never hovers.
+            .onContinuousHover { phase in
+                guard case .active = phase else { return }
+                showingControls ? keepControlsAlive() : revealControls()
+            }
             .onAppear {
                 model.deviceRotated(landscape: geometry.size.width > geometry.size.height)
             }
