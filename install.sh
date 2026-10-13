@@ -18,7 +18,7 @@ xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
   -derivedDataPath build \
   -allowProvisioningUpdates build
 
-APP="build/Build/Products/Debug-iphoneos/WarmGun.app"
+APP="build/Build/Products/Debug-iphoneos/Warm Gun.app"
 
 # devicectl lists the Simulator's devices beside the real ones, so the phone is
 # picked by what it is rather than by the shape of its identifier: a simulated

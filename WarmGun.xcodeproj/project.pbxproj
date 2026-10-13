@@ -11,7 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AB0000000000000000000020 /* WarmGun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WarmGun.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB0000000000000000000020 /* Warm Gun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Warm Gun.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -59,7 +59,7 @@
 		AB0000000000000000000011 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AB0000000000000000000020 /* WarmGun.app */,
+				AB0000000000000000000020 /* Warm Gun.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -87,7 +87,7 @@
 				AB0000000000000000000061 /* WarmGunKit */,
 			);
 			productName = WarmGun;
-			productReference = AB0000000000000000000020 /* WarmGun.app */;
+			productReference = AB0000000000000000000020 /* Warm Gun.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -221,7 +221,7 @@
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cmloegcmluin.warmgun;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.cmloegcmluin.warmgun.debug;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Warm Gun";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -248,7 +248,7 @@
 				);
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cmloegcmluin.warmgun;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Warm Gun";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
