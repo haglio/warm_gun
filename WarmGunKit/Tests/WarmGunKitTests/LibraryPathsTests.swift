@@ -35,13 +35,17 @@ extension LibraryPathsTests {
     @Test func readsTheStemOfAnUpscaleReferenceAndOfNothingElse() {
         #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\clips\2D\AI\loop-two_topaz.mp4"#) == nil)
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\clips\2D\AI\loop-two_topaz.mp4"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/portrait/genau/a_b_c_topaz.mp4")
                 == "a_b_c")
         #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"#) == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/1_sorted/beta/landscape/a_b_c.mp4") == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: "no-extension") == nil)
+    }
+
+    @Test func aGenauReferenceFiledBeforeItsFolderMovedIsStillNoUpscaleReference() {
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
     }
 }
 
@@ -100,11 +104,9 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    @Test func namesGenausFolderBesideTheLibrary() {
-        // Evolver delivers Genau's flicks OUT of the pipeline into
-        // videos/genau — a sibling of the videos/videos tree the library path
-        // points into, reachable from it by construction.
-        #expect(LibraryPaths.genauPath(forLibrary: "/alpha/videos/videos/2D/AI") == "/alpha/videos/genau")
+    @Test func namesGenausFolderBesideTheLibrarysTwoDFolder() {
+        #expect(LibraryPaths.genauPath(forLibrary: "/alpha/videos/videos/2D/AI") == "/alpha/videos/videos/genau")
+        #expect(LibraryPaths.genauPath(forLibrary: "/2D/AI") == nil)
         #expect(LibraryPaths.genauPath(forLibrary: "/AI") == nil)
     }
 
@@ -194,8 +196,8 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     /// The mirror parallels the video tree: `videos/metadata` beside
-    /// `videos/videos`, with the genau branch reached from the folder holding
-    /// both — which is why it is not under `2D` like the other two.
+    /// `videos/videos`, and Genau's folder sits beside `2D` in both — which is
+    /// why its branch is not under `2D` like the other two.
     @Test func theThreeMetadataBranchesSitBesideTheVideoTree() {
         let library = "/alpha/videos/videos/2D/AI"
 
