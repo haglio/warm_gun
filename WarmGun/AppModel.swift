@@ -393,9 +393,8 @@ final class AppModel: ObservableObject {
         if catalog == nil { phase = .indexing }
         do {
             var files = try await client.listLibrary(path: settings.libraryPath)
-            // Genau's flicks live beside the library, not inside it, in
-            // videos/genau. A missing folder is fine; the source simply
-            // contributes nothing.
+            // A missing Genau folder is fine; the source simply contributes
+            // nothing.
             if let genauPath = LibraryPaths.genauPath(forLibrary: settings.libraryPath),
                let genau = try? await client.folderSkeleton(path: genauPath),
                let folder = LibraryPaths.genauFlicksFolder(in: genau),

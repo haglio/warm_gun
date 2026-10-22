@@ -92,7 +92,7 @@ public enum LibraryPaths {
     }
 
     public static func genauPath(forLibrary libraryPath: String) -> String? {
-        replacingLastFolders(3, of: libraryPath, with: "genau")
+        replacingLastFolders(2, of: libraryPath, with: "genau")
     }
 
     /// What the folder holding Genau's flicks is called is the account's own
@@ -166,8 +166,6 @@ public enum LibraryPaths {
             guard let root = LibraryPaths.metadataRoot(forLibrary: libraryPath) else { return nil }
             switch self {
             case .ai: return root + "/2D/AI"
-            // Not under 2D: Genau's flicks are delivered beside the library
-            // rather than into it, and the mirror follows them there.
             case .genau: return genauFlicksFolder.map { root + "/genau/" + $0 }
             case .nonAI: return root + "/2D/non_AI"
             }
