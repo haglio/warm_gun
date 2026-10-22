@@ -85,10 +85,14 @@ public enum LibraryPaths {
         }
     }
 
+    private static func replacingLastFolders(_ count: Int, of path: String, with name: String) -> String? {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        guard parts.count > count else { return nil }
+        return "/" + (parts.dropLast(count) + [name]).joined(separator: "/")
+    }
+
     public static func genauPath(forLibrary libraryPath: String) -> String? {
-        let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
-        guard parts.count >= 4 else { return nil }
-        return "/" + (parts.dropLast(3) + ["genau"]).joined(separator: "/")
+        replacingLastFolders(3, of: libraryPath, with: "genau")
     }
 
     /// What the folder holding Genau's flicks is called is the account's own
@@ -131,9 +135,7 @@ public enum LibraryPaths {
     /// The non-AI library — the real scenes, full videos and the clips cut
     /// out of them — beside the AI folder: `2D/non_AI`.
     public static func nonAIPath(forLibrary libraryPath: String) -> String? {
-        let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
-        guard parts.count >= 2 else { return nil }
-        return "/" + (parts.dropLast(1) + ["non_AI"]).joined(separator: "/")
+        replacingLastFolders(1, of: libraryPath, with: "non_AI")
     }
 
     /// The prefix the app files non-AI scenes under in its own catalog paths.
@@ -142,9 +144,7 @@ public enum LibraryPaths {
     /// The metadata mirror's root — `videos/metadata`, the videos tree's
     /// sibling, reached from the folder holding both.
     public static func metadataRoot(forLibrary libraryPath: String) -> String? {
-        let parts = libraryPath.split(separator: "/", omittingEmptySubsequences: true)
-        guard parts.count >= 4 else { return nil }
-        return "/" + (parts.dropLast(3) + ["metadata"]).joined(separator: "/")
+        replacingLastFolders(3, of: libraryPath, with: "metadata")
     }
 
     /// One tree of the metadata mirror, one lane of the library.
