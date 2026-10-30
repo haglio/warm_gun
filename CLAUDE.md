@@ -57,8 +57,6 @@ push the branch and open a PR against `github.com/haglio/warm_gun`. Auto-merge
 arms itself and the queue lands it when `.github/workflows/merge-gate.yml`,
 the required check, goes green. Never push `main` directly.
 
-The gate builds and tests `WarmGunKit` only, so nothing in `WarmGun/` is
-compiled by CI: a change to the app target is unverified until it is built in
-Xcode on a Mac — for BOTH destinations now, the iOS Simulator and the Mac,
-since the one target compiles for both and `Platform.swift` is the only file
-allowed to tell them apart (a gate counts the rest).
+The gate also compiles the app for the Mac and the phone, each the way its
+install script builds it, so an app change that does not build for either
+cannot ship; what it does on a device is still seen only by running it there.
