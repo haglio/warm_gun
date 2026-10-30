@@ -91,7 +91,7 @@ final class AppModel: ObservableObject {
     /// sample and journal line is labeled with this, never with the session.
     @Published private(set) var showing: String?
     private var planGeneration = 0
-    private var consecutiveFailureSkips = 0
+    private var fetchFailures = FetchFailures()
     private var persistTask: Task<Void, Never>?
     private var clipsByPath: [String: Clip] = [:]
     private var rng = SystemRandomNumberGenerator()
@@ -299,7 +299,7 @@ final class AppModel: ObservableObject {
     private func handle(_ event: Prefetcher.Event) async {
         switch event {
         case .ready(let path):
-            consecutiveFailureSkips = 0
+            fetchFailures.fetched()
             cached.insert(path)
             measureDuration(of: path)
             cached = await cache.cachedPaths()
@@ -313,19 +313,16 @@ final class AppModel: ObservableObject {
                 phase = .needsLogin
                 return
             }
-            // Step past a clip only once it has genuinely refused three times,
-            // and stop stepping altogether when everything is refusing — a dead
-            // network must leave the run parked and retrying, not sprint it
-            // silently through the whole playlist.
-            if path == waitingFor && attempts >= 3 {
-                if consecutiveFailureSkips < 5 {
-                    consecutiveFailureSkips += 1
-                    flash("Skipping — clip won't fetch", favorite: false)
-                    session.step(1)
-                    sync()
-                } else {
-                    lastProblem = "pCloud unreachable — holding here and retrying"
-                }
+            guard path == waitingFor else { return }
+            switch fetchFailures.failed(attempts: attempts) {
+            case .skip:
+                flash("Skipping — clip won't fetch", favorite: false)
+                session.step(1)
+                sync()
+            case .hold:
+                lastProblem = "pCloud unreachable — holding here and retrying"
+            case .keepWaiting:
+                break
             }
         case .evicted(let paths):
             cached.subtract(paths)
