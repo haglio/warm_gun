@@ -584,3 +584,26 @@ extension PlaylistTests {
         #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).disabledActs.isEmpty)
     }
 }
+
+extension PlaylistTests {
+    @Test func aClipPlaysInItsLanesOrientationOrItsOwnAndAFlickInEither() {
+        let overlay = ContentOverlay(lanes: [
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait),
+        ])
+        let upright = Catalog(files: [Self.file("1_sorted/alpha/portrait/clip-one.mp4")]).clips[0]
+        let laned = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
+        let flick = Catalog(files: [LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9,
+                                                size: 2_000_000, modified: Date(timeIntervalSince1970: 0),
+                                                duration: nil, videoCodec: nil, width: 1920, height: 1080)]).clips[0]
+        let portrait = BrowseOptions(orientation: .portrait)
+        let landscape = BrowseOptions(orientation: .landscape)
+
+        #expect(PlaylistBuilder.playsInOrientation(upright, options: portrait, overlay: overlay))
+        #expect(!PlaylistBuilder.playsInOrientation(upright, options: landscape, overlay: overlay))
+        // 1920x1080 pixels, filed in a portrait lane: the lane decides.
+        #expect(PlaylistBuilder.playsInOrientation(laned, options: portrait, overlay: overlay))
+        #expect(!PlaylistBuilder.playsInOrientation(laned, options: landscape, overlay: overlay))
+        #expect(PlaylistBuilder.playsInOrientation(flick, options: portrait, overlay: overlay))
+        #expect(PlaylistBuilder.playsInOrientation(flick, options: landscape, overlay: overlay))
+    }
+}

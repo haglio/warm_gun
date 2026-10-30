@@ -198,17 +198,7 @@ final class AppModel: ObservableObject {
             await index()
         } else {
             phase = .ready
-            if session.playlist.isEmpty {
-                rebuild(startAtTop: true)
-            } else if currentClipFightsBrowse() {
-                // The resumed playlist was built under other switches — the
-                // launch-in-portrait-sees-landscape bug: orientation changed
-                // while no catalog was loaded, and the restored run was never
-                // re-judged. A mismatch rebuilds; a match keeps the run.
-                rebuild(startAtTop: false)
-            } else {
-                sync()
-            }
+            if !rebuildIfStale() { sync() }
             Task { await index() }
         }
     }
@@ -395,11 +385,7 @@ final class AppModel: ObservableObject {
             if changed { persistCatalog() }
             phase = .ready
             refreshMetadata()
-            if session.playlist.isEmpty {
-                rebuild(startAtTop: true)
-            } else if currentClipFightsBrowse() {
-                rebuild(startAtTop: false)
-            } else if changed {
+            if !rebuildIfStale(), changed {
                 // A background refresh must not reshuffle the run in progress —
                 // that is exactly the clip-jumping the desktop's session resume
                 // exists to prevent. Prune what the library no longer has; new
@@ -600,17 +586,20 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Does the clip on screen belong to a different orientation than the
-    /// browse asks for? Genau's flicks play either way; a lane's orientation
-    /// outranks the pixels, as in the build itself.
-    private func currentClipFightsBrowse() -> Bool {
-        guard let current = session.current, let clip = clipsByPath[current] else { return false }
-        let type = ClipType.classify(clip, shortsMaxSeconds: settings.browse.shortsMaxSeconds,
-                                     recorded: groupIndex.kindsByPath[current],
-                                     measuredSeconds: measuredSeconds[current], overlay: overlay)
-        guard type != .genauFlick else { return false }
-        let orientation = overlay.lane(for: current)?.orientation ?? clip.orientation
-        return orientation != settings.browse.orientation
+    private func rebuildIfStale() -> Bool {
+        switch session.resumption(currentFits: currentClipFits()) {
+        case .startFromTop: rebuild(startAtTop: true)
+        case .rebuildAroundCurrent: rebuild(startAtTop: false)
+        case .keep: return false
+        }
+        return true
+    }
+
+    private func currentClipFits() -> Bool {
+        guard let current = session.current, let clip = clipsByPath[current] else { return true }
+        return PlaylistBuilder.playsInOrientation(clip, options: settings.browse,
+                                                  recorded: groupIndex.kindsByPath[current],
+                                                  measuredSeconds: measuredSeconds[current], overlay: overlay)
     }
 
     /// The phone was turned: the browse follows the screen, portrait clips

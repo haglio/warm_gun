@@ -97,10 +97,23 @@ public struct Session: Equatable, Sendable {
         }
     }
 
+    public func resumption(currentFits: Bool) -> Resumption {
+        if playlist.isEmpty { return .startFromTop }
+        return currentFits ? .keep : .rebuildAroundCurrent
+    }
+
     /// Swift's `%` keeps the sign of the dividend, which would put a backward
     /// step off the front of the list; the playlist is a ring.
     private static func wrap(_ value: Int, _ count: Int) -> Int {
         let remainder = value % count
         return remainder < 0 ? remainder + count : remainder
     }
+}
+
+/// What a run resumed at launch, or met by a fresh index, does with the
+/// playlist it has.
+public enum Resumption: Equatable, Sendable {
+    case startFromTop
+    case rebuildAroundCurrent
+    case keep
 }
