@@ -67,10 +67,6 @@ actor PCloudClient {
         _ = try await client.call(request, as: Acknowledged.self)
     }
 
-    func userInfo() async throws -> UserInfoResponse {
-        try await call(PCloudAPI.userInfo(auth: auth), as: UserInfoResponse.self)
-    }
-
     func folderSkeleton(path: String, recursive: Bool = true) async throws -> PCloudEntry {
         try await call(PCloudAPI.listFolders(path: path, auth: auth, recursive: recursive), as: ListFolderResponse.self).metadata
     }
@@ -82,10 +78,6 @@ actor PCloudClient {
 
     func fileLink(fileID: Int64) async throws -> FileLinkResponse {
         try await call(PCloudAPI.fileLink(fileID: fileID, auth: auth), as: FileLinkResponse.self)
-    }
-
-    func renameFile(fileID: Int64, toPath: String) async throws {
-        _ = try await call(PCloudAPI.renameFile(fileID: fileID, toPath: toPath, auth: auth), as: Acknowledged.self)
     }
 
     func renameFile(path: String, toPath: String) async throws {

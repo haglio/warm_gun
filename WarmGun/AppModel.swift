@@ -68,8 +68,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var buffering = false
     private var bufferingTask: Task<Void, Never>?
     @Published private(set) var waitingFor: String?
-    @Published private(set) var cached: Set<String> = []
-    @Published private(set) var cacheBytes: Int64 = 0
+    private var cached: Set<String> = []
     @Published private(set) var lastProblem: String?
     /// pCloud answered the password with "provide a code" (1022) or "invalid
     /// code" (2012): the login form must grow a verification-code field.
@@ -170,7 +169,6 @@ final class AppModel: ObservableObject {
 
     func start() async {
         cached = await cache.cachedPaths()
-        cacheBytes = await cache.totalBytes()
         loadPersistedState()
         guard let token = Keychain.token() else { phase = .needsLogin; return }
         do {
@@ -293,18 +291,6 @@ final class AppModel: ObservableObject {
         phase = .needsLogin
     }
 
-    func setLibraryPath(_ path: String) async {
-        settings.libraryPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
-        catalog = nil
-        clipsByPath = [:]
-        session = Session(playlist: [])
-        // The persisted index describes the OLD library; left in place it would
-        // be reloaded on the next start and played against the new path.
-        try? FileManager.default.removeItem(at: catalogURL)
-        persistState()
-        await start()
-    }
-
     /// Hunt for the library by its skeleton. pCloud refuses a recursive
     /// listing of the ROOT with 1101 (a 2025-era server change), so the walk
     /// starts shallow there and recurses per top-level folder, descending
@@ -354,7 +340,6 @@ final class AppModel: ObservableObject {
             consecutiveFailureSkips = 0
             cached.insert(path)
             measureDuration(of: path)
-            cacheBytes = await cache.totalBytes()
             cached = await cache.cachedPaths()
             if path == waitingFor || path == session.staged { sync() }
         case .failed(let path, let message, let attempts, let loginRequired):
@@ -382,7 +367,6 @@ final class AppModel: ObservableObject {
             }
         case .evicted(let paths):
             cached.subtract(paths)
-            cacheBytes = await cache.totalBytes()
         }
     }
 
@@ -696,8 +680,7 @@ final class AppModel: ObservableObject {
                 _ = session.discard()
             }
             flash("Marked weird", favorite: false)
-            cached.remove(path)
-            Task { await cache.remove([path]); cacheBytes = await cache.totalBytes() }
+            dropFromCache(path)
             if settings.moveWeirdInCloud { Task { await moveUpscaleToWeird(path) } }
         }
         persistState()
@@ -767,20 +750,6 @@ final class AppModel: ObservableObject {
         setLoop(LoopCycle.next(after: loopMode) { stop in
             (stop == .seed ? groupIndex.seedClips(of: current) : groupIndex.actionClips(of: current)).count > 1
         })
-    }
-
-    func update(cacheCapMB: Int) {
-        settings.cacheCapMB = cacheCapMB
-        Task { await prefetcher?.setCap(bytes: settings.cacheCapBytes) }
-    }
-
-    func clearCache() {
-        Task {
-            await cache.removeAll()
-            cached = []
-            cacheBytes = 0
-            sync()
-        }
     }
 
     // MARK: - playback plumbing
@@ -885,14 +854,18 @@ final class AppModel: ObservableObject {
     private func itemFailed(_ url: URL) {
         guard let path = session.playlist.first(where: { url.lastPathComponent == ClipCache.fileName(for: $0) })
         else { return }
-        cached.remove(path)
-        Task { await cache.remove([path]); cacheBytes = await cache.totalBytes() }
+        dropFromCache(path)
         lastProblem = "Unplayable clip — \((path as NSString).lastPathComponent)"
         if path == showing {
             flash("Skipping unplayable clip", favorite: false)
             session.step(1)
         }
         sync()
+    }
+
+    private func dropFromCache(_ path: String) {
+        cached.remove(path)
+        Task { await cache.remove([path]) }
     }
 
     private func progressed(_ fraction: Double) {

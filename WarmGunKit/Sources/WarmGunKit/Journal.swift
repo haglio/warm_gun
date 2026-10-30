@@ -30,14 +30,6 @@ public enum Journal {
         "{\"t\":\(event.t),\"event\":\(quoted(event.event)),\"path\":\(quoted(event.path))}"
     }
 
-    /// Every event in a journal, in the order it was appended.
-    public static func events(in text: String) -> [JournalEvent] {
-        let decoder = JSONDecoder()
-        return text.split(whereSeparator: \.isNewline).compactMap { line in
-            try? decoder.decode(JournalEvent.self, from: Data(line.utf8))
-        }
-    }
-
     /// A JSON string literal, with everything JSON insists on escaping escaped.
     private static func quoted(_ value: String) -> String {
         var out = "\""
@@ -48,9 +40,9 @@ public enum Journal {
             case "\n": out += "\\n"
             case "\r": out += "\\r"
             case "\t": out += "\\t"
-            // The reader splits on `Character.isNewline`, so every scalar in
-            // that alphabet must leave here escaped — NEL and the two Unicode
-            // separators included, not just the ASCII controls.
+            // A reader that splits on `Character.isNewline` cuts a line at any
+            // scalar in that alphabet, so every one leaves here escaped — NEL
+            // and the two Unicode separators included, not just the controls.
             case let c where c.value < 0x20 || c.value == 0x85 || c.value == 0x2028 || c.value == 0x2029:
                 out += String(format: "\\u%04x", c.value)
             default: out.unicodeScalars.append(character)

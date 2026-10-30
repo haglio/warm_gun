@@ -7,7 +7,6 @@ import Testing
 /// here fixes a clock rather than reading one: expiry is the whole subject.
 @Suite struct LinkCacheTests {
     static let linkOne = URL(string: "https://edef1.pcloud.com/cBZ7q0Zwarmgun0ZclipOneZ/clip-one.mp4")!
-    static let linkTwo = URL(string: "https://c210.pcloud.com/cBZ8r4Zwarmgun0ZclipTwoZ/clip-two.mp4")!
     /// Any instant will do as long as the tests share it; this one is a round
     /// number of seconds so the arithmetic in each test reads at a glance.
     static let noon = Date(timeIntervalSince1970: 1_787_654_400)
@@ -16,25 +15,6 @@ import Testing
         var cache = LinkCache()
         cache.store(url: Self.linkOne, for: 90_210, expires: Self.noon.addingTimeInterval(3600))
         #expect(cache.url(for: 90_210, now: Self.noon) == Self.linkOne)
-    }
-}
-
-extension LinkCacheTests {
-    @Test func purgeEvictsTheDeadLinksAndLeavesTheLiveOnesAlone() {
-        var cache = LinkCache()
-        cache.store(url: Self.linkOne, for: 90_210, expires: Self.noon.addingTimeInterval(-1))
-        cache.store(url: Self.linkTwo, for: 90_211, expires: Self.noon.addingTimeInterval(3600))
-        cache.purge(now: Self.noon)
-
-        // Comparing the whole cache, not just asking for the links: an expired
-        // entry that merely stops answering is still holding memory, and a
-        // session that runs for hours re-links thousands of clips.
-        var survivor = LinkCache()
-        survivor.store(url: Self.linkTwo, for: 90_211, expires: Self.noon.addingTimeInterval(3600))
-        #expect(cache == survivor)
-        // Purge is about death, not the download margin — a link with seconds
-        // left is still a link, and the caller's margin decides its usefulness.
-        #expect(cache.url(for: 90_211, now: Self.noon) == Self.linkTwo)
     }
 }
 

@@ -3,11 +3,10 @@ import WarmGunKit
 
 /// The on-device copy of every clip Warm Gun has fetched, keyed by library path.
 ///
-/// Lives in Application Support (not Caches, which iOS may purge under
-/// pressure — a purge would silently undo "download everything"), excluded
-/// from backups because the library is the backup. The index is held in memory
-/// and written beside the files, so a relaunch knows what it has without
-/// stat-ing a few thousand files.
+/// Lives in Application Support rather than Caches, which iOS empties under
+/// pressure, and is excluded from backups because the library is the backup.
+/// The index is held in memory and written beside the files, so a relaunch
+/// knows what it has without stat-ing a few thousand files.
 actor ClipCache {
     private let directory: URL
     private var entries: [String: PrefetchPlanner.CachedFile] = [:]
@@ -31,24 +30,14 @@ actor ClipCache {
         directory.appendingPathComponent(Self.fileName(for: path))
     }
 
-    func isCached(_ path: String) -> Bool {
-        entries[path] != nil
-    }
-
     func cachedPaths() -> Set<String> {
         Set(entries.keys)
-    }
-
-    func totalBytes() -> Int64 {
-        entries.values.reduce(0) { $0 + $1.size }
     }
 
     func cachedFiles() -> [PrefetchPlanner.CachedFile] {
         Array(entries.values)
     }
 
-    /// Moves a finished download into place. Never copies a partial file: the
-    /// temp file is the downloader's, complete by construction.
     func store(temporary tmp: URL, for path: String) throws {
         let destination = fileURL(for: path)
         try? FileManager.default.removeItem(at: destination)
@@ -69,10 +58,6 @@ actor ClipCache {
             entries[path] = nil
         }
         if !paths.isEmpty { saveIndex() }
-    }
-
-    func removeAll() {
-        remove(Array(entries.keys))
     }
 
     // MARK: - index

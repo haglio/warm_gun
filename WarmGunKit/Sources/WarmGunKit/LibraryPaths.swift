@@ -213,11 +213,6 @@ public enum LibraryPaths {
         return String(last)
     }
 
-    /// A clip's stem — its file name without the extension, in any lane.
-    public static func stem(ofClip path: String) -> String? {
-        filename(ofClip: path).flatMap(dropExtension)
-    }
-
     /// What a favorite is filed under.
     ///
     /// A generated clip is filed under its STEM, because that is the only name
