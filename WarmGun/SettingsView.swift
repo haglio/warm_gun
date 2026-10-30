@@ -22,17 +22,17 @@ struct SettingsView: View {
                             .autocorrectionDisabled()
                         SecureField("pCloud password", text: $password)
                             .textContentType(.password)
-                        if model.loginWantsCode {
+                        if model.loginForm.wantsCode {
                             TextField("Verification or recovery code", text: $verificationCode)
                                 .textContentType(.oneTimeCode)
-                            if model.tfaToken != nil {
+                            if model.loginForm.challengeToken != nil {
                                 Button("Send code by SMS") {
                                     Task { await model.sendTFACode(viaSMS: true) }
                                 }
                                 Button("Send code to your other pCloud apps") {
                                     Task { await model.sendTFACode(viaSMS: false) }
                                 }
-                                .disabled(!model.tfaHasDevices)
+                                .disabled(!model.loginForm.canSendCodeToOtherApps)
                             }
                         }
                         Button(loggingIn ? "Logging in…" : "Log in") {
