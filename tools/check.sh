@@ -1,7 +1,7 @@
 #!/bin/sh
 # The whole local verification, one command: the Kit suite headless on the Mac,
-# the coupling gates, and the sanitize guard over every file in the tree.
-# Green here is the bar for every commit; CI runs the suite and the gates.
+# the coupling gates and their tests, and the sanitize guard over every file in
+# the tree. Green here is the bar for every commit; CI runs all but the guard.
 #
 # The guard runs through tools/sanitize_tree.py rather than through the
 # pre-commit hook. The hook's `--staged` mode reads `git diff --cached`, so on a
@@ -27,6 +27,7 @@ done
 python=${python:-$(command -v python3 || command -v python || echo python3)}
 
 (cd WarmGunKit && swift test)
+python3 -m unittest -q tools.test_gates
 python3 tools/gates.py
 "$python" tools/sanitize_tree.py
 echo "all checks green"
