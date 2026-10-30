@@ -31,101 +31,109 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-KIT_SOURCES = ROOT / "WarmGunKit" / "Sources"
-APP = ROOT / "WarmGun"
 
 KIT_ALLOWED_IMPORTS = {"Foundation"}
+KIT_IMPORT = re.compile(r"\s*import\s+(\w+)")
+STORED_STATIC_VAR = re.compile(r"\bstatic\s+var\b[^{=\n]*(=|$)")
 MODEL_FILE = "AppModel.swift"
 PLATFORM_FILE = "Platform.swift"
-# Any conditional compilation but DEBUG, however the condition is spelled.
 PLATFORM_CONDITION = re.compile(r"#\s*(if|elseif)\b(?!\s*!?DEBUG\s*$)")
-# `@_exported import UIKit`, `@_spi(X) import AppKit`, `import class UIKit.UIDevice`
-# and an import after a semicolon are all the same import.
 PLATFORM_IMPORT = re.compile(r"(^|;)\s*(@\w+(\([^)]*\))?\s+)*import\s+(\w+\s+)?(UIKit|AppKit|Cocoa)\b")
-# The reference-typed machinery the model owns; views may not reach into it.
 ACTORS = ("engine", "cache", "prefetcher", "client")
 
 
-def swift_files(root: Path) -> list[Path]:
-    return sorted(root.rglob("*.swift"))
+def kit_sources(root: Path) -> Path:
+    return root / "WarmGunKit" / "Sources"
+
+
+def app_sources(root: Path) -> Path:
+    return root / "WarmGun"
+
+
+def swift_files(directory: Path) -> list[Path]:
+    return sorted(directory.rglob("*.swift"))
 
 
 def code_lines(path: Path):
     """(line_number, line) with comment-only lines dropped — a gate must count
     code, not prose about code."""
-    for number, line in enumerate(path.read_text().splitlines(), 1):
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if line.strip().startswith("//"):
             continue
         yield number, line
 
 
-def gate_kit_purity() -> list[str]:
+def where(path: Path, root: Path, number: int) -> str:
+    return f"{path.relative_to(root).as_posix()}:{number}"
+
+
+def gate_kit_purity(root: Path) -> list[str]:
     hits = []
-    for path in swift_files(KIT_SOURCES):
+    for path in swift_files(kit_sources(root)):
         for number, line in code_lines(path):
-            match = re.match(r"\s*import\s+(\w+)", line)
+            match = KIT_IMPORT.match(line)
             if match and match.group(1) not in KIT_ALLOWED_IMPORTS:
-                hits.append(f"{path.relative_to(ROOT)}:{number}: import {match.group(1)}")
+                hits.append(f"{where(path, root, number)}: import {match.group(1)}")
     return hits
 
 
-def gate_published_ownership() -> list[str]:
+def gate_published_ownership(root: Path) -> list[str]:
     hits = []
-    for path in swift_files(APP):
+    for path in swift_files(app_sources(root)):
         if path.name == MODEL_FILE:
             continue
         for number, line in code_lines(path):
             if "@Published" in line:
-                hits.append(f"{path.relative_to(ROOT)}:{number}: @Published outside {MODEL_FILE}")
+                hits.append(f"{where(path, root, number)}: @Published outside {MODEL_FILE}")
     return hits
 
 
-def gate_no_static_mutable() -> list[str]:
+def gate_no_static_mutable(root: Path) -> list[str]:
     hits = []
-    for path in swift_files(KIT_SOURCES) + swift_files(APP):
+    for path in swift_files(kit_sources(root)) + swift_files(app_sources(root)):
         for number, line in code_lines(path):
-            if re.search(r"\bstatic\s+var\b", line) and "{" not in line.split("static")[1][:80].replace("var", "", 1).split("=")[0]:
-                # `static var x: T { ... }` is a computed accessor, not storage;
-                # only stored `static var` is shared mutable state.
-                if not re.search(r"\bstatic\s+var\b[^=\n]*\{", line):
-                    hits.append(f"{path.relative_to(ROOT)}:{number}: stored static var")
+            if STORED_STATIC_VAR.search(line):
+                hits.append(f"{where(path, root, number)}: stored static var")
     return hits
 
 
-def gate_views_stay_out_of_actors() -> list[str]:
+def gate_views_stay_out_of_actors(root: Path) -> list[str]:
     hits = []
-    for path in swift_files(APP):
+    for path in swift_files(app_sources(root)):
         if path.name == MODEL_FILE:
             continue
         for number, line in code_lines(path):
             for actor in ACTORS:
                 if re.search(rf"\bmodel\.{actor}\b", line):
-                    hits.append(f"{path.relative_to(ROOT)}:{number}: model.{actor}")
+                    hits.append(f"{where(path, root, number)}: model.{actor}")
     return hits
 
 
-def gate_platform_seam() -> list[str]:
+def gate_platform_seam(root: Path) -> list[str]:
     hits = []
-    for path in swift_files(KIT_SOURCES) + swift_files(APP):
+    for path in swift_files(kit_sources(root)) + swift_files(app_sources(root)):
         if path.name == PLATFORM_FILE:
             continue
         for number, line in code_lines(path):
-            code = line.split("//", 1)[0]  # a trailing comment is prose too
+            code = line.split("//", 1)[0]
             if PLATFORM_CONDITION.search(code) or PLATFORM_IMPORT.search(code):
-                hits.append(f"{path.relative_to(ROOT)}:{number}: {line.strip()}")
+                hits.append(f"{where(path, root, number)}: {line.strip()}")
     return hits
 
 
-def main() -> int:
-    gates = {
-        "kit non-Foundation imports": gate_kit_purity(),
-        "@Published outside AppModel": gate_published_ownership(),
-        "stored static var": gate_no_static_mutable(),
-        "view reach-through into model actors": gate_views_stay_out_of_actors(),
-        f"platform-specific code outside {PLATFORM_FILE}": gate_platform_seam(),
-    }
+GATES = {
+    "kit non-Foundation imports": gate_kit_purity,
+    "@Published outside AppModel": gate_published_ownership,
+    "stored static var": gate_no_static_mutable,
+    "view reach-through into model actors": gate_views_stay_out_of_actors,
+    f"platform-specific code outside {PLATFORM_FILE}": gate_platform_seam,
+}
+
+
+def main(root: Path = ROOT) -> int:
     failed = False
-    for name, hits in gates.items():
+    for name, gate in GATES.items():
+        hits = gate(root)
         print(f"{name}: {len(hits)}")
         for hit in hits:
             print(f"  {hit}")
