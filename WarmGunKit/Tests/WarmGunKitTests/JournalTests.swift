@@ -41,7 +41,8 @@ extension JournalTests {
         for scalar in ["\u{85}", "\u{2028}", "\u{2029}"] {
             let event = JournalEvent(t: 7, event: "skip", path: "1_sorted/alpha/portrait/a\(scalar)b.mp4")
             let line = Journal.line(event)
-            #expect(!line.contains(where: \.isNewline))
+            let breaksALine = line.contains(where: \.isNewline)
+            #expect(!breaksALine)
             #expect(Self.read(line) == event)
         }
     }
