@@ -178,6 +178,19 @@ public enum PlaylistBuilder {
         return Weighting.weightedShuffle(survivors, weight: weights.weight(for:), rng: &rng)
     }
 
+    public static func playsInOrientation(_ clip: Clip, options: BrowseOptions, recorded: String? = nil,
+                                          measuredSeconds: Double? = nil,
+                                          overlay: ContentOverlay = .empty) -> Bool {
+        let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
+                                     recorded: recorded, measuredSeconds: measuredSeconds, overlay: overlay)
+        return fitsOrientation(clip, type, options, overlay)
+    }
+
+    private static func fitsOrientation(_ clip: Clip, _ type: ClipType, _ options: BrowseOptions,
+                                        _ overlay: ContentOverlay) -> Bool {
+        type == .genauFlick || (overlay.lane(for: clip.path)?.orientation ?? clip.orientation) == options.orientation
+    }
+
     /// The switches, all of which only ever narrow, so their order among
     /// themselves cannot matter. Favorites are matched by the key their lane is
     /// filed under (`LibraryPaths.favoriteKey`).
@@ -187,9 +200,6 @@ public enum PlaylistBuilder {
                                         _ overlay: ContentOverlay, _ act: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measured, overlay: overlay)
-        // A lane's orientation outranks the pixels; a Genau flick has no
-        // orientation of its own and plays whichever way the phone is held.
-        let orientation = overlay.lane(for: clip.path)?.orientation ?? clip.orientation
         // The size ceiling exists to keep the legacy monsters out of the AI
         // originals; a real scene is big by nature and passes on principle.
         let gated = clip.path.hasPrefix("1_sorted/")
@@ -197,7 +207,7 @@ public enum PlaylistBuilder {
         if let bucket = overlay.actBucket(for: act), options.disabledActs.contains(bucket) {
             return false
         }
-        return (orientation == options.orientation || type == .genauFlick)
+        return fitsOrientation(clip, type, options, overlay)
             && !weird.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)
             && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)

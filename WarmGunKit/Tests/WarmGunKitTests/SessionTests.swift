@@ -218,3 +218,12 @@ extension SessionTests {
         #expect(session.locked == false)
     }
 }
+
+extension SessionTests {
+    @Test func aResumedRunStartsOverWhenEmptyRebuildsWhenItsClipNoLongerFitsAndElseStands() {
+        #expect(Session(playlist: []).resumption(currentFits: true) == .startFromTop)
+        #expect(Session(playlist: []).resumption(currentFits: false) == .startFromTop)
+        #expect(Session(playlist: Self.three).resumption(currentFits: false) == .rebuildAroundCurrent)
+        #expect(Session(playlist: Self.three).resumption(currentFits: true) == .keep)
+    }
+}
