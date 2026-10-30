@@ -108,3 +108,33 @@ extension GroupIndexTests {
         #expect(index.actsByPath == ["1_sorted/a/portrait/one.mp4": "very special"])
     }
 }
+
+extension GroupIndexTests {
+    @Test func theLoopControlsGroupStopsWalkTheirGroupsAndItsPlaybackStopsWalkNone() {
+        let one = "1_sorted/a/portrait/one.mp4"
+        let index = GroupIndex(sidecars: [
+            one: Self.sidecar(action: "alpha", videoSeed: "111"),
+            "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta", videoSeed: "111"),
+            "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "alpha", videoSeed: "222"),
+        ])
+        #expect(index.group(.action, of: one) == [one, "1_sorted/a/portrait/two.mp4"])
+        #expect(index.group(.seed, of: one) == [one, "1_sorted/a/portrait/three.mp4"])
+        #expect(index.group(.all, of: one) == nil)
+        #expect(index.group(.single, of: one) == nil)
+    }
+}
+
+extension GroupIndexTests {
+    @Test func onlyAGroupHoldingAnotherClipCanBeLoopedWhileAllAndOneAlwaysCan() {
+        let one = "1_sorted/a/portrait/one.mp4"
+        let index = GroupIndex(sidecars: [
+            one: Self.sidecar(action: "alpha", videoSeed: "111"),
+            "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta", videoSeed: "111"),
+        ])
+        #expect(index.canLoop(.action, from: one))
+        #expect(!index.canLoop(.seed, from: one))
+        #expect(index.canLoop(.all, from: one))
+        #expect(index.canLoop(.single, from: one))
+        #expect(!GroupIndex(sidecars: [:]).canLoop(.action, from: one))
+    }
+}
