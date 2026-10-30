@@ -16,6 +16,15 @@ public struct Session: Equatable, Sendable {
         self.locked = false
     }
 
+    /// The run a relaunch resumes: the saved order less what the index no
+    /// longer has, on the clip it was on.
+    public init(restoring playlist: [String], at index: Int, locked: Bool, keeping known: Set<String>) {
+        self.init(playlist: playlist.filter(known.contains))
+        guard playlist.indices.contains(index), known.contains(playlist[index]) else { return }
+        playFile(playlist[index])
+        self.locked = locked
+    }
+
     public var current: String? {
         playlist.isEmpty ? nil : playlist[index]
     }

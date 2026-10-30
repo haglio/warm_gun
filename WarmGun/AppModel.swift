@@ -1008,13 +1008,8 @@ final class AppModel: ObservableObject {
         favorites = state.favorites
         weird = state.weird
         measuredSeconds = state.measuredSeconds ?? [:]
-        let surviving = state.playlist.filter { clipsByPath[$0] != nil }
-        var restored = Session(playlist: surviving)
-        if !surviving.isEmpty, state.index < state.playlist.count, let current = Optional(state.playlist[state.index]), clipsByPath[current] != nil {
-            restored.playFile(current)
-        }
-        restored.setLocked(state.locked ?? false)
-        session = restored
+        session = Session(restoring: state.playlist, at: state.index, locked: state.locked ?? false,
+                          keeping: Set(clipsByPath.keys))
     }
 
     /// Auto-advance persists through here: at most one write per fifteen
