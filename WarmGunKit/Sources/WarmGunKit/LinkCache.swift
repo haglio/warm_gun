@@ -27,13 +27,6 @@ public struct LinkCache: Equatable, Sendable {
         links[fileID] = nil
     }
 
-    /// Drop everything that has already expired. `url(for:now:)` would refuse
-    /// these anyway; this is what stops a session that runs for hours from
-    /// carrying a dead link for every clip it has ever played.
-    public mutating func purge(now: Date) {
-        links = links.filter { $0.value.expires > now }
-    }
-
     /// The link, or nil when there isn't one or it is too close to the end of
     /// its life to hand to a download. The default margin is a minute: a clip
     /// is a couple of megabytes and a link that expires mid-transfer fails the

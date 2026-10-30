@@ -100,11 +100,6 @@ final class PlayerEngine {
         player.play()
     }
 
-    func setLoop(_ loop: Bool) {
-        self.loop = loop
-        if loop { stage(nil) }
-    }
-
     func clear() {
         player.removeAllItems()
         statusObservations.removeAll()

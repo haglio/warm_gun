@@ -11,10 +11,11 @@ hides the file from later listings, and ``uploadfile`` lands in ``<scratch>``.
 Any pCloud path that does not exist under ``--root`` is looked up under
 ``--scratch`` instead, which is how the sync folder (``/WarmGun``) works.
 
-Methods: userinfo (any credentials log in), listfolder (recursive), getfilelink,
-renamefile, createfolderifnotexists, uploadfile, plus ``/dl/<fileid>`` for the
-bytes a file link points at. Durations come from ffprobe when it is on PATH,
-cached in ``<scratch>/probe_cache.json`` so a second listing is instant.
+Methods: listfolder (recursive), getfilelink, getzip, renamefile,
+createfolderifnotexists, uploadfile, plus ``/dl/<fileid>`` for the bytes a file
+link points at. A development build takes its token from the launch
+environment, so nothing here logs in. Durations come from ffprobe when it is on
+PATH, cached in ``<scratch>/probe_cache.json`` so a second listing is instant.
 
 Point the app at it with API host ``http://localhost:8765`` (the scheme marks
 it as a local origin) and the same library path you would give pCloud.
@@ -164,13 +165,6 @@ class Handler(BaseHTTPRequestHandler):
         method = url.path.strip("/")
         if url.path.startswith("/dl/"):
             return self.serve_file(int(url.path[4:]))
-        if method == "userinfo":
-            # Like the real API: a token is minted only when getauth=1 is asked
-            # for; the bare token check gets the account alone.
-            body = {"result": 0, "email": "dev@example.com", "userid": 1}
-            if q.get("getauth") == "1":
-                body["auth"] = "dev-token"
-            return self.reply(body)
         if method == "getzip":
             # Like the real API: getzip takes a TREE (folderid), never a path —
             # the path form once flattered a build that failed against pCloud.
@@ -192,8 +186,6 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if method == "getapiserver":
-            return self.reply({"result": 0, "api": ["localhost:%d" % self.port]})
         if method == "listfolder":
             # The real API refuses a recursive listing of the root with 1101
             # (observed 2026-08-24, same as rclone#9315); mirror it so the
@@ -214,9 +206,6 @@ class Handler(BaseHTTPRequestHandler):
                                "expires": int(time.time()) + 3600})
         if method == "renamefile":
             source = q.get("path")
-            if source is None and "fileid" in q:
-                local = self.store.files_by_id.get(int(q["fileid"]))
-                source = self.store.pcloud_path(local) if local else None
             if source is None or self.store.resolve(source) is None:
                 return self.reply({"result": 2009, "error": "File not found."})
             self.store.moved[source] = q.get("topath", "")

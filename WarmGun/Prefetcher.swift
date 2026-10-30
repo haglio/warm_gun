@@ -32,7 +32,7 @@ actor Prefetcher {
     private var planGeneration = 0
     private var inFlight: [String: Flight] = [:]
     private var failures: [String: (attempts: Int, last: Date)] = [:]
-    private var capBytes: Int64
+    private let capBytes: Int64
     private let parallelism = 3
     private let failureCooldown: TimeInterval = 8
     private let continuation: AsyncStream<Event>.Continuation
@@ -45,10 +45,6 @@ actor Prefetcher {
         var continuation: AsyncStream<Event>.Continuation!
         events = AsyncStream { continuation = $0 }
         self.continuation = continuation
-    }
-
-    func setCap(bytes: Int64) {
-        capBytes = bytes
     }
 
     /// Adopt a new window. Stale generations are dropped rather than applied —

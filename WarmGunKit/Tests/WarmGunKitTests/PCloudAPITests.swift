@@ -8,7 +8,7 @@ import Testing
             URLQueryItem(name: "username", value: "gunner@example.test"),
             URLQueryItem(name: "password", value: "a&b+c d"),
         ])
-        let url = request.url(host: "api.pcloud.com")
+        let url = request.url(origin: try #require(URL(string: "https://api.pcloud.com")))
         #expect(url.scheme == "https")
         #expect(url.host == "api.pcloud.com")
         #expect(url.path == "/userinfo")
@@ -47,17 +47,6 @@ extension PCloudAPITests {
 }
 
 extension PCloudAPITests {
-    @Test func checksAStoredTokenWithTheBarestUserinfoCall() {
-        let request = PCloudAPI.userInfo(auth: "token-abc")
-        #expect(request.method == "userinfo")
-        #expect(request.query == [
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: "token-abc"),
-        ])
-    }
-}
-
-extension PCloudAPITests {
     @Test func pullsTheWholeLibraryTreeInOneRecursiveListing() {
         let request = PCloudAPI.listFolder(path: "/lib/AI", auth: "token-abc")
         #expect(request.method == "listfolder")
@@ -79,24 +68,6 @@ extension PCloudAPITests {
         #expect(request.method == "getfilelink")
         #expect(request.query == [
             URLQueryItem(name: "fileid", value: "90210"),
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: "token-abc"),
-        ])
-    }
-}
-
-extension PCloudAPITests {
-    @Test func movesAnUpscaleByGivingRenamefileAWholeDestinationPath() {
-        // This is the weird gesture on the wire, and it is as irreversible here
-        // as it is on the desktop: `topath` carries the filename, not just the
-        // folder, so the move and the rename are one call.
-        let request = PCloudAPI.renameFile(fileID: 90_210,
-                                           toPath: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4",
-                                           auth: "token-abc")
-        #expect(request.method == "renamefile")
-        #expect(request.query == [
-            URLQueryItem(name: "fileid", value: "90210"),
-            URLQueryItem(name: "topath", value: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])
@@ -139,7 +110,7 @@ extension PCloudAPITests {
         {"result": 0, "auth": "tok-9f3c", "email": "gunner@example.test", "userid": 4820199, "emailverified": true}
         """.utf8)
         let response = try PCloudAPI.decode(LoginResponse.self, from: json)
-        #expect(response == LoginResponse(auth: "tok-9f3c", email: "gunner@example.test", userid: 4_820_199))
+        #expect(response == LoginResponse(auth: "tok-9f3c"))
     }
 }
 
@@ -153,7 +124,6 @@ extension PCloudAPITests {
         // 2000 is the app's cue to send the viewer back to the login screen rather
         // than to retry, which is what it would do for anything else.
         #expect(error.isLoginRequired)
-        #expect(!error.isRateLimited)
     }
 }
 
@@ -285,16 +255,11 @@ extension PCloudAPITests {
 }
 
 extension PCloudAPITests {
-    @Test func sortsTheCodesIntoTheTwoBucketsTheAppBranchesOn() {
-        // Only two questions are ever asked of a failure: go back to login, or
-        // wait and try the same call again. Everything else is just an error,
-        // and mistaking a rate limit for a dead token would log the viewer out
+    @Test func onlyARefusedTokenSendsTheViewerBackToLogin() {
+        // Mistaking a rate limit for a dead token would log the viewer out
         // mid-trip over a burst of prefetches.
         #expect(PCloudError(code: 1000, message: "").isLoginRequired)
-        #expect(!PCloudError(code: 1000, message: "").isRateLimited)
-        #expect(PCloudError(code: 4000, message: "").isRateLimited)
-        #expect(PCloudError(code: 4999, message: "").isRateLimited)
-        #expect(!PCloudError(code: 5001, message: "").isRateLimited)
+        #expect(!PCloudError(code: 4000, message: "").isLoginRequired)
         #expect(!PCloudError(code: 5001, message: "").isLoginRequired)
     }
 }
@@ -304,21 +269,11 @@ extension PCloudAPITests {
         // The transport may point at the real API (https, bare host) or at
         // tools/fake_pcloud.py (http://localhost:8765): the request takes the
         // origin's scheme, host and port rather than assuming https.
-        let request = PCloudAPI.userInfo(auth: "token-a")
+        let request = PCloudAPI.listFolder(path: "/lib", auth: "token-a")
         let local = request.url(origin: try #require(URL(string: "http://localhost:8765")))
-        #expect(local.absoluteString.hasPrefix("http://localhost:8765/userinfo?"))
+        #expect(local.absoluteString.hasPrefix("http://localhost:8765/listfolder?"))
         let real = request.url(origin: try #require(URL(string: "https://api.pcloud.com")))
-        #expect(real == request.url(host: "api.pcloud.com"))
-    }
-}
-
-extension PCloudAPITests {
-    @Test func aBareUserinfoReplyCarriesNoTokenAndStillDecodes() throws {
-        // Only `getauth=1` earns a token; the launch-time check of a stored one
-        // gets back email and id alone, and must not read as a failure.
-        let json = Data(#"{"result":0,"email":"jane@example.test","emailverified":true,"userid":42,"quota":100,"usedquota":10}"#.utf8)
-        let info = try PCloudAPI.decode(UserInfoResponse.self, from: json)
-        #expect(info == UserInfoResponse(email: "jane@example.test", userid: 42))
+        #expect(real.absoluteString.hasPrefix("https://api.pcloud.com/listfolder?"))
     }
 }
 
@@ -343,8 +298,8 @@ extension PCloudAPITests {
         // default RFC-1123 strings — so the parameter rides on every request,
         // not just the ones whose responses carry dates today.
         let requests = [
-            PCloudAPI.userInfo(auth: "t"),
-            PCloudAPI.renameFile(fileID: 1, toPath: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4", auth: "t"),
+            PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4",
+                                 toPath: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4", auth: "t"),
             PCloudAPI.createFolderIfNotExists(path: "/Sync", auth: "t"),
             PCloudAPI.uploadFile(folderPath: "/Sync", filename: "journal.jsonl", auth: "t"),
         ]
@@ -382,9 +337,10 @@ extension PCloudAPITests {
 }
 
 extension PCloudAPITests {
-    @Test func movesAnUpscaleByPathWhenNoFileIDIsAtHand() {
-        // The index keeps ids only for the originals it plays; the upscale the
-        // weird gesture moves is named by path, and renamefile takes either.
+    @Test func movesAnUpscaleByGivingRenamefileItsPathAndAWholeDestination() {
+        // The weird gesture on the wire: the index keeps no id for an upscale,
+        // so it is named by path, and `topath` carries the filename, so the
+        // move and the rename are one call.
         let request = PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4",
                                            toPath: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4",
                                            auth: "token-abc")
@@ -424,15 +380,13 @@ extension PCloudAPITests {
 extension PCloudAPITests {
     @Test func aTwoFactorChallengeCarriesItsTokenOutOfTheErrorEnvelope() throws {
         // A 2FA account answers the password with an error that ALSO carries a
-        // token (and the factor type); the app exchanges that token plus a code
-        // via tfa_login. Dropping those fields is what made the challenge look
-        // like a dead end.
+        // token; the app exchanges that token plus a code via tfa_login.
+        // Dropping it is what made the challenge look like a dead end.
         let json = Data(#"{"result": 2297, "error": "TFA login required.", "token": "tfa-tok-1", "tfatype": 1, "hasdevices": true}"#.utf8)
         let error = try #require(throws: PCloudError.self) {
             try PCloudAPI.decode(LoginResponse.self, from: json)
         }
         #expect(error.token == "tfa-tok-1")
-        #expect(error.tfaType == 1)
         #expect(error.hasDevices == true)
         let plain = try #require(throws: PCloudError.self) {
             try PCloudAPI.decode(LoginResponse.self, from: Data(#"{"result": 2000, "error": "Log in failed."}"#.utf8))

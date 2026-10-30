@@ -14,26 +14,15 @@ public struct PCloudRequest: Equatable, Sendable {
         self.query = query
     }
 
-    public func url(host: String) -> URL {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = host
-        return finish(&components)
-    }
-
-    /// The same request against an arbitrary origin — the real API is https on
-    /// a bare host, but the local stand-in (`tools/fake_pcloud.py`) serves the
-    /// same methods on `http://localhost:<port>`, and the request should not be
-    /// the thing that knows the difference.
+    /// The request against an origin — the real API is https on a bare host,
+    /// but the local stand-in (`tools/fake_pcloud.py`) serves the same methods
+    /// on `http://localhost:<port>`, and the request should not be the thing
+    /// that knows the difference.
     public func url(origin: URL) -> URL {
         var components = URLComponents()
         components.scheme = origin.scheme ?? "https"
         components.host = origin.host
         components.port = origin.port
-        return finish(&components)
-    }
-
-    private func finish(_ components: inout URLComponents) -> URL {
         components.path = "/" + method
         // Not `queryItems`: URLComponents leaves "+" unescaped, and pCloud reads
         // a raw "+" in a value as a space — which silently corrupts any password
@@ -123,15 +112,6 @@ public enum PCloudAPI {
         PCloudRequest(method: "tfa_sendcodeviasysnotification", query: [URLQueryItem(name: "token", value: token)])
     }
 
-    /// Does the token still work? The one call the app makes on launch before
-    /// it trusts what the Keychain handed it.
-    public static func userInfo(auth: String) -> PCloudRequest {
-        PCloudRequest(method: "userinfo", query: [
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: auth),
-        ])
-    }
-
     /// The whole index in one call. Recursive because the library is a fixed
     /// three-deep tree and a per-folder walk would be hundreds of round-trips
     /// on a phone connection; the listing already carries every clip's size,
@@ -173,21 +153,10 @@ public enum PCloudAPI {
         ])
     }
 
-    /// The weird gesture: move a clip's upscale into `2_outbox/kinda_weird`.
-    /// `topath` is a full destination path including the filename — pCloud
-    /// treats move and rename as the same operation.
-    public static func renameFile(fileID: Int64, toPath: String, auth: String) -> PCloudRequest {
-        PCloudRequest(method: "renamefile", query: [
-            URLQueryItem(name: "fileid", value: String(fileID)),
-            URLQueryItem(name: "topath", value: toPath),
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: auth),
-        ])
-    }
-
-    /// The same move named by path, for the one file the index keeps no id
-    /// for: the upscale twin the weird gesture parks. pCloud's renamefile takes
-    /// either identity.
+    /// The weird gesture: move a clip's upscale into `2_outbox/kinda_weird`,
+    /// named by path because the index keeps no id for an upscale. `topath` is
+    /// a full destination path including the filename — pCloud treats move and
+    /// rename as the same operation.
     public static func renameFile(path: String, toPath: String, auth: String) -> PCloudRequest {
         PCloudRequest(method: "renamefile", query: [
             URLQueryItem(name: "path", value: path),
@@ -261,7 +230,7 @@ public enum PCloudAPI {
         case failure(PCloudError)
 
         private enum CodingKeys: String, CodingKey {
-            case result, error, token, tfatype, hasdevices
+            case result, error, token, hasdevices
         }
 
         init(from decoder: Decoder) throws {
@@ -271,7 +240,6 @@ public enum PCloudAPI {
                 let message = try container.decodeIfPresent(String.self, forKey: .error)
                 self = .failure(PCloudError(code: result, message: message ?? "",
                                             token: try? container.decodeIfPresent(String.self, forKey: .token),
-                                            tfaType: try? container.decodeIfPresent(Int.self, forKey: .tfatype),
                                             hasDevices: try? container.decodeIfPresent(Bool.self, forKey: .hasdevices)))
                 return
             }
@@ -280,18 +248,13 @@ public enum PCloudAPI {
     }
 }
 
-/// A pCloud call that answered HTTP 200 and still failed. The code is the
-/// four-digit one from the body; the two questions the app actually asks of it
-/// are whether to re-login and whether to back off, so they are properties here
-/// rather than magic numbers scattered through the transport.
 public struct PCloudError: Error, LocalizedError, Equatable, Sendable {
     public let code: Int
     public let message: String
     /// A two-factor challenge rides inside the error envelope: the token to
-    /// exchange via `tfa_login`, which factor the account uses, and whether
-    /// other logged-in pCloud apps exist to push a code to.
+    /// exchange via `tfa_login`, and whether other logged-in pCloud apps exist
+    /// to push a code to.
     public let token: String?
-    public let tfaType: Int?
     public let hasDevices: Bool?
 
     /// The server's own words, because they are the only clue the user gets —
@@ -299,22 +262,16 @@ public struct PCloudError: Error, LocalizedError, Equatable, Sendable {
     /// completed", which reads as nothing happening at all.
     public var errorDescription: String? { "pCloud: \(message) (code \(code))" }
 
-    public init(code: Int, message: String,
-                token: String? = nil, tfaType: Int? = nil, hasDevices: Bool? = nil) {
+    public init(code: Int, message: String, token: String? = nil, hasDevices: Bool? = nil) {
         self.code = code
         self.message = message
         self.token = token
-        self.tfaType = tfaType
         self.hasDevices = hasDevices
     }
 
     /// 1000 (no auth given) and 2000 (log in failed) both mean the token is no
     /// good: retrying with it can only fail again, so the app goes to login.
     public var isLoginRequired: Bool { code == 1000 || code == 2000 }
-
-    /// The whole 4xxx band is pCloud saying "too many, too fast" — the one
-    /// class of failure where the same call will work if it simply waits.
-    public var isRateLimited: Bool { (4000...4999).contains(code) }
 }
 
 /// Where one clip can be fetched from, until it can't. pCloud hands back the
@@ -471,30 +428,11 @@ public struct ListFolderResponse: Decodable, Equatable, Sendable {
     }
 }
 
-/// What a bare `userinfo` (no `getauth`) answers for a stored token: the
-/// account, but no token — pCloud only mints one when `getauth=1` is asked for,
-/// so decoding this as `LoginResponse` would read every valid token as failure.
-public struct UserInfoResponse: Decodable, Equatable, Sendable {
-    public let email: String?
-    public let userid: Int64
-
-    public init(email: String?, userid: Int64) {
-        self.email = email
-        self.userid = userid
-    }
-}
-
-/// What a successful `userinfo?getauth=1` hands back. The token is the whole
-/// point; the email and id are what the settings screen shows so the owner can
-/// see which account the phone is actually talking to.
+/// What a successful login hands back: the token the Keychain keeps.
 public struct LoginResponse: Decodable, Equatable, Sendable {
     public let auth: String
-    public let email: String?
-    public let userid: Int64
 
-    public init(auth: String, email: String?, userid: Int64) {
+    public init(auth: String) {
         self.auth = auth
-        self.email = email
-        self.userid = userid
     }
 }
