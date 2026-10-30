@@ -158,8 +158,8 @@ private struct ControlsOverlay: View {
                 cluster {
                     loopChip("All", .all)
                     loopChip("1", .single)
-                    loopChip("Action", .action, enabled: model.actionLoopAvailable)
-                    loopChip("Seed", .seed, enabled: model.seedLoopAvailable)
+                    loopChip("Action", .action, enabled: model.canLoop(.action))
+                    loopChip("Seed", .seed, enabled: model.canLoop(.seed))
                 }
             }
             // The combinable act buttons, overlay-defined: 2 wide and 4 tall in

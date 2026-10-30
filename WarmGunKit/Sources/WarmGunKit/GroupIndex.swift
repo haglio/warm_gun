@@ -171,6 +171,18 @@ public struct GroupIndex: Sendable, Equatable {
         return anchored(sameAct, on: path)
     }
 
+    public func group(_ mode: LoopMode, of path: String) -> [String]? {
+        switch mode {
+        case .seed: return seedClips(of: path)
+        case .action: return actionClips(of: path)
+        case .all, .single: return nil
+        }
+    }
+
+    public func canLoop(_ mode: LoopMode, from path: String) -> Bool {
+        group(mode, of: path).map { $0.count > 1 } ?? true
+    }
+
     private func anchored(_ clips: [String], on path: String) -> [String] {
         guard let at = clips.firstIndex(of: path) else { return clips }
         return [path] + clips[..<at] + clips[(at + 1)...]

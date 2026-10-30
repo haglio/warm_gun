@@ -33,17 +33,13 @@ final class AppModel: ObservableObject {
     /// Which loop the run is in: the whole browse, one clip, or the current
     /// clip's seed family / action group — the desktop satellite's axes.
     @Published private(set) var loopMode: LoopMode = .all
-    /// Whether the CURRENT clip has a group to loop — the sheet greys the
-    /// segment out rather than letting a press dead-end.
-    @Published private(set) var seedLoopAvailable = false
-    @Published private(set) var actionLoopAvailable = false
 
     /// Clip lengths measured off the cached files, path-keyed — the real
     /// pCloud listing carries no durations, so the phone learns them itself.
     private var measuredSeconds: [String: Double] = [:]
     /// The seed/action grouping over the metadata sidecars, refreshed once per
     /// launch in the background; empty until the first fetch lands.
-    private var groupIndex = GroupIndex(sidecars: [:])
+    @Published private var groupIndex = GroupIndex(sidecars: [:])
     /// The playback weights off those same sidecars — what BOTH apps did with
     /// each clip, summed and stamped by Evolver. Neutral until they land.
     private var weights = WatchWeights()
@@ -456,7 +452,6 @@ final class AppModel: ObservableObject {
             let stored = UserDefaults.standard.string(forKey: Self.metadataFingerprintKey)
             if fingerprint == stored, !groupIndex.isEmpty {
                 MetadataFetcher.log.notice("mirror unchanged, the corpus on disk serves")
-                recomputeLoopAvailability()
                 return
             }
             let fetched = await MetadataFetcher.fetchSidecars(client: client, branches: branches)
@@ -524,7 +519,6 @@ final class AppModel: ObservableObject {
         // could have spoken for, and a refusal outside that is kept.
         favorites.adopt(flagged: flagged,
                         covering: Set(corpus.keys.compactMap(LibraryPaths.favoriteKey(forClip:))))
-        recomputeLoopAvailability()
         if favorites != before { persistState() }
     }
 
@@ -725,31 +719,33 @@ final class AppModel: ObservableObject {
                 sync()
             }
         case .seed, .action:
-            guard let current = session.current else { return }
-            let clips = mode == .seed ? groupIndex.seedClips(of: current)
-                                      : groupIndex.actionClips(of: current)
+            guard let current = session.current, let clips = groupIndex.group(mode, of: current) else { return }
             settings.loopClip = false
-            if clips.count < 2 {
-                session.setLocked(true)
-                loopMode = .all
-                flash("Locked — no group", favorite: true)
-            } else {
+            if groupIndex.canLoop(mode, from: current) {
                 session.setLocked(false)
                 session.replacePlaylist(clips)
                 loopMode = mode
                 flash("\(mode == .seed ? "Seed" : "Action") loop — \(clips.count) clips", favorite: false)
+            } else {
+                session.setLocked(true)
+                loopMode = .all
+                flash("Locked — no group", favorite: true)
             }
             sync()
         }
+    }
+
+    /// Whether the Loop control's *mode* has anything to loop from the clip on
+    /// screen.
+    func canLoop(_ mode: LoopMode) -> Bool {
+        session.current.map { groupIndex.canLoop(mode, from: $0) } ?? false
     }
 
     /// The E key: one step clockwise around the Loop control (the Kit's
     /// `LoopCycle`), each stop meaning what the control's segment means.
     func cycleLoop() {
         guard let current = session.current else { return }
-        setLoop(LoopCycle.next(after: loopMode) { stop in
-            (stop == .seed ? groupIndex.seedClips(of: current) : groupIndex.actionClips(of: current)).count > 1
-        })
+        setLoop(LoopCycle.next(after: loopMode) { groupIndex.canLoop($0, from: current) })
     }
 
     // MARK: - playback plumbing
@@ -766,7 +762,6 @@ final class AppModel: ObservableObject {
             .filter { clipsByPath[$0].map { $0.size <= streamThresholdBytes } ?? true }
         let clips = clipsByPath
         Task { await prefetcher.replan(plan, clips: clips, generation: generation) }
-        recomputeLoopAvailability()
         guard let current = session.current else {
             engine.clear()
             showing = nil
@@ -907,15 +902,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func recomputeLoopAvailability() {
-        guard let current = session.current, !groupIndex.isEmpty else {
-            seedLoopAvailable = false
-            actionLoopAvailable = false
-            return
-        }
-        seedLoopAvailable = groupIndex.seedClips(of: current).count > 1
-        actionLoopAvailable = groupIndex.actionClips(of: current).count > 1
-    }
 
     private func flash(_ text: String, favorite: Bool) {
         notice = Notice(text: text, favorite: favorite)
