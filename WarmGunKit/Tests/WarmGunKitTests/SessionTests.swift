@@ -227,3 +227,22 @@ extension SessionTests {
         #expect(Session(playlist: Self.three).resumption(currentFits: true) == .keep)
     }
 }
+
+extension SessionTests {
+    @Test func aRelaunchResumesTheSavedRunOnItsClipLessWhatTheLibraryLost() {
+        let known = Set([Self.three[0], Self.three[2]])
+        let resumed = Session(restoring: Self.three, at: 2, locked: true, keeping: known)
+        #expect(resumed.playlist == [Self.three[0], Self.three[2]])
+        #expect(resumed.current == Self.three[2])
+        #expect(resumed.locked)
+
+        // The held clip left the library: its lock does not pass to the clip
+        // that takes its place, as a rebuild that loses it does not either.
+        let lost = Session(restoring: Self.three, at: 1, locked: true, keeping: known)
+        #expect(lost.current == Self.three[0])
+        #expect(!lost.locked)
+
+        let pastTheEnd = Session(restoring: Self.three, at: 7, locked: false, keeping: Set(Self.three))
+        #expect(pastTheEnd.current == Self.three[0])
+    }
+}
