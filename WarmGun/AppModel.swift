@@ -78,10 +78,6 @@ final class AppModel: ObservableObject {
     /// The lanes the repo cannot name (see ContentOverlay): bundled from the
     /// git-ignored content.local.json, empty when the bundle carries none.
     let overlay: ContentOverlay
-    /// A clip past this size streams straight off its pCloud link instead of
-    /// being fetched whole — a real scene runs to hundreds of megabytes, and
-    /// most carry their index up front, so playback starts in seconds.
-    private let streamThresholdBytes: Int64 = 25_000_000
     private var client: PCloudClient?
     private var prefetcher: Prefetcher?
     private var eventPump: Task<Void, Never>?
@@ -706,10 +702,9 @@ final class AppModel: ObservableObject {
         guard let prefetcher else { return }
         planGeneration += 1
         let generation = planGeneration
-        // The scenes too big to cache whole are not planned — they stream.
         let plan = PrefetchPlanner.plan(playlist: session.playlist, index: session.index,
                                         ahead: settings.prefetchAhead, back: settings.prefetchBehind)
-            .filter { clipsByPath[$0].map { $0.size <= streamThresholdBytes } ?? true }
+            .filter { clipsByPath[$0].map { !$0.streams } ?? true }
         let clips = clipsByPath
         Task { await prefetcher.replan(plan, clips: clips, generation: generation) }
         guard let current = session.current else {
@@ -719,7 +714,7 @@ final class AppModel: ObservableObject {
             return
         }
         let loop = session.locked || settings.loopClip
-        if let clip = clipsByPath[current], clip.size > streamThresholdBytes, !cached.contains(current) {
+        if let clip = clipsByPath[current], clip.streams, !cached.contains(current) {
             // Stream a scene straight off its link: playback starts on the
             // first ranges, nothing lands in the cache, nothing is staged
             // after it (the next clip syncs when this one finishes).

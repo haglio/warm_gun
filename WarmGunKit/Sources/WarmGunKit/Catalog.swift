@@ -49,6 +49,13 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
     public let orientation: Orientation
     public let stem: String
 
+    /// Whether the clip streams straight off its pCloud link rather than
+    /// being fetched whole: a real scene runs to hundreds of megabytes, and
+    /// most carry their index up front, so playback starts in seconds.
+    public var streams: Bool { size > Self.streamThresholdBytes }
+
+    private static let streamThresholdBytes: Int64 = 25_000_000
+
     init?(file: LibraryFile) {
         guard LibraryPaths.isVideo(file.path) else { return nil }
         if let original = LibraryPaths.parseOriginal(file.path) {
