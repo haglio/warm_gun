@@ -137,14 +137,14 @@ private struct ControlsOverlay: View {
         ZStack {
             // Corners. Portrait stacks a cluster vertically; landscape lays it
             // flat, where height is the scarce direction.
-            corner(.topLeading) {
+            pinned(.topLeading) {
                 cluster {
                     chip("Genau", on: typesBinding([.genauFlick]))
                     chip("Clips", on: typesBinding(ClipType.clips))
                     chip("Full", on: typesBinding([.fullLength]))
                 }
             }
-            corner(.topTrailing) {
+            pinned(.topTrailing) {
                 cluster {
                     chip("Shuffle", on: orderBinding(latest: false))
                     chip("Latest", on: orderBinding(latest: true))
@@ -154,7 +154,7 @@ private struct ControlsOverlay: View {
             // The Loop control, laid so that E's cycle (all, 1, seed, action)
             // runs clockwise round the landscape grid: All and 1 on top,
             // Seed under 1 and Action under All.
-            corner(.bottomLeading) {
+            pinned(.bottomLeading) {
                 cluster {
                     loopChip("All", .all)
                     loopChip("1", .single)
@@ -165,7 +165,7 @@ private struct ControlsOverlay: View {
             // The combinable act buttons, overlay-defined: 2 wide and 4 tall in
             // portrait, 4 wide and 2 tall in landscape. Settings has no door
             // here — the login screen appears by itself when a login is needed.
-            corner(.bottomTrailing) {
+            pinned(.bottomTrailing) {
                 if !model.overlay.actFilters.isEmpty {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5),
                                              count: landscape ? 4 : 2),
@@ -178,9 +178,9 @@ private struct ControlsOverlay: View {
                 }
             }
             // Edges: the four gestures, drawn where their tap zones live.
-            edge(.leading) { iconButton("backward.frame.fill") { act(.previous) } }
-            edge(.trailing) { iconButton("forward.frame.fill") { act(.next) } }
-            edge(.top) { iconButton("hand.thumbsdown.fill") { act(.weird) } }
+            pinned(.leading) { iconButton("backward.frame.fill") { act(.previous) } }
+            pinned(.trailing) { iconButton("forward.frame.fill") { act(.next) } }
+            pinned(.top) { iconButton("hand.thumbsdown.fill") { act(.weird) } }
             lowEdge {
                 iconButton(model.session.locked ? "lock.fill" : "lock.open") { act(.lock) }
             }
@@ -227,12 +227,8 @@ private struct ControlsOverlay: View {
         }
     }
 
-    private func corner(_ alignment: Alignment, @ViewBuilder _ content: () -> some View) -> some View {
+    private func pinned(_ alignment: Alignment, @ViewBuilder _ content: () -> some View) -> some View {
         content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-    }
-
-    private func edge(_ side: Alignment, @ViewBuilder _ content: () -> some View) -> some View {
-        content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: side)
     }
 
     /// The low edge, stacked rather than aligned.  SwiftUI's name for that
@@ -247,61 +243,43 @@ private struct ControlsOverlay: View {
     }
 
     private func actChip(_ label: String) -> some View {
-        let enabled = !model.settings.browse.disabledActs.contains(label)
-        return Button {
-            onAnyInteraction()
+        let shown = !model.settings.browse.disabledActs.contains(label)
+        return capsuleButton(label, selected: shown, opacity: shown ? 1 : 0.45, compact: true) {
             var browse = model.settings.browse
-            if enabled {
+            if shown {
                 browse.disabledActs.insert(label)
             } else {
                 browse.disabledActs.remove(label)
             }
             model.update(browse: browse)
-        } label: {
-            Text(label)
-                .frame(minWidth: 40, minHeight: 34)
         }
-        .buttonStyle(.plain)
-        .font(.subheadline.weight(enabled ? .bold : .regular))
-        .padding(.horizontal, 2)
-        .padding(.vertical, 3)
-        .background(enabled ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
-        .foregroundStyle(enabled ? AnyShapeStyle(.white) : AnyShapeStyle(.white.opacity(0.45)))
-        .contentShape(Capsule())
     }
 
     private func chip(_ label: String, on binding: Binding<Bool>) -> some View {
-        Button {
-            onAnyInteraction()
-            binding.wrappedValue.toggle()
-        } label: {
-            Text(label)
-                .frame(minWidth: 84, minHeight: 34)
-        }
-        .buttonStyle(.plain)
-        .font(.subheadline.weight(binding.wrappedValue ? .bold : .regular))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(binding.wrappedValue ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
-        .foregroundStyle(.white)
-        .contentShape(Capsule())
+        capsuleButton(label, selected: binding.wrappedValue) { binding.wrappedValue.toggle() }
     }
 
     private func loopChip(_ label: String, _ mode: LoopMode, enabled: Bool = true) -> some View {
-        let selected = model.loopMode == mode
-        return Button {
-            onAnyInteraction()
+        capsuleButton(label, selected: model.loopMode == mode, opacity: enabled ? 1 : 0.3, enabled: enabled) {
             model.setLoop(mode)
+        }
+    }
+
+    private func capsuleButton(_ label: String, selected: Bool, opacity: Double = 1, enabled: Bool = true,
+                               compact: Bool = false, action: @escaping () -> Void) -> some View {
+        Button {
+            onAnyInteraction()
+            action()
         } label: {
             Text(label)
-                .frame(minWidth: 84, minHeight: 34)
+                .frame(minWidth: compact ? 40 : 84, minHeight: 34)
         }
         .buttonStyle(.plain)
         .font(.subheadline.weight(selected ? .bold : .regular))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, compact ? 2 : 8)
+        .padding(.vertical, compact ? 3 : 5)
         .background(selected ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
-        .foregroundStyle(enabled ? AnyShapeStyle(.white) : AnyShapeStyle(.white.opacity(0.3)))
+        .foregroundStyle(.white.opacity(opacity))
         .disabled(!enabled)
         .contentShape(Capsule())
     }
