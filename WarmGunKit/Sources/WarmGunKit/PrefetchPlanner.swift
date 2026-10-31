@@ -22,7 +22,7 @@ public enum PrefetchPlanner {
         var planned: [String] = []
         var seen: Set<String> = []
         for offset in offsets(ahead: ahead, back: back) {
-            let path = playlist[wrap(index + offset, playlist.count)]
+            let path = playlist[(index + offset).wrapped(into: playlist.count)]
             if seen.insert(path).inserted { planned.append(path) }
             if planned.count == playlist.count { break }
         }
@@ -81,10 +81,5 @@ public enum PrefetchPlanner {
             }
         }
         return offsets
-    }
-
-    private static func wrap(_ value: Int, _ count: Int) -> Int {
-        let remainder = value % count
-        return remainder < 0 ? remainder + count : remainder
     }
 }
