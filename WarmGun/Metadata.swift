@@ -16,20 +16,12 @@ enum MetadataFetcher {
     /// and this is read after the fact.
     static let log = Logger(subsystem: "com.cmloegcmluin.warmgun", category: "metadata")
 
-    /// One branch as the survey found it: where it is, what it holds, and which
-    /// of that speaks for a clip the phone can play.
-    struct Branch {
-        let path: String
-        let files: [LibraryFile]
-        let index: SidecarIndex
-    }
-
     /// One cheap listing per branch. A branch that is absent or refuses to list
     /// simply contributes nothing — the corpus is still worth having without
     /// it, and the alternative is one missing folder costing every weight.
     static func survey(client: PCloudClient, libraryPath: String, genauFlicksFolder: String?,
-                       clipPaths: [String]) async -> [Branch] {
-        var branches: [Branch] = []
+                       clipPaths: [String]) async -> MirrorSurvey {
+        var branches: [SurveyedBranch] = []
         for branch in LibraryPaths.MetadataBranch.allCases {
             guard let path = branch.path(forLibrary: libraryPath, genauFlicksFolder: genauFlicksFolder) else {
                 log.notice("\(String(describing: branch)) branch: no path for this library")
@@ -46,25 +38,15 @@ enum MetadataFetcher {
                                      listing: files.map(\.path))
             log.notice("\(String(describing: branch)) branch: \(files.count) files listed, \(index.clipsByListedSidecar.count) speak for a clip")
             guard !index.clipsByListedSidecar.isEmpty else { continue }
-            branches.append(Branch(path: path, files: files, index: index))
+            branches.append(SurveyedBranch(path: path, files: files, index: index))
         }
-        return branches
-    }
-
-    /// One number standing for the whole mirror: how many sidecars are worth
-    /// having, and the newest write among everything listed. A matching
-    /// fingerprint means nothing moved and there is nothing to fetch.
-    static func fingerprint(of branches: [Branch]) -> String {
-        branches.map { branch in
-            let newest = branch.files.map(\.modified.timeIntervalSince1970).max() ?? 0
-            return "\(branch.index.clipsByListedSidecar.count)|\(Int(newest))"
-        }.joined(separator: ";")
+        return MirrorSurvey(branches: branches)
     }
 
     /// Every sidecar the surveyed branches hold, keyed by the catalog path of
     /// the clip it speaks for. A branch that fails outright is skipped rather
     /// than failing the whole corpus.
-    static func fetchSidecars(client: PCloudClient, branches: [Branch]) async -> [String: Sidecar] {
+    static func fetchSidecars(client: PCloudClient, branches: [SurveyedBranch]) async -> [String: Sidecar] {
         var sidecars: [String: Sidecar] = [:]
         for branch in branches {
             let fetched: [String: Sidecar]
@@ -84,7 +66,7 @@ enum MetadataFetcher {
         return sidecars
     }
 
-    private static func fetchViaZip(client: PCloudClient, branch: Branch) async throws -> [String: Sidecar] {
+    private static func fetchViaZip(client: PCloudClient, branch: SurveyedBranch) async throws -> [String: Sidecar] {
         guard let folderID = try await client.folderSkeleton(path: branch.path, recursive: false).folderid else {
             throw ZipArchive.Failure(reason: "metadata folder has no id")
         }
@@ -104,7 +86,7 @@ enum MetadataFetcher {
     }
 
     /// The slow road: only the sidecars that speak for a clip, six at a time.
-    private static func fetchSingly(client: PCloudClient, branch: Branch) async -> [String: Sidecar] {
+    private static func fetchSingly(client: PCloudClient, branch: SurveyedBranch) async -> [String: Sidecar] {
         let wanted = branch.index.clipsByListedSidecar
         let files = branch.files.filter { wanted[$0.path] != nil }
         let decoder = JSONDecoder()
