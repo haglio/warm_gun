@@ -17,7 +17,10 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 - Unit suite (run freely, no permission needed): `cd WarmGunKit && swift test`
 - Everything local in one command: `sh tools/check.sh` — the suite, the
   coupling gates (`tools/gates.py`, counts with a target of 0 that fail the
-  build), and the sanitize guard swept over the whole tree.
+  build) and their tests, and the sanitize guard swept over the whole tree.
+- `PROSE_CEILING` in `tools/gates.py` is this repo's ceiling on comment
+  lines, and it only comes down: a change that removes comment lines lowers
+  it by as many, and one that adds some first removes as many elsewhere.
 - End-to-end without credentials or library writes: build for the Simulator
   or for the Mac (`-destination 'generic/platform=macOS'`, Debug), run
   `python3 tools/fake_pcloud.py --root "<pCloud Drive mount>" --scratch
