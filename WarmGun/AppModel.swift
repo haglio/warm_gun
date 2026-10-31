@@ -395,25 +395,20 @@ final class AppModel: ObservableObject {
         let flicksFolder = self.genauFlicksFolder
         let clipPaths = catalog.clips.map(\.path)
         Task {
-            // One cheap listing per branch decides whether anything moved: the
-            // same counts and the same newest writes mean the persisted corpus
-            // still speaks for the mirror, and nothing is fetched at all.
-            let branches = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
-                                                        genauFlicksFolder: flicksFolder,
-                                                        clipPaths: clipPaths)
-            guard !branches.isEmpty else {
+            let survey = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
+                                                      genauFlicksFolder: flicksFolder, clipPaths: clipPaths)
+            guard !survey.branches.isEmpty else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"
                 MetadataFetcher.log.error("no branch of the metadata mirror answered")
                 retryMetadataLater()
                 return
             }
-            let fingerprint = MetadataFetcher.fingerprint(of: branches)
             let stored = UserDefaults.standard.string(forKey: Self.metadataFingerprintKey)
-            if fingerprint == stored, !groupIndex.isEmpty {
+            if survey.fingerprint == stored, !groupIndex.isEmpty {
                 MetadataFetcher.log.notice("mirror unchanged, the corpus on disk serves")
                 return
             }
-            let fetched = await MetadataFetcher.fetchSidecars(client: client, branches: branches)
+            let fetched = await MetadataFetcher.fetchSidecars(client: client, branches: survey.branches)
             guard !fetched.isEmpty else {
                 lastProblem = "Metadata: the metadata folders came back empty"
                 MetadataFetcher.log.error("the metadata folders came back empty")
@@ -431,15 +426,8 @@ final class AppModel: ObservableObject {
             if session.playlist.isEmpty { rebuild(startAtTop: true) }
             guard let data = try? JSONEncoder().encode(sidecars),
                   (try? data.write(to: sidecarsURL, options: .atomic)) != nil else { return }
-            // The fingerprint says "the mirror as the survey found it is on
-            // this phone", so it may only be stamped when that is true: every
-            // sidecar the survey named came back, and the file landed. A
-            // partial corpus is worth adopting and worth keeping, but stamping
-            // it would make the next launch skip the fetch that would complete
-            // it — and nothing short of the mirror moving would ever unstick it.
-            let wanted = branches.reduce(0) { $0 + $1.index.clipsByListedSidecar.count }
-            if fetched.count == wanted {
-                UserDefaults.standard.set(fingerprint, forKey: Self.metadataFingerprintKey)
+            if survey.isComplete(fetched) {
+                UserDefaults.standard.set(survey.fingerprint, forKey: Self.metadataFingerprintKey)
             }
         }
     }
