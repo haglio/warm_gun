@@ -1,4 +1,5 @@
-"""The coupling gates — numbers with a target of zero that fail the build.
+"""The coupling gates — numbers with a target of zero that fail the build —
+and the ceiling on comment lines.
 
 Length and lint say nothing about coupling, which is what actually rots a
 codebase, so the load-bearing invariants are counted here and a nonzero count
@@ -20,6 +21,11 @@ is a failing exit. The invariants, from docs/design.md:
    and the one place is what keeps the app above it one program. Any ``#if``,
    not only ``os(...)``: a custom compilation condition set per SDK would
    spell the same fork differently.
+6. A comment is a claim nothing runs, so what a name or a test can say is
+   said there, and the comment lines of the Swift sources, the tests and the
+   shell scripts are held to ``PROSE_CEILING``, which only comes down: a
+   change that removes comment lines lowers it by as many, and one that adds
+   some first removes as many elsewhere.
 
 Run: ``python3 tools/gates.py`` (exit 0 = all gates hold).
 """
@@ -40,10 +46,16 @@ PLATFORM_FILE = "Platform.swift"
 PLATFORM_CONDITION = re.compile(r"#\s*(if|elseif)\b(?!\s*!?DEBUG\s*$)")
 PLATFORM_IMPORT = re.compile(r"(^|;)\s*(@\w+(\([^)]*\))?\s+)*import\s+(\w+\s+)?(UIKit|AppKit|Cocoa)\b")
 ACTORS = ("engine", "cache", "prefetcher", "client")
+SHELL_SHEBANG = re.compile(rb"#!.*\b(sh|bash|zsh)\b")
+PROSE_CEILING = 1543
 
 
 def kit_sources(root: Path) -> Path:
     return root / "WarmGunKit" / "Sources"
+
+
+def kit_tests(root: Path) -> Path:
+    return root / "WarmGunKit" / "Tests"
 
 
 def app_sources(root: Path) -> Path:
@@ -54,13 +66,42 @@ def swift_files(directory: Path) -> list[Path]:
     return sorted(directory.rglob("*.swift"))
 
 
+def is_comment(line: str, marker: str = "//") -> bool:
+    return line.strip().startswith(marker)
+
+
 def code_lines(path: Path):
     """(line_number, line) with comment-only lines dropped — a gate must count
     code, not prose about code."""
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        if line.strip().startswith("//"):
+        if is_comment(line):
             continue
         yield number, line
+
+
+def is_shell_script(path: Path) -> bool:
+    if path.suffix:
+        return path.suffix == ".sh"
+    with path.open("rb") as script:
+        return bool(SHELL_SHEBANG.match(script.readline()))
+
+
+def prose_files(root: Path) -> list[Path]:
+    scripts = [path for path in sorted(root.glob("*")) + sorted((root / "tools").rglob("*"))
+               if path.is_file() and is_shell_script(path)]
+    return (swift_files(kit_sources(root)) + swift_files(kit_tests(root))
+            + swift_files(app_sources(root)) + scripts)
+
+
+def prose_lines(root: Path) -> int:
+    count = 0
+    for path in prose_files(root):
+        marker = "//" if path.suffix == ".swift" else "#"
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if lines and lines[0].startswith("#!"):
+            lines = lines[1:]
+        count += sum(is_comment(line, marker) for line in lines)
+    return count
 
 
 def where(path: Path, root: Path, number: int) -> str:
@@ -109,6 +150,18 @@ def gate_views_stay_out_of_actors(root: Path) -> list[str]:
     return hits
 
 
+def gate_prose_ceiling(root: Path, ceiling: int | None = None) -> list[str]:
+    ceiling = PROSE_CEILING if ceiling is None else ceiling
+    prose = prose_lines(root)
+    if prose > ceiling:
+        return [f"{prose} comment lines, over the ceiling of {ceiling}: "
+                "say it in a name or a test, or remove as many elsewhere"]
+    if prose < ceiling:
+        return [f"{prose} comment lines, under the ceiling of {ceiling}: "
+                f"lower PROSE_CEILING to {prose}"]
+    return []
+
+
 def gate_platform_seam(root: Path) -> list[str]:
     hits = []
     for path in swift_files(kit_sources(root)) + swift_files(app_sources(root)):
@@ -127,6 +180,7 @@ GATES = {
     "stored static var": gate_no_static_mutable,
     "view reach-through into model actors": gate_views_stay_out_of_actors,
     f"platform-specific code outside {PLATFORM_FILE}": gate_platform_seam,
+    "comment lines off their ceiling": gate_prose_ceiling,
 }
 
 

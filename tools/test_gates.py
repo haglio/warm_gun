@@ -91,6 +91,27 @@ class GateTests(unittest.TestCase):
             "WarmGun/Elsewhere.swift:10: import Foundation; import Cocoa",
         ])
 
+    def test_prose_is_every_swift_or_shell_line_that_is_only_a_comment(self):
+        root = self.plant({
+            "WarmGun/A.swift": "/// what it is\nlet x = 1 // a trailing note\n    // an aside\nlet y = 2\n",
+            "WarmGunKit/Tests/WarmGunKitTests/T.swift": "// why the test asks this\n@Test func t() {}\n",
+            "WarmGunKit/Package.swift": "// swift-tools-version: 6.0\n",
+            "install.sh": "#!/bin/zsh\n# why it does this\nset -e\n",
+            "tools/githooks/pre-commit": "#!/bin/sh\n# the hook's reason\nexec true\n",
+            "tools/gates.py": "# not counted\nx = 1\n",
+            ".gitignore": "# not a script\nbuild/\n",
+            "README.md": "# Not a script\n",
+        })
+        self.assertEqual(gates.prose_lines(root), 5)
+
+    def test_the_comment_lines_hold_their_ceiling_and_a_drop_must_lower_it(self):
+        root = self.plant({"WarmGun/A.swift": "// one\n// two\nlet x = 1\n"})
+        self.assertEqual(gates.gate_prose_ceiling(root, ceiling=2), [])
+        self.assertEqual(gates.gate_prose_ceiling(root, ceiling=1), [
+            "2 comment lines, over the ceiling of 1: say it in a name or a test, or remove as many elsewhere"])
+        self.assertEqual(gates.gate_prose_ceiling(root, ceiling=3), [
+            "2 comment lines, under the ceiling of 3: lower PROSE_CEILING to 2"])
+
     def test_main_runs_every_gate_this_file_defines(self):
         defined = {name for name in dir(gates) if name.startswith("gate_")}
         self.assertEqual({gate.__name__ for gate in gates.GATES.values()}, defined)
