@@ -114,8 +114,8 @@ public enum PCloudAPI {
 
     /// The whole index in one call. Recursive because the library is a fixed
     /// three-deep tree and a per-folder walk would be hundreds of round-trips
-    /// on a phone connection; the listing already carries every clip's size,
-    /// duration, codec and dimensions, so nothing is ever probed afterwards.
+    /// on a phone connection; the listing already carries every clip's size
+    /// and dimensions, so no file is probed to build the index.
     public static func listFolder(path: String, auth: String) -> PCloudRequest {
         PCloudRequest(method: "listfolder", query: [
             URLQueryItem(name: "path", value: path),

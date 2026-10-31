@@ -12,11 +12,11 @@ public enum TapZones {
     /// A three-by-three reading of the tap: the outer columns are the whole
     /// height (next is the gesture of the run, so it wants the biggest target),
     /// and only the middle column splits into weird above, lock below, and the
-    /// dead centre that opens the controls.
+    /// dead center that opens the controls.
     ///
     /// A tap exactly on a dividing line belongs to the zone right of or below it,
     /// which keeps the zones half-open and every point in exactly one of them. A
-    /// screen with no area yet reads as the centre: the controls sheet is the one
+    /// screen with no area yet reads as the center: the controls are the one
     /// gesture that costs nothing to open by accident.
     public static func action(x: Double, y: Double, width: Double, height: Double) -> TapAction {
         guard width > 0, height > 0 else { return .center }

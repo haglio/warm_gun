@@ -96,7 +96,7 @@ actor Prefetcher {
 
     private func fetch(_ clip: Clip, token: UUID) async {
         defer {
-            // Only this flight's own registration — replan may have cancelled
+            // Only this flight's own registration — replan may have canceled
             // it and pump may already have a replacement in the slot.
             if inFlight[clip.path]?.token == token { inFlight[clip.path] = nil }
         }

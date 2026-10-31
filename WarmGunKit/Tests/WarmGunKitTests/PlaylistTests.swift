@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import WarmGunKit
 
-/// The build is the one place every browse switch meets the index, so these
-/// tests read as little libraries put through the controls sheet.
+/// The build is the one place every filter meets the index, so these tests
+/// read as little libraries put through the controls.
 @Suite struct PlaylistTests {
     /// Every fixture path, source and stem here is invented; the real library
     /// never appears in this repo.
@@ -24,7 +24,7 @@ import Testing
 }
 
 extension PlaylistTests {
-    /// The Landscape checkbox picks a whole library, not a subset of one: the
+    /// The orientation picks a whole library, not a subset of one: the
     /// two orientations never mix on screen, and the folder is the authority
     /// because 21 clips in the library are square.
     @Test func onlyTheChosenOrientationEverPlays() {
@@ -249,7 +249,7 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// The controls sheet is where it was left: the switches are saved between
+    /// The controls are where they were left: the filters are saved between
     /// launches, so the whole record has to survive a JSON round trip.
     @Test func theBrowseSwitchesSurviveAJSONRoundTrip() throws {
         let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
@@ -330,7 +330,7 @@ extension PlaylistTests {
         #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "medium_length") == .fullLength)
     }
 
-    @Test func theTypeCheckboxesNarrowTheRecordedKindsToo() {
+    @Test func theTypeButtonsNarrowTheRecordedKindsToo() {
         var rng = PlaylistSeededRNG(seed: 31)
         let catalog = Catalog(files: [
             PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 40),
@@ -347,7 +347,7 @@ extension PlaylistTests {
         #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
     }
 
-    @Test func theTypeCheckboxesNarrowTheBuild() {
+    @Test func theTypeButtonsNarrowTheBuild() {
         var rng = PlaylistSeededRNG(seed: 5)
         let catalog = Catalog(files: [
             PlaylistTests.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4),
@@ -366,10 +366,10 @@ extension PlaylistTests {
                               "1_sorted/alpha/portrait/clip-c.mp4"])
     }
 
-    @Test func aPersistedShortsOnlyBrowseMigratesToTheTypeCheckboxes() throws {
-        // The sheet used to have one "shorts only" switch; a blob persisted
-        // with it on must come back as the shorts checkbox alone, and one
-        // without it as every type.
+    @Test func aPersistedShortsOnlyBrowseMigratesToTheTypes() throws {
+        // There used to be one "shorts only" switch; a blob persisted with it
+        // on must come back as the shorts type alone, and one without it as
+        // every type.
         let old = Data(#"{"orientation":"portrait","shortsOnly":true}"#.utf8)
         #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).types == [.short])
         let plain = Data(#"{"orientation":"portrait"}"#.utf8)
@@ -519,9 +519,9 @@ extension PlaylistTests {
         #expect(!BrowseOptions(types: [.excerpt]).includes(ClipType.clips))
     }
 
-    @Test func aPersistedBrowseKeepsItsCheckboxesThroughTheRename() throws {
+    @Test func aPersistedBrowseKeepsItsTypesThroughTheRename() throws {
         // The kinds were this app's own words before the desktop had any; a
-        // browse persisted with them must come back as the same checkboxes.
+        // browse persisted with them must come back as the same types.
         let old = Data(#"{"orientation":"portrait","types":["genau","acts","fullLength"]}"#.utf8)
 
         let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)
@@ -529,7 +529,7 @@ extension PlaylistTests {
         #expect(restored.types == [.genauFlick, .excerpt, .fullLength])
     }
 
-    @Test func aBrowsePersistedBeforeGenausClipsWereCalledFlicksKeepsItsGenauCheckbox() throws {
+    @Test func aBrowsePersistedBeforeGenausClipsWereCalledFlicksKeepsItsGenauType() throws {
         let old = Data(#"{"orientation":"portrait","types":["genau_clip","short"]}"#.utf8)
 
         let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)

@@ -1,10 +1,10 @@
 #!/bin/zsh
 # Build WarmGun for this Mac and put it in ~/Applications -- the laptop's
 # counterpart of install.sh. The same code, built against the macOS SDK: the
-# window takes the whole screen, taps are clicks, and the Portrait/Landscape
-# chips on the overlay stand in for turning the phone. Signed with the
-# development certificate alone (no provisioning profile, so no device
-# registration and no Apple-side step), sandboxed, with its own container.
+# window takes the whole screen, taps are clicks, and the P and L keys stand
+# in for turning the phone. Signed with the development certificate alone (no
+# provisioning profile, so no device registration and no Apple-side step),
+# sandboxed, with its own container.
 #
 #   ./install_mac.sh             # build, install to "~/Applications/Warm Gun.app", open it
 #   OPEN=0 ./install_mac.sh      # build and install without opening

@@ -13,7 +13,7 @@ import AppKit
 /// questions in one vocabulary and never knows which machine answers.
 enum Platform {
     /// The phone's screen turns with the phone and the browse follows it. A
-    /// laptop's does not, so there the orientation is a chip on the overlay.
+    /// laptop's does not, so there the P and L keys pick the orientation.
     #if os(iOS)
     static let screenTurns = true
     #else

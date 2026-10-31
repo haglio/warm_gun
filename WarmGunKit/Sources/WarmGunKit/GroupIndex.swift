@@ -126,7 +126,7 @@ public struct GroupIndex: Sendable, Equatable {
     }
 
     /// Every clip's recorded kind — what the desktop wrote in `video.type`,
-    /// which is what the type checkboxes narrow by wherever it is there.
+    /// which is what the type buttons narrow by wherever it is there.
     public var kindsByPath: [String: String] {
         kindByPath.filter { !$0.value.isEmpty }
     }
