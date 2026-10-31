@@ -91,3 +91,13 @@ extension CatalogTests {
         #expect(prefixed.modified == Date(timeIntervalSince1970: 5))
     }
 }
+
+extension CatalogTests {
+    @Test func aClipOverTwentyFiveMegabytesStreamsAndOneAtItIsFetchedWhole() {
+        let clips = Catalog(files: [
+            Self.file("1_sorted/alpha/portrait/at.mp4", id: 1, size: 25_000_000),
+            Self.file("1_sorted/alpha/portrait/over.mp4", id: 2, size: 25_000_001),
+        ]).clips
+        #expect(clips.map(\.streams) == [false, true])
+    }
+}
