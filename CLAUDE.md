@@ -21,6 +21,10 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 - `PROSE_CEILING` in `tools/gates.py` is this repo's ceiling on comment
   lines, and it only comes down: a change that removes comment lines lowers
   it by as many, and one that adds some first removes as many elsewhere.
+- On a machine with no Swift (the Windows PC), the merge gate is the only
+  place the Kit runs and the app compiles: push each red or green step to a
+  throwaway branch whose own copy of `merge-gate.yml` names it under
+  `push:`, read that run, and delete the branch when the work ships.
 - End-to-end without credentials or library writes: build for the Simulator
   or for the Mac (`-destination 'generic/platform=macOS'`, Debug), run
   `python3 tools/fake_pcloud.py --root "<pCloud Drive mount>" --scratch
