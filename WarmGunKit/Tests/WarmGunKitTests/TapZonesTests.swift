@@ -20,7 +20,7 @@ extension TapZonesTests {
 }
 
 extension TapZonesTests {
-    @Test func aScreenWithNoAreaReadsAsTheCentre() {
+    @Test func aScreenWithNoAreaReadsAsTheCenter() {
         // The first taps can arrive before layout has a size; opening the
         // controls is the one gesture that undoes itself.
         #expect(TapZones.action(x: 0, y: 0, width: 0, height: 0) == .center)

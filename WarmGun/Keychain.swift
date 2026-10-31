@@ -1,16 +1,14 @@
 import Foundation
 import Security
 
-/// The one secret the app holds: the pCloud auth token. The password that
-/// earned it is used for a single login request and never stored.
+/// The pCloud auth token, and the password only while a login is under way.
 enum Keychain {
     private static let service = "com.cmloegcmluin.warmgun"
     private static let account = "pcloud-auth"
-    /// The password he is mid-way through logging in with. Kept ONLY between a
+    /// The password he is midway through logging in with, kept only between a
     /// failed attempt and the one that succeeds — retyping it on every round of
-    /// a multi-step challenge is what wore the owner out — and deleted the moment
-    /// a token is earned, which restores the design's "the password is never
-    /// stored" the instant it stops being needed.
+    /// a multi-step challenge is what wore the owner out — and deleted the
+    /// moment a token is earned.
     private static let pendingAccount = "pcloud-password-pending"
 
     private static var query: [String: Any] {

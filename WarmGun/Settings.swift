@@ -1,13 +1,8 @@
 import Foundation
 import WarmGunKit
 
-/// Everything the user can set, in UserDefaults — except the pCloud token,
-/// which is a secret and lives in the Keychain (see `Keychain.swift`).
-///
-/// The library path and the sync folder are pCloud paths, typed in Settings:
-/// they name the machine's own tree, which is exactly the kind of value that
-/// must never be written into source or committed (the sanitize guard exists
-/// for that), so there is no default for them beyond an empty string.
+/// What the app keeps between launches, in UserDefaults; the pCloud token is
+/// a secret and lives in the Keychain instead.
 struct Settings: Codable, Equatable {
     var apiHost = "api.pcloud.com"
     var username = ""

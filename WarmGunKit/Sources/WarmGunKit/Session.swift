@@ -36,7 +36,7 @@ public struct Session: Equatable, Sendable {
     }
 
     /// Navigate *delta* entries, wrapping in both directions: previous is the
-    /// list neighbour, never a history stack. A deliberate step off a held clip
+    /// list neighbor, never a history stack. A deliberate step off a held clip
     /// releases the lock, as the desktop dispatcher's UNLOCK-before-NEXT does.
     public mutating func step(_ delta: Int) {
         guard !playlist.isEmpty else { return }

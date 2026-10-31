@@ -3,8 +3,8 @@ import WarmGunKit
 
 /// The whole screen: the video, the invisible tap zones over it, and — one
 /// center tap away — the control overlay: corner clusters for types, order,
-/// loop and settings, edge buttons for the four gestures, pause in the middle.
-/// There is no menu screen; everything is laid over the picture.
+/// loop and the act buttons, edge buttons for the four gestures, pause in the
+/// middle. There is no menu screen; everything is laid over the picture.
 struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showingControls = false
@@ -135,8 +135,6 @@ private struct ControlsOverlay: View {
 
     var body: some View {
         ZStack {
-            // Corners. Portrait stacks a cluster vertically; landscape lays it
-            // flat, where height is the scarce direction.
             pinned(.topLeading) {
                 cluster {
                     chip("Genau", on: typesBinding([.genauFlick]))
@@ -306,9 +304,7 @@ private struct ControlsOverlay: View {
                 })
     }
 
-    /// The desktop's F-mode. It was taken off the sheet while the phone had
-    /// only its own favorites to show; Evolver now flags every one of the
-    /// desktop's on the sidecars, so the switch has a library backing it again.
+    /// The desktop's F-mode.
     private func favoritesBinding() -> Binding<Bool> {
         Binding(get: { model.settings.browse.favoritesOnly },
                 set: { value in

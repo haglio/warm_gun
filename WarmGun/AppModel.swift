@@ -167,10 +167,6 @@ final class AppModel: ObservableObject {
         // front as often as not, with no step-aside to upload on.
         if journalDirty { Task { await syncWithCloud() } }
         if settings.libraryPath.isEmpty {
-            // Nobody should have to TELL the app where the library is: it is
-            // the one folder in the account holding both pipeline stages, so
-            // one folders-only listing finds it. The Settings field remains as
-            // an override for the day the account grows a second skeleton.
             phase = .indexing
             do {
                 guard let client, let found = try await Self.discoverLibrary(client: client) else {
@@ -468,8 +464,7 @@ final class AppModel: ObservableObject {
     /// Builds the browse from the index and hands it to the session. A change
     /// of filter keeps the clip on screen when it survives (the desktop's
     /// `replace_playlist`); a new order starts from the top. A filter that
-    /// matches nothing leaves the current playlist in place rather than
-    /// blanking the screen.
+    /// matches nothing empties the run, and the screen says so.
     private func rebuild(startAtTop: Bool) {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
@@ -528,8 +523,6 @@ final class AppModel: ObservableObject {
         sync()
     }
 
-    /// A single tap in the middle. Navigation always unpauses — a tap that
-    /// asks for a different clip is a tap that wants playback.
     func setLayerReady(_ ready: Bool) {
         if layerReady != ready { layerReady = ready }
     }
@@ -781,7 +774,7 @@ final class AppModel: ObservableObject {
     }
 
     /// The clip played out with nothing staged after it — a streamed scene,
-    /// or a cached clip whose neighbour has not landed yet. The session moves
+    /// or a cached clip whose neighbor has not landed yet. The session moves
     /// on; the picture replays or holds until the next clip is ready.
     private func finished() {
         session.advance()
@@ -834,8 +827,8 @@ final class AppModel: ObservableObject {
     }
 
     /// The listing never times the clips, so each one is measured the moment
-    /// its file lands — from then on the shorts checkbox judges it by truth
-    /// rather than by the size stand-in.
+    /// its file lands — from then on its type is judged by its length rather
+    /// than by the size stand-in.
     private func measureDuration(of path: String) {
         guard measuredSeconds[path] == nil else { return }
         Task {

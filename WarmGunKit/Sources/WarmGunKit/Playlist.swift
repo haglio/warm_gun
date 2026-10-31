@@ -1,6 +1,6 @@
 import Foundation
 
-/// The kinds of clip the controls sheet lets the browse narrow to. Every clip
+/// The kinds of clip the type buttons let the browse narrow to. Every clip
 /// is exactly one, and the desktop settles which: it records the kind on the
 /// video's metadata sidecar (`video.type`), for the whole library, so the same
 /// clip is the same kind in every app that reads it. The raw values are that
@@ -13,9 +13,8 @@ import Foundation
 /// field existed, kept only for where the field cannot reach.
 public enum ClipType: String, Codable, CaseIterable, Sendable {
     case genauFlick = "genau_flick"
-    /// A scene carved out of a longer one. Which folders hold them — and what
-    /// the checkbox is called — is library vocabulary, defined only by the
-    /// overlay.
+    /// A scene carved out of a longer one. Which folders hold them is library
+    /// vocabulary, defined only by the overlay.
     case excerpt
     case short
     case fullLength = "full_length"
@@ -55,7 +54,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     private static let estimatedBytesPerSecond = 500_000.0
 }
 
-/// Every switch on the controls sheet, in one value.
+/// Every filter on the controls, in one value.
 ///
 /// A plain record with nothing derived in it, so the app can persist it and hand
 /// it straight back on the next launch — and so a rebuild is a pure function of
@@ -70,9 +69,8 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
     /// everything shows. Stored as the disabled side so the default needs no
     /// knowledge of which buttons the overlay defines.
     public var disabledActs: Set<String>
-    /// The size ceiling that keeps the legacy HEVC files sitting in the
-    /// originals tree out: the phone fetches a clip whole before it plays, so an
-    /// outlier is minutes of black screen rather than a slow start.
+    /// The size ceiling that keeps out the legacy HEVC upscales sitting in the
+    /// originals tree.
     public var maxBytes: Int64
 
     public init(orientation: Orientation = .portrait, favoritesOnly: Bool = false,
@@ -93,7 +91,7 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
 
     /// A blob persisted before a switch existed decodes with that switch at its
     /// default — an app update must never cost the saved controls. The retired
-    /// "shorts only" switch migrates into the type checkboxes it became.
+    /// "shorts only" switch migrates into the types it became.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = BrowseOptions()
@@ -142,9 +140,9 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
 public enum PlaylistBuilder {
     /// Narrow, then order — the desktop satellite's shape
     /// (`modes.py:build_satellite_playlist_paths`), minus the group collapse it
-    /// does off the metadata sidecars, which Warm Gun has no index of yet.
+    /// does off the metadata sidecars.
     ///
-    /// The two orders are not two flavours of the same thing. Shuffle is the
+    /// The two orders are not two flavors of the same thing. Shuffle is the
     /// watch-weighted draw: chronically skipped clips sit builds out and loved
     /// ones land early, on the weight Evolver stamped from BOTH apps' viewing.
     /// Latest is a review order and carries no weighting at all, deliberately —
