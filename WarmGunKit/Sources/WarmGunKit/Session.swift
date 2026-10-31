@@ -12,7 +12,7 @@ public struct Session: Equatable, Sendable {
     /// the desktop wraps on load (`session.py`) rather than trapping.
     public init(playlist: [String], index: Int = 0) {
         self.playlist = playlist
-        self.index = playlist.isEmpty ? 0 : Session.wrap(index, playlist.count)
+        self.index = playlist.isEmpty ? 0 : index.wrapped(into: playlist.count)
         self.locked = false
     }
 
@@ -41,7 +41,7 @@ public struct Session: Equatable, Sendable {
     public mutating func step(_ delta: Int) {
         guard !playlist.isEmpty else { return }
         locked = false
-        index = Session.wrap(index + delta, playlist.count)
+        index = (index + delta).wrapped(into: playlist.count)
     }
 
     /// Drop the current entry and play what follows it — the trash gesture the
@@ -109,13 +109,6 @@ public struct Session: Equatable, Sendable {
     public func resumption(currentFits: Bool) -> Resumption {
         if playlist.isEmpty { return .startFromTop }
         return currentFits ? .keep : .rebuildAroundCurrent
-    }
-
-    /// Swift's `%` keeps the sign of the dividend, which would put a backward
-    /// step off the front of the list; the playlist is a ring.
-    private static func wrap(_ value: Int, _ count: Int) -> Int {
-        let remainder = value % count
-        return remainder < 0 ? remainder + count : remainder
     }
 }
 
