@@ -214,6 +214,10 @@ class GateTests(unittest.TestCase):
         root = self.glossary_tree([self.row(retired=["clip"], keep=["loopClip"])], "let video = 1\nlet loopClip = 2\n")
         self.assertEqual(gates.gate_glossary(root), [])
 
+    def test_a_retired_word_on_a_line_kept_by_its_text_is_left_alone(self):
+        root = self.glossary_tree([self.row(retired=["notice"], keep=["log.notice"])], "let video = 1\nlog.notice(video)\n")
+        self.assertEqual(gates.gate_glossary(root), [])
+
     def test_a_screen_noun_with_no_row_is_named(self):
         root = self.glossary_tree([self.row()], "let video = 1\nlet tileWidth = 2\n")
         self.assertEqual(gates.gate_glossary(root), ["the code says 'tile' for something on screen and no row has it"])

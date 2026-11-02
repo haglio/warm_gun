@@ -252,8 +252,8 @@ def _phrase_words(phrase: str) -> list[str]:
     return [word for token in phrase.split() for word in _words_of(token)]
 
 
-def _swift_lines(root: Path) -> list[tuple[str, int, list[str]]]:
-    return [(path.relative_to(root).as_posix(), number, IDENTIFIER.findall(line))
+def _swift_lines(root: Path) -> list[tuple[str, int, list[str], str]]:
+    return [(path.relative_to(root).as_posix(), number, IDENTIFIER.findall(line), line)
             for path in swift_files(kit_sources(root)) + swift_files(app_sources(root))
             for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)]
 
@@ -273,9 +273,13 @@ def _says(wanted: list[str], words: list[str]) -> bool:
     return words[:-1] == wanted[:-1] and words[-1] in (wanted[-1], wanted[-1] + "s", wanted[-1] + "es")
 
 
-def _first_mention(phrase: str, keep: list[str], tokens: list[str]) -> str | None:
+def _kept(token: str, line: str, keep: list[str]) -> bool:
+    return any(k.lower() in (token if k.isidentifier() else line).lower() for k in keep)
+
+
+def _first_mention(phrase: str, keep: list[str], tokens: list[str], line: str) -> str | None:
     wanted = _phrase_words(phrase)
-    said = [(word, token) for token in tokens if token not in keep for word in _words_of(token)]
+    said = [(word, token) for token in tokens if not _kept(token, line, keep) for word in _words_of(token)]
     for at in range(len(said) - len(wanted) + 1):
         run = said[at:at + len(wanted)]
         if _says(wanted, [word for word, _ in run]):
@@ -289,14 +293,14 @@ def gate_glossary(root: Path) -> list[str]:
     if faults:
         return faults
     lines = _swift_lines(root)
-    every_word = " " + " ".join(word for _, _, tokens in lines for token in tokens for word in _words_of(token)) + " "
+    every_word = " " + " ".join(word for _, _, tokens, _ in lines for token in tokens for word in _words_of(token)) + " "
     hits = []
     for row in rows:
         hits += [f"{row['id']} names {phrase!r}, which the code no longer says"
                  for phrase in row["code_today"] if f" {' '.join(_phrase_words(phrase))} " not in every_word]
         for phrase in row.get("retired", []):
-            for place, number, tokens in lines:
-                token = _first_mention(phrase, row.get("keep", []), tokens)
+            for place, number, tokens, line in lines:
+                token = _first_mention(phrase, row.get("keep", []), tokens, line)
                 if token:
                     hits.append(f"{row['id']} retired {phrase!r}: {place}:{number} {token}")
     named = {word.lower() for row in rows
