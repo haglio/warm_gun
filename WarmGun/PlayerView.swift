@@ -46,15 +46,15 @@ struct PlayerView: View {
                     }
                 }
                 VStack {
-                    if let notice = model.notice {
-                        Text(notice.text)
+                    if let message = model.message {
+                        Text(message.text)
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(notice.favorite ? Color.green : Color.white)
+                            .foregroundStyle(message.favorite ? Color.green : Color.white)
                             .padding(.horizontal, 18)
                             .padding(.vertical, 10)
                             .background(.black.opacity(0.55), in: Capsule())
                             .transition(.opacity)
-                            .id(notice.id)
+                            .id(message.id)
                     }
                     HStack(spacing: 8) {
                         if model.waitingFor != nil && model.showing != nil {
@@ -90,7 +90,7 @@ struct PlayerView: View {
                 model.deviceRotated(landscape: geometry.size.width > geometry.size.height)
             }
         }
-        .animation(.easeOut(duration: 0.2), value: model.notice)
+        .animation(.easeOut(duration: 0.2), value: model.message)
         .animation(.easeOut(duration: 0.15), value: showingControls)
         .claimingTheWholeScreen()
     }

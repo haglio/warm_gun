@@ -158,10 +158,17 @@
       "id": "message",
       "thing": "the one line that flashes over the video: 'Locked', a favorite, a skip",
       "code_today": [
-        "notice"
+        "message"
       ],
       "status": "ruled",
-      "ruled": "2026-10-30, his words on Origenerator's list"
+      "ruled": "2026-10-30, his words on Origenerator's list",
+      "retired": [
+        "notice"
+      ],
+      "keep": [
+        "log.notice",
+        "Notices"
+      ]
     },
     {
       "screen": [

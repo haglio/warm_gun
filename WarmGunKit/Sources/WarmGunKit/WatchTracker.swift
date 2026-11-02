@@ -12,7 +12,7 @@ public enum WatchEvent: String, Sendable {
 /// Turns a run of playback samples into watch events.
 ///
 /// Player-agnostic, exactly as the desktop's is: fed periodic (path, fraction)
-/// samples plus notice of user navigation and of discards, it says which clips
+/// samples plus word of user navigation and of discards, it says which clips
 /// were watched through and which were skipped. A held clip counts again on
 /// every repeat-one wrap. Anything else — the automatic advance on unlock, a
 /// clip that vanished — is deliberately neutral, because only what the viewer
