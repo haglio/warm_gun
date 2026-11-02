@@ -16,7 +16,7 @@ final class AppModel: ObservableObject {
         case failed(String)
     }
 
-    struct Notice: Equatable {
+    struct Message: Equatable {
         let id = UUID()
         let text: String
         let favorite: Bool
@@ -53,7 +53,7 @@ final class AppModel: ObservableObject {
     /// groups, since nothing asked again until the next launch.
     private var metadataAttempts = 0
     private var genauFlicksFolder: String?
-    @Published private(set) var notice: Notice?
+    @Published private(set) var message: Message?
     @Published private(set) var paused = false
     /// The video layer has a frame on the glass. False is the truthful "you
     /// are looking at black" signal — rate alone lies during the first seconds
@@ -96,7 +96,7 @@ final class AppModel: ObservableObject {
     /// on as if the switch did nothing. Nav stalls keep the old picture — a
     /// fast tap run reads better over motion than over black.
     private var clearOnNextWait = false
-    private var noticeTask: Task<Void, Never>?
+    private var messageTask: Task<Void, Never>?
     private var launched = false
     /// Nothing is written over the state files until they have been read:
     /// a step-aside in the first instant of a launch must not save an empty
@@ -842,12 +842,12 @@ final class AppModel: ObservableObject {
 
 
     private func flash(_ text: String, favorite: Bool) {
-        notice = Notice(text: text, favorite: favorite)
-        noticeTask?.cancel()
-        noticeTask = Task { [weak self] in
+        message = Message(text: text, favorite: favorite)
+        messageTask?.cancel()
+        messageTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
             guard !Task.isCancelled else { return }
-            self?.notice = nil
+            self?.message = nil
         }
     }
 
