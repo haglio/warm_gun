@@ -108,7 +108,7 @@ final class AppModel: ObservableObject {
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: ClipCache? = nil) {
         // A bundle with no overlay is ordinary — the app is meant to run without
         // one. A bundle WITH an overlay it cannot read is not: it falls back to
-        // the same empty value, so the lanes and every act button vanish and
+        // the same empty value, so the lanes and every action button vanish and
         // nothing says why. That happened, on a phone, because the file spoke a
         // vocabulary this build did not have; it is reported now rather than
         // swallowed.
@@ -118,7 +118,7 @@ final class AppModel: ObservableObject {
                 overlay = try JSONDecoder().decode(ContentOverlay.self, from: Data(contentsOf: url))
             } catch {
                 overlay = .empty
-                overlayProblem = "Content overlay unreadable — no lanes and no act buttons: "
+                overlayProblem = "Content overlay unreadable — no lanes and no action buttons: "
                     + error.localizedDescription
             }
         } else {
@@ -470,7 +470,7 @@ final class AppModel: ObservableObject {
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.filters,
                                              favoriteKeys: favorites.held, trash: trash,
                                              weights: weights, measuredSeconds: measuredSeconds,
-                                             overlay: overlay, acts: groupIndex.actsByPath,
+                                             overlay: overlay, actions: groupIndex.actionsByPath,
                                              recordedTypes: groupIndex.typesByPath, rng: &rng)
         if playlist.isEmpty {
             // Nothing fits these switches: say exactly that on a blank screen

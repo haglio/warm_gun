@@ -109,11 +109,20 @@
       "id": "action",
       "thing": "what a video shows, one button per action on the controls",
       "code_today": [
-        "act",
         "action"
       ],
       "status": "ruled",
-      "ruled": "2026-10-30, his words on Origenerator's list"
+      "ruled": "2026-10-30, his words on Origenerator's list",
+      "retired": [
+        "act",
+        "act filter",
+        "disabled acts"
+      ],
+      "keep": [
+        "\"acts\"",
+        "\"act_filters\"",
+        "\"disabledActs\""
+      ]
     },
     {
       "screen": [

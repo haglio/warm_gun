@@ -488,7 +488,7 @@ extension PlaylistTests {
         let overlay = try JSONDecoder().decode(ContentOverlay.self, from: json)
 
         #expect(overlay.lanes.map(\.type) == [.excerpt, .fullLength])
-        #expect(overlay.actFilters.map(\.label) == ["AL"])
+        #expect(overlay.actionFilters.map(\.label) == ["AL"])
     }
 
     @Test func anOverlayStillNamingTheExcerptsChipDecodesTheSame() throws {
@@ -546,20 +546,20 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    @Test func theActButtonsBucketEveryClipAndCombine() {
-        // Eight combinable act buttons, overlay-defined (the words are library
+    @Test func theActionButtonsBucketEveryClipAndCombine() {
+        // Eight combinable action buttons, overlay-defined (the words are library
         // vocabulary): a clip lands in the first bucket whose query matches its
-        // recorded act, and in the catch-all otherwise — including clips with
-        // no act at all. Deselecting a bucket hides its clips.
-        let overlay = ContentOverlay(lanes: [], actFilters: [
-            ContentOverlay.ActFilter(label: "AL", queries: ["alpha"], isOther: false),
-            ContentOverlay.ActFilter(label: "BE", queries: ["beta"], isOther: false),
-            ContentOverlay.ActFilter(label: "O", queries: [], isOther: true),
+        // recorded action, and in the catch-all otherwise — including clips with
+        // no action at all. Deselecting a bucket hides its clips.
+        let overlay = ContentOverlay(lanes: [], actionFilters: [
+            ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
+            ContentOverlay.ActionFilter(label: "BE", queries: ["beta"], isOther: false),
+            ContentOverlay.ActionFilter(label: "O", queries: [], isOther: true),
         ])
-        #expect(overlay.actBucket(for: "big alpha act") == "AL")
-        #expect(overlay.actBucket(for: "beta") == "BE")
-        #expect(overlay.actBucket(for: "gamma") == "O")
-        #expect(overlay.actBucket(for: nil) == "O")
+        #expect(overlay.actionBucket(for: "big alpha act") == "AL")
+        #expect(overlay.actionBucket(for: "beta") == "BE")
+        #expect(overlay.actionBucket(for: "gamma") == "O")
+        #expect(overlay.actionBucket(for: nil) == "O")
 
         var rng = PlaylistSeededRNG(seed: 29)
         let catalog = Catalog(files: [
@@ -568,20 +568,20 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 30),
         ])
         var options = Filters()
-        options.disabledActs = ["BE", "O"]
+        options.disabledActions = ["BE", "O"]
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           trash: [], weights: WatchWeights(), overlay: overlay,
-                                          acts: ["1_sorted/alpha/portrait/clip-a.mp4": "alpha",
+                                          actions: ["1_sorted/alpha/portrait/clip-a.mp4": "alpha",
                                                  "1_sorted/alpha/portrait/clip-b.mp4": "beta"], rng: &rng)
-        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])  // c has no act -> O -> hidden
+        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])  // c has no action -> O -> hidden
     }
 
-    @Test func anOverlayOrFiltersWithoutActFiltersChangesNothing() throws {
+    @Test func anOverlayOrFiltersWithoutActionFiltersChangesNothing() throws {
         // No filters defined -> no bucketing, nothing hidden; and an old
         // persisted filters without the key decodes with none disabled.
-        #expect(ContentOverlay(lanes: []).actBucket(for: "anything") == nil)
+        #expect(ContentOverlay(lanes: []).actionBucket(for: "anything") == nil)
         let old = Data(#"{"orientation":"portrait"}"#.utf8)
-        #expect(try JSONDecoder().decode(Filters.self, from: old).disabledActs.isEmpty)
+        #expect(try JSONDecoder().decode(Filters.self, from: old).disabledActions.isEmpty)
     }
 }
 

@@ -4,7 +4,7 @@ import Testing
 
 /// The desktop's grouping, ported field for field from
 /// `fun_time/media_metadata.py`: an ACTION group holds the seed fixed and lets
-/// the act vary; a SEED family holds the act fixed and lets the seed vary.
+/// the action vary; a SEED family holds the action fixed and lets the seed vary.
 /// Every fixture is fabricated.
 @Suite struct GroupIndexTests {
     static func sidecar(action: String? = "alpha", prompt: String? = "a scene",
@@ -29,8 +29,8 @@ import Testing
         return Sidecar(video: video, sourceImage: sourceImage)
     }
 
-    @Test func textToVideoTwinsShareAnActionGroupAcrossActs() {
-        // Same prompt/params/SEED, different acts: one subject doing different
+    @Test func textToVideoTwinsShareAnActionGroupAcrossActions() {
+        // Same prompt/params/SEED, different actions: one subject doing different
         // things — the action group. A different seed is a different subject.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "alpha"),
@@ -45,9 +45,9 @@ import Testing
         #expect(GroupIndex(sidecars: [:]).isEmpty)
     }
 
-    @Test func seedFamiliesHoldTheActFixedAndLetTheSeedVary() {
+    @Test func seedFamiliesHoldTheActionFixedAndLetTheSeedVary() {
         // Same prompt/params/ACT, different seeds — and the desktop narrows
-        // the family to the anchor's own act with normalized comparison, so a
+        // the family to the anchor's own action with normalized comparison, so a
         // casing variant does not split the row.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "Alpha", videoSeed: "111"),
@@ -60,7 +60,7 @@ import Testing
 
     @Test func imageToVideoClipsGroupOnTheSourceImageIdentity() {
         // With a source_image block the IMAGE's identity is the key: the image
-        // seed varies the seed family; the acts vary within one image.
+        // seed varies the seed family; the actions vary within one image.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "alpha", image: true, imageSeed: "901"),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta", image: true, imageSeed: "901"),
@@ -68,7 +68,7 @@ import Testing
         ])
         #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
-        // The image family spans acts, so the seed row narrows to the anchor's.
+        // The image family spans actions, so the seed row narrows to the anchor's.
         #expect(index.seedClips(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/three.mp4"])
     }
@@ -100,12 +100,12 @@ import Testing
 }
 
 extension GroupIndexTests {
-    @Test func handsOutTheNormalizedActsForTheBuildToFilterOn() {
+    @Test func handsOutTheNormalizedActionsForTheBuildToFilterOn() {
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "Very  Special"),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: nil),
         ])
-        #expect(index.actsByPath == ["1_sorted/a/portrait/one.mp4": "very special"])
+        #expect(index.actionsByPath == ["1_sorted/a/portrait/one.mp4": "very special"])
     }
 }
 

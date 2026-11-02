@@ -3,7 +3,7 @@ import WarmGunKit
 
 /// The whole screen: the video, the invisible tap zones over it, and — one
 /// center tap away — the control overlay: corner clusters for types, order,
-/// loop and the act buttons, edge buttons for the four gestures, pause in the
+/// loop and the action buttons, edge buttons for the four gestures, pause in the
 /// middle. There is no menu screen; everything is laid over the picture.
 struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
@@ -160,27 +160,27 @@ private struct ControlsOverlay: View {
                     loopChip("Seed", .seed, enabled: model.canLoop(.seed))
                 }
             }
-            // The combinable act buttons, overlay-defined: 2 wide and 4 tall in
+            // The combinable action buttons, overlay-defined: 2 wide and 4 tall in
             // portrait, 4 wide and 2 tall in landscape. Settings has no door
             // here — the login screen appears by itself when a login is needed.
             pinned(.bottomTrailing) {
-                if !model.overlay.actFilters.isEmpty {
+                if !model.overlay.actionFilters.isEmpty {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5),
                                              count: landscape ? 4 : 2),
                               alignment: .trailing, spacing: 5) {
-                        ForEach(model.overlay.actFilters, id: \.label) { filter in
-                            actChip(filter.label)
+                        ForEach(model.overlay.actionFilters, id: \.label) { filter in
+                            actionChip(filter.label)
                         }
                     }
                     .frame(width: landscape ? 200 : 104)
                 }
             }
             // Edges: the four gestures, drawn where their tap zones live.
-            pinned(.leading) { iconButton("backward.frame.fill") { act(.previous) } }
-            pinned(.trailing) { iconButton("forward.frame.fill") { act(.next) } }
-            pinned(.top) { iconButton("hand.thumbsdown.fill") { act(.trash) } }
+            pinned(.leading) { iconButton("backward.frame.fill") { perform(.previous) } }
+            pinned(.trailing) { iconButton("forward.frame.fill") { perform(.next) } }
+            pinned(.top) { iconButton("hand.thumbsdown.fill") { perform(.trash) } }
             lowEdge {
-                iconButton(model.session.locked ? "lock.fill" : "lock.open") { act(.lock) }
+                iconButton(model.session.locked ? "lock.fill" : "lock.open") { perform(.lock) }
             }
             // Dead center: pause, the one control with no zone of its own.
             iconButton(model.paused ? "play.fill" : "pause.fill", large: true) {
@@ -207,7 +207,7 @@ private struct ControlsOverlay: View {
         .padding(18)
     }
 
-    private func act(_ action: TapAction) {
+    private func perform(_ action: TapAction) {
         onAnyInteraction()
         model.tap(action)
     }
@@ -240,14 +240,14 @@ private struct ControlsOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func actChip(_ label: String) -> some View {
-        let shown = !model.settings.filters.disabledActs.contains(label)
+    private func actionChip(_ label: String) -> some View {
+        let shown = !model.settings.filters.disabledActions.contains(label)
         return capsuleButton(label, selected: shown, opacity: shown ? 1 : 0.45, compact: true) {
             var filters = model.settings.filters
             if shown {
-                filters.disabledActs.insert(label)
+                filters.disabledActions.insert(label)
             } else {
-                filters.disabledActs.remove(label)
+                filters.disabledActions.remove(label)
             }
             model.update(filters: filters)
         }
