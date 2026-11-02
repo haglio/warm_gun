@@ -8,7 +8,7 @@ struct Settings: Codable, Equatable {
     var username = ""
     var libraryPath = ""
     var syncFolder = "/WarmGun"
-    var browse = BrowseOptions(orientation: Platform.defaultOrientation)
+    var filters = Filters(orientation: Platform.defaultOrientation)
     var loopClip = false
     var cacheCapMB = 2048
     var prefetchAhead = 12
@@ -18,6 +18,12 @@ struct Settings: Codable, Equatable {
     // back to its default. Renaming it needs a migration, not an edit.
     var prefetchBehind = 3
     var moveToTrashInCloud = true
+
+    private enum CodingKeys: String, CodingKey {
+        case apiHost, username, libraryPath, syncFolder, loopClip, cacheCapMB, prefetchAhead, prefetchBehind
+        case filters = "browse"
+        case moveToTrashInCloud = "moveWeirdInCloud"
+    }
 
     var cacheCapBytes: Int64 { Int64(cacheCapMB) * 1_000_000 }
 

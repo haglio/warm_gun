@@ -1,6 +1,6 @@
 import Foundation
 
-/// The kinds of clip the type buttons let the browse narrow to. Every clip
+/// The kinds of clip the type buttons let the filters narrow to. Every clip
 /// is exactly one, and the desktop settles which: it records the kind on the
 /// video's metadata sidecar (`video.type`), for the whole library, so the same
 /// clip is the same kind in every app that reads it. The raw values are that
@@ -39,7 +39,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
         return estimated <= shortsMaxSeconds ? .short : .fullLength
     }
 
-    /// What a kind was called in a browse persisted before the desktop's
+    /// What a kind was called in a filters persisted before the desktop's
     /// vocabulary arrived, and in a sidecar recorded before Genau's clips were
     /// called flicks. An app update must never cost the saved controls.
     static let retiredNames: [String: ClipType] = [
@@ -59,7 +59,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
 /// A plain record with nothing derived in it, so the app can persist it and hand
 /// it straight back on the next launch — and so a rebuild is a pure function of
 /// this plus the index, with no network in it and nothing to invalidate.
-public struct BrowseOptions: Codable, Equatable, Sendable {
+public struct Filters: Codable, Equatable, Sendable {
     public var orientation: Orientation
     public var favoritesOnly: Bool
     public var types: Set<ClipType>
@@ -94,7 +94,7 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
     /// "shorts only" switch migrates into the types it became.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let defaults = BrowseOptions()
+        let defaults = Filters()
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? defaults.orientation
         favoritesOnly = try c.decodeIfPresent(Bool.self, forKey: .favoritesOnly) ?? defaults.favoritesOnly
         if let saved = try c.decodeIfPresent([String].self, forKey: .types) {
@@ -135,7 +135,7 @@ public struct BrowseOptions: Codable, Equatable, Sendable {
     }
 }
 
-/// Turns the index plus the browse switches into the run of clips to play,
+/// Turns the index plus the filters switches into the run of clips to play,
 /// as library-relative original paths in play order.
 public enum PlaylistBuilder {
     /// Narrow, then order — the desktop satellite's shape
@@ -152,7 +152,7 @@ public enum PlaylistBuilder {
     /// Every draw comes off *rng*, so one seed is one playlist: the run is
     /// knowable in advance, which is what lets the prefetcher work both
     /// directions from the current clip.
-    public static func build(catalog: Catalog, options: BrowseOptions, favoriteKeys: Set<String>,
+    public static func build(catalog: Catalog, options: Filters, favoriteKeys: Set<String>,
                              trash: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
@@ -176,7 +176,7 @@ public enum PlaylistBuilder {
         return Weighting.weightedShuffle(survivors, weight: weights.weight(for:), rng: &rng)
     }
 
-    public static func playsInOrientation(_ clip: Clip, options: BrowseOptions, recorded: String? = nil,
+    public static func playsInOrientation(_ clip: Clip, options: Filters, recorded: String? = nil,
                                           measuredSeconds: Double? = nil,
                                           overlay: ContentOverlay = .empty) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
@@ -184,7 +184,7 @@ public enum PlaylistBuilder {
         return fitsOrientation(clip, type, options, overlay)
     }
 
-    private static func fitsOrientation(_ clip: Clip, _ type: ClipType, _ options: BrowseOptions,
+    private static func fitsOrientation(_ clip: Clip, _ type: ClipType, _ options: Filters,
                                         _ overlay: ContentOverlay) -> Bool {
         type == .genauFlick || (overlay.lane(for: clip.path)?.orientation ?? clip.orientation) == options.orientation
     }
@@ -192,7 +192,7 @@ public enum PlaylistBuilder {
     /// The switches, all of which only ever narrow, so their order among
     /// themselves cannot matter. Favorites are matched by the key their lane is
     /// filed under (`LibraryPaths.favoriteKey`).
-    private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
+    private static func survivesFilters(_ clip: Clip, _ options: Filters,
                                         _ favoriteKeys: Set<String>, _ trash: Set<String>,
                                         _ recorded: String?, _ measured: Double?,
                                         _ overlay: ContentOverlay, _ act: String?) -> Bool {

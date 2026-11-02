@@ -30,7 +30,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var session = Session(playlist: [])
     @Published private(set) var favorites = Favorites()
     @Published private(set) var trash: Set<String> = []
-    /// Which loop the run is in: the whole browse, one clip, or the current
+    /// Which loop the run is in: everything the filters let through, one clip, or the current
     /// clip's seed family / action group — the desktop satellite's axes.
     @Published private(set) var loopMode: LoopMode = .all
 
@@ -91,7 +91,7 @@ final class AppModel: ObservableObject {
     private var persistTask: Task<Void, Never>?
     private var clipsByPath: [String: Clip] = [:]
     private var rng = SystemRandomNumberGenerator()
-    /// A browse/filter change whose new clip is not on disk yet must VISIBLY
+    /// A filters/filter change whose new clip is not on disk yet must VISIBLY
     /// take effect: the old picture clears to the spinner instead of looping
     /// on as if the switch did nothing. Nav stalls keep the old picture — a
     /// fast tap run reads better over motion than over black.
@@ -461,13 +461,13 @@ final class AppModel: ObservableObject {
         if favorites != before { persistState() }
     }
 
-    /// Builds the browse from the index and hands it to the session. A change
+    /// Builds the filters from the index and hands it to the session. A change
     /// of filter keeps the clip on screen when it survives (the desktop's
     /// `replace_playlist`); a new order starts from the top. A filter that
     /// matches nothing empties the run, and the screen says so.
     private func rebuild(startAtTop: Bool) {
         guard let catalog else { return }
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.filters,
                                              favoriteKeys: favorites.held, trash: trash,
                                              weights: weights, measuredSeconds: measuredSeconds,
                                              overlay: overlay, acts: groupIndex.actsByPath,
@@ -547,12 +547,12 @@ final class AppModel: ObservableObject {
 
     private func currentClipFits() -> Bool {
         guard let current = session.current, let clip = clipsByPath[current] else { return true }
-        return PlaylistBuilder.playsInOrientation(clip, options: settings.browse,
+        return PlaylistBuilder.playsInOrientation(clip, options: settings.filters,
                                                   recorded: groupIndex.kindsByPath[current],
                                                   measuredSeconds: measuredSeconds[current], overlay: overlay)
     }
 
-    /// The phone was turned: the browse follows the screen, portrait clips
+    /// The phone was turned: the filters follows the screen, portrait clips
     /// upright and landscape clips wide, with no switch to remember. A
     /// laptop's screen never turns, and its window's shape says nothing about
     /// which library is wanted — there the keys decide, through the road below.
@@ -564,10 +564,10 @@ final class AppModel: ObservableObject {
     /// Which library plays: the P and L keys' road on a Mac, the rotation's
     /// on a phone.
     func setOrientation(_ orientation: Orientation) {
-        guard settings.browse.orientation != orientation else { return }
-        var browse = settings.browse
-        browse.orientation = orientation
-        update(browse: browse)
+        guard settings.filters.orientation != orientation else { return }
+        var filters = settings.filters
+        filters.orientation = orientation
+        update(filters: filters)
     }
 
     /// Lock = repeat this clip, and it is a favorite from now on. Unlock moves
@@ -633,9 +633,9 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func update(browse: BrowseOptions) {
-        let orderChanged = browse.latest != settings.browse.latest
-        settings.browse = browse
+    func update(filters: Filters) {
+        let orderChanged = filters.latest != settings.filters.latest
+        settings.filters = filters
         if loopMode == .seed || loopMode == .action { loopMode = .all }
         rebuild(startAtTop: orderChanged)
     }
@@ -727,7 +727,7 @@ final class AppModel: ObservableObject {
         }
         guard cached.contains(current) else {
             if clearOnNextWait {
-                // The browse just changed: the switch must be seen to land.
+                // The filters just changed: the switch must be seen to land.
                 engine.clear()
                 showing = nil
             } else {

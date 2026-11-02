@@ -1,7 +1,7 @@
 import Foundation
 
 /// Which loop the run is in — the Loop control's four stops, in the order the
-/// control draws them: the whole browse, one clip, the current clip's seed
+/// control draws them: everything the filters let through, one clip, the current clip's seed
 /// family, its action group.
 public enum LoopMode: String, CaseIterable, Sendable {
     case all, single, seed, action
