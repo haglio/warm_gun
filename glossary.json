@@ -1,0 +1,187 @@
+{
+  "app": "Warm Gun",
+  "drafted": "2026-11-02",
+  "columns": {
+    "thing": "where it is on the screen and what it looks like",
+    "screen": "the words on the screen that name it (a label, a button, a tooltip), quoted; null when no label names it",
+    "his_word": "the word the user says for it, from his own messages and the spoken commands; null when he has none yet",
+    "code_today": "the words the code says for it now; each has to be in the code, or the row is stale",
+    "code_word": "the one word the code is to say for it; null while unruled",
+    "status": "ruled: his word, given where `ruled` says | his_word: a word he has used, not yet put to him as the code's | agreed: screen, user and code already say one word | unruled: no word of his yet, the row waits for him | kept: a name from outside this app, or a thing he has no word for, so the code keeps its own",
+    "retired": "code words for it that are gone and stay gone; `keep` lists the tokens that may still carry the letters (another thing's name)"
+  },
+  "things": [
+    {
+      "screen": [
+        "Skipping unplayable video"
+      ],
+      "his_word": "video",
+      "code_word": "video",
+      "id": "video",
+      "thing": "what plays on the phone's screen, whichever library it came from",
+      "code_today": [
+        "clip",
+        "video"
+      ],
+      "status": "ruled",
+      "ruled": "2026-11-02, his rulings on Fun Time's list; carried over"
+    },
+    {
+      "screen": [
+        "Clips"
+      ],
+      "his_word": "Clips",
+      "code_word": "clips",
+      "id": "clips_button",
+      "thing": "the button that takes the short videos and the carved scenes in and out, beside Genau and Full",
+      "code_today": [
+        "clips"
+      ],
+      "status": "ruled",
+      "ruled": "2026-11-02: clip stays for short against full"
+    },
+    {
+      "screen": [
+        "Nothing matches these filters"
+      ],
+      "his_word": null,
+      "code_word": "filters",
+      "id": "filters",
+      "thing": "the buttons on the controls that narrow what plays: Genau, Clips, Full, Favs, the action buttons",
+      "code_today": [
+        "browse",
+        "filter"
+      ],
+      "status": "agreed"
+    },
+    {
+      "screen": null,
+      "his_word": null,
+      "code_word": "type",
+      "id": "type",
+      "thing": "which of Genau, Clips or Full a video is, recorded in its metadata as video.type",
+      "code_today": [
+        "kind",
+        "type"
+      ],
+      "status": "agreed"
+    },
+    {
+      "screen": [
+        "Genau",
+        "Clips",
+        "Full",
+        "Shuffle",
+        "Latest",
+        "Favs",
+        "All",
+        "Action",
+        "Seed"
+      ],
+      "his_word": "button",
+      "code_word": "button",
+      "id": "button",
+      "thing": "a rounded word on the controls that lights while on",
+      "code_today": [
+        "chip",
+        "button"
+      ],
+      "status": "agreed"
+    },
+    {
+      "screen": [
+        "Action"
+      ],
+      "his_word": "action (2026-10-30)",
+      "code_word": "action",
+      "id": "action",
+      "thing": "what a video shows, one button per action on the controls",
+      "code_today": [
+        "act",
+        "action"
+      ],
+      "status": "ruled",
+      "ruled": "2026-10-30, his words on Origenerator's list"
+    },
+    {
+      "screen": [
+        "Portrait",
+        "Landscape"
+      ],
+      "his_word": "shape (2026-10-30)",
+      "code_word": "shape",
+      "id": "shape",
+      "thing": "portrait or landscape",
+      "code_today": [
+        "orientation"
+      ],
+      "status": "ruled",
+      "ruled": "2026-10-30, his words on Origenerator's list"
+    },
+    {
+      "screen": null,
+      "his_word": "message (2026-10-30)",
+      "code_word": "message",
+      "id": "message",
+      "thing": "the one line that flashes over the video: 'Locked', a favorite, a skip",
+      "code_today": [
+        "notice"
+      ],
+      "status": "ruled",
+      "ruled": "2026-10-30, his words on Origenerator's list"
+    },
+    {
+      "screen": [
+        "fetching",
+        "locked",
+        "paused"
+      ],
+      "his_word": "pill (2026-11-02, the OSR2 pill)",
+      "code_word": "pill",
+      "id": "pill",
+      "thing": "the small rounded status over the video: fetching, locked, paused",
+      "code_today": [
+        "pill"
+      ],
+      "status": "agreed"
+    },
+    {
+      "screen": null,
+      "his_word": null,
+      "code_word": "flick",
+      "id": "flick",
+      "thing": "a video from Genau; the screen's word for it cannot be in a public repo, so the code says this, read from the overlay",
+      "code_today": [
+        "flick"
+      ],
+      "status": "kept"
+    },
+    {
+      "screen": null,
+      "his_word": null,
+      "code_word": "lane",
+      "id": "lane",
+      "thing": "the content overlay's rule that says which type a folder's videos are, a key in its file",
+      "code_today": [
+        "lane"
+      ],
+      "status": "kept"
+    },
+    {
+      "screen": null,
+      "his_word": null,
+      "code_word": null,
+      "id": "other_words",
+      "thing": "words the code uses for things no screen shows or names: a CSV cell, a prefetch slot, a band of the screen between buttons, a system banner, a setting called a dial, a map in code",
+      "code_today": [
+        "cell",
+        "slot",
+        "band",
+        "banner",
+        "dial",
+        "map"
+      ],
+      "status": "kept"
+    }
+  ]
+}

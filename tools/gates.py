@@ -26,6 +26,9 @@ is a failing exit. The invariants, from docs/design.md:
    script are held to that file's entry in ``tools/quality_baseline.json``,
    which only comes down: ``--lower`` takes every fall and refuses every rise,
    and a file added enters at zero.
+7. The code's word for a thing is the word its screen shows: ``glossary.json``
+   names each thing, and its rows are held to the Swift as every other app's
+   are, here because this repo installs no Python package.
 
 Run: ``python3 tools/gates.py`` (exit 0 = all gates hold).
 """
@@ -51,6 +54,18 @@ ACTORS = ("engine", "cache", "prefetcher", "client")
 SHELL_SHEBANG = re.compile(rb"#!.*\b(sh|bash|zsh)\b")
 BASELINE_PATH = "tools/quality_baseline.json"
 PROSE_SECTION = "prose_lines"
+GLOSSARY_PATH = "glossary.json"
+GLOSSARY_COLUMNS = {"id", "thing", "screen", "his_word", "code_today", "code_word", "status"}
+GLOSSARY_STATUSES = {"ruled", "his_word", "agreed", "unruled", "kept"}
+SCREEN_NOUNS = frozenset((
+    "tile", "card", "badge", "chip", "scrim", "plate", "strip", "cell", "slot", "pane",
+    "panel", "console", "band", "toast", "banner", "gutter", "shelf", "tray", "drawer",
+    "dial", "pill", "ribbon", "dock", "sidebar", "swatch", "plaque", "placard", "sticker",
+    "lozenge", "bubble", "veil", "backdrop", "halo", "glow", "sheet", "deck", "hud", "map",
+    "bank", "toolbar", "collage", "splash", "notice", "recents", "bookmark",
+))
+IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
 
 
 def kit_sources(root: Path) -> Path:
@@ -229,6 +244,69 @@ def gate_platform_seam(root: Path) -> list[str]:
     return hits
 
 
+def _words_of(identifier: str) -> list[str]:
+    return [m.group(0).lower() for piece in identifier.split("_") for m in WORD.finditer(piece)]
+
+
+def _phrase_words(phrase: str) -> list[str]:
+    return [word for token in phrase.split() for word in _words_of(token)]
+
+
+def _swift_lines(root: Path) -> list[tuple[str, int, list[str]]]:
+    return [(path.relative_to(root).as_posix(), number, IDENTIFIER.findall(line))
+            for path in swift_files(kit_sources(root)) + swift_files(app_sources(root))
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)]
+
+
+def _row_faults(row: dict) -> list[str]:
+    missing = GLOSSARY_COLUMNS - set(row)
+    if missing:
+        return [f"{row.get('id')} lacks {sorted(missing)}"]
+    if row["status"] not in GLOSSARY_STATUSES:
+        return [f"{row['id']}: unknown status {row['status']!r}"]
+    if row["status"] == "ruled" and not (row.get("ruled") and row["code_word"]):
+        return [f"{row['id']} is ruled but says not when or where"]
+    return []
+
+
+def _says(wanted: list[str], words: list[str]) -> bool:
+    return words[:-1] == wanted[:-1] and words[-1] in (wanted[-1], wanted[-1] + "s", wanted[-1] + "es")
+
+
+def _first_mention(phrase: str, keep: list[str], tokens: list[str]) -> str | None:
+    wanted = _phrase_words(phrase)
+    said = [(word, token) for token in tokens if token not in keep for word in _words_of(token)]
+    for at in range(len(said) - len(wanted) + 1):
+        run = said[at:at + len(wanted)]
+        if _says(wanted, [word for word, _ in run]):
+            return run[0][1]
+    return None
+
+
+def gate_glossary(root: Path) -> list[str]:
+    rows = json.loads((root / GLOSSARY_PATH).read_text(encoding="utf-8"))["things"]
+    faults = [fault for row in rows for fault in _row_faults(row)]
+    if faults:
+        return faults
+    lines = _swift_lines(root)
+    every_word = " " + " ".join(word for _, _, tokens in lines for token in tokens for word in _words_of(token)) + " "
+    hits = []
+    for row in rows:
+        hits += [f"{row['id']} names {phrase!r}, which the code no longer says"
+                 for phrase in row["code_today"] if f" {' '.join(_phrase_words(phrase))} " not in every_word]
+        for phrase in row.get("retired", []):
+            for place, number, tokens in lines:
+                token = _first_mention(phrase, row.get("keep", []), tokens)
+                if token:
+                    hits.append(f"{row['id']} retired {phrase!r}: {place}:{number} {token}")
+    named = {word.lower() for row in rows
+             for phrase in row["code_today"] + [row["code_word"] or ""] + row.get("retired", [])
+             for word in phrase.split()}
+    hits += [f"the code says {noun!r} for something on screen and no row has it"
+             for noun in sorted((SCREEN_NOUNS & set(every_word.split())) - named)]
+    return hits
+
+
 GATES = {
     "kit non-Foundation imports": gate_kit_purity,
     "@Published outside AppModel": gate_published_ownership,
@@ -237,6 +315,7 @@ GATES = {
     f"platform-specific code outside {PLATFORM_FILE}": gate_platform_seam,
     "comment lines off their entries": gate_prose_ceiling,
     "comment line entries raised above main": gate_no_entry_above_main,
+    "words off the glossary": gate_glossary,
 }
 
 
