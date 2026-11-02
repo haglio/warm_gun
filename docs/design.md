@@ -32,14 +32,14 @@ decision with the owner, not alone.
   metadata sidecar (`video.type`), and `ClipType` is that field's
   vocabulary, so a clip is the same type here as in Fun Time. For a clip
   whose sidecar has not arrived, the overlay's lanes, the source folder and
-  a running time stand in, in that order. The act a clip records
-  (`video.action`) is a different axis, the act buttons'; it never decides
+  a running time stand in, in that order. The action a clip records
+  (`video.action`) is a different axis, the action buttons'; it never decides
   a type.
 - **What the repo cannot name lives in a git-ignored overlay.** The non-AI
-  lanes' folder names and the act buttons are library vocabulary, so they
+  lanes' folder names and the action buttons are library vocabulary, so they
   ship in `WarmGun/content.local.json`, bundled at build time and never
   committed (`content.example.json` documents the shape). Without it the
-  app plays with no lanes and no act buttons, which looks like a
+  app plays with no lanes and no action buttons, which looks like a
   regression, so the install scripts refuse to build without it when the
   primary checkout has one.
 
@@ -88,7 +88,7 @@ decision with the owner, not alone.
   pointer moves, and go six seconds after the last touch. The type buttons
   Genau, Clips and Full sit top left (Clips takes the shorts and the carved
   scenes in and out together); Shuffle, Latest and Favs top right; the Loop
-  control lower left; the act buttons lower right; the four gestures as
+  control lower left; the action buttons lower right; the four gestures as
   buttons at the edges where their zones are; pause in the center, with the
   clip's file name under it. The login screen appears by itself when a
   login is needed, so the controls have no settings door.
@@ -119,8 +119,8 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 - **Auto-advance** plays a clip once and rolls on; a lock holds it.
 - **The Loop control** has four stops: All, the whole run; 1, every clip
   repeating until tapped (Warm Gun's own); and the desktop's group loops,
-  Seed (the clip's act done by its other subjects) and Action (its subject
-  doing other acts), grouped over the metadata sidecars exactly as
+  Seed (the clip's action done by its other subjects) and Action (its subject
+  doing other actions), grouped over the metadata sidecars exactly as
   `fun_time/media_metadata.py` groups them. A group loop re-seats the
   playlist with the clip on screen first, which never restarts; a group of
   one is no loop, so its stop is grayed out, and on the Mac E steps the four

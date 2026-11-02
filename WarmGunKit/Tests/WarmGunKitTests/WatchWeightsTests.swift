@@ -19,7 +19,7 @@ import Testing
 
 extension WatchWeightsTests {
     /// A weight the sidecar cannot be read for is not a reason to throw the
-    /// sidecar away: the same file carries the act the loops group by. Nor is a
+    /// sidecar away: the same file carries the action the loops group by. Nor is a
     /// weight that could not be a multiplier — zero would silence a clip
     /// forever, and a negative one sorts FIRST in the draw, the exact inverse.
     @Test func aWeightThatCannotBeUsedReadsAsNoWeightAndKeepsTheRestOfTheSidecar() throws {
@@ -43,7 +43,7 @@ extension WatchWeightsTests {
 extension WatchWeightsTests {
     /// The desktop writes the flag only when it is true, so absence is the
     /// whole of "not a favorite" — and anything that is not the literal `true`
-    /// is absence too, rather than a decode failure that would cost the act.
+    /// is absence too, rather than a decode failure that would cost the action.
     @Test func aSidecarFlagsAFavoriteOnlyBySayingSo() throws {
         let cases = [
             (#"{"video": {"action": "waving"}, "favorite": true}"#, true),
@@ -109,7 +109,7 @@ extension WatchWeightsTests {
     /// to cost the WHOLE sidecar: Evolver's Video Kinds stage writes
     /// `video.duration_seconds` as a JSON float beside `video.type`
     /// (`evolver/util/video_type.py:timed`), so every clip that stage has
-    /// measured would decode to nothing — no act, no weight, no flag.
+    /// measured would decode to nothing — no action, no weight, no flag.
     @Test func aNumberInTheVideoBlockCostsNeitherTheBlockNorTheSidecar() throws {
         let json = Data(#"""
         {"video": {"type": "short", "duration_seconds": 4.2, "seed": 12345,

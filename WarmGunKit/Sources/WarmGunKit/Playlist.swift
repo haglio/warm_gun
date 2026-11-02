@@ -65,28 +65,29 @@ public struct Filters: Codable, Equatable, Sendable {
     public var types: Set<ClipType>
     public var shortsMaxSeconds: Double
     public var latest: Bool
-    /// Act buttons the user switched OFF (overlay-defined labels); empty means
+    /// Action buttons the user switched OFF (overlay-defined labels); empty means
     /// everything shows. Stored as the disabled side so the default needs no
     /// knowledge of which buttons the overlay defines.
-    public var disabledActs: Set<String>
+    public var disabledActions: Set<String>
     /// The size ceiling that keeps out the legacy HEVC upscales sitting in the
     /// originals tree.
     public var maxBytes: Int64
 
     public init(orientation: Orientation = .portrait, favoritesOnly: Bool = false,
                 types: Set<ClipType> = Set(ClipType.allCases), shortsMaxSeconds: Double = 10,
-                latest: Bool = false, disabledActs: Set<String> = [], maxBytes: Int64 = 25_000_000) {
+                latest: Bool = false, disabledActions: Set<String> = [], maxBytes: Int64 = 25_000_000) {
         self.orientation = orientation
         self.favoritesOnly = favoritesOnly
         self.types = types
         self.shortsMaxSeconds = shortsMaxSeconds
         self.latest = latest
-        self.disabledActs = disabledActs
+        self.disabledActions = disabledActions
         self.maxBytes = maxBytes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case orientation, favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, disabledActs, maxBytes
+        case orientation, favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, maxBytes
+        case disabledActions = "disabledActs"
     }
 
     /// A blob persisted before a switch existed decodes with that switch at its
@@ -106,7 +107,7 @@ public struct Filters: Codable, Equatable, Sendable {
         }
         shortsMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .shortsMaxSeconds) ?? defaults.shortsMaxSeconds
         latest = try c.decodeIfPresent(Bool.self, forKey: .latest) ?? defaults.latest
-        disabledActs = try c.decodeIfPresent(Set<String>.self, forKey: .disabledActs) ?? []
+        disabledActions = try c.decodeIfPresent(Set<String>.self, forKey: .disabledActions) ?? []
         maxBytes = try c.decodeIfPresent(Int64.self, forKey: .maxBytes) ?? defaults.maxBytes
     }
 
@@ -118,7 +119,7 @@ public struct Filters: Codable, Equatable, Sendable {
         try c.encode(types, forKey: .types)
         try c.encode(shortsMaxSeconds, forKey: .shortsMaxSeconds)
         try c.encode(latest, forKey: .latest)
-        try c.encode(disabledActs, forKey: .disabledActs)
+        try c.encode(disabledActions, forKey: .disabledActions)
         try c.encode(maxBytes, forKey: .maxBytes)
     }
 
@@ -156,12 +157,12 @@ public enum PlaylistBuilder {
                              trash: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
-                             acts: [String: String] = [:],
+                             actions: [String: String] = [:],
                              recordedTypes: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
         let clips = catalog.clips.filter {
             survivesFilters($0, options, favoriteKeys, trash, recordedTypes[$0.path],
-                            measuredSeconds[$0.path], overlay, acts[$0.path])
+                            measuredSeconds[$0.path], overlay, actions[$0.path])
         }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
@@ -195,14 +196,14 @@ public enum PlaylistBuilder {
     private static func survivesFilters(_ clip: Clip, _ options: Filters,
                                         _ favoriteKeys: Set<String>, _ trash: Set<String>,
                                         _ recorded: String?, _ measured: Double?,
-                                        _ overlay: ContentOverlay, _ act: String?) -> Bool {
+                                        _ overlay: ContentOverlay, _ action: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measured, overlay: overlay)
         // The size ceiling exists to keep the legacy monsters out of the AI
         // originals; a real scene is big by nature and passes on principle.
         let gated = clip.path.hasPrefix("1_sorted/")
-        // The combinable act buttons: a clip whose bucket is switched off hides.
-        if let bucket = overlay.actBucket(for: act), options.disabledActs.contains(bucket) {
+        // The combinable action buttons: a clip whose bucket is switched off hides.
+        if let bucket = overlay.actionBucket(for: action), options.disabledActions.contains(bucket) {
             return false
         }
         return fitsOrientation(clip, type, options, overlay)

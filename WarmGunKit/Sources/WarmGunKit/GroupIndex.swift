@@ -58,8 +58,8 @@ public struct Sidecar: Codable, Equatable, Sendable {
     }
 
     /// A block this side cannot read costs only itself. The sidecar carries the
-    /// act the loops group by as well as the weight, and a `watch` written in a
-    /// shape not expected here must not take the act down with it.
+    /// action the loops group by as well as the weight, and a `watch` written in a
+    /// shape not expected here must not take the action down with it.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         video = Self.block(c, .video)
@@ -75,7 +75,7 @@ public struct Sidecar: Codable, Equatable, Sendable {
     /// `video.type` (`evolver/util/video_type.py`) — while the desktop reads
     /// every field through `str(value or "")` and never notices. Decoded as
     /// `[String: String]` a single number cost the WHOLE sidecar, and with it
-    /// the act, the weight and the flag. So a scalar of any sort is taken and
+    /// the action, the weight and the flag. So a scalar of any sort is taken and
     /// spelled the way that call would spell it, and anything that is not a
     /// scalar is left out: no field a group key is built from is ever one, and
     /// an absent key already stands for the empty string.
@@ -109,20 +109,20 @@ public struct Sidecar: Codable, Equatable, Sendable {
 /// The desktop's grouping, ported field for field from
 /// `fun_time/media_metadata.py`. Two orthogonal axes over the generation
 /// parameters: an ACTION group keys on everything INCLUDING the seed (one
-/// subject, its different acts); a SEED family keys on everything EXCLUDING
-/// the seed — plus the act, for text-to-video — (one act, its different
+/// subject, its different actions); a SEED family keys on everything EXCLUDING
+/// the seed — plus the action, for text-to-video — (one action, its different
 /// subjects). `created` never joins a key.
 public struct GroupIndex: Sendable, Equatable {
     private var actionKeyByPath: [String: String] = [:]
     private var seedKeyByPath: [String: String] = [:]
-    private var actByPath: [String: String] = [:]
+    private var actionByPath: [String: String] = [:]
     private var typeByPath: [String: String] = [:]
     private var actionClipsByKey: [String: [String]] = [:]
     private var seedClipsByKey: [String: [String]] = [:]
 
-    /// Every clip's normalized recorded act, for the build's act buttons.
-    public var actsByPath: [String: String] {
-        actByPath.filter { !$0.value.isEmpty }
+    /// Every clip's normalized recorded action, for the build's action buttons.
+    public var actionsByPath: [String: String] {
+        actionByPath.filter { !$0.value.isEmpty }
     }
 
     /// Every clip's recorded type — what the desktop wrote in `video.type`,
@@ -133,11 +133,11 @@ public struct GroupIndex: Sendable, Equatable {
 
     /// True until any sidecar has been indexed — the UI's cue that the loops
     /// have nothing to stand on yet.
-    public var isEmpty: Bool { actByPath.isEmpty }
+    public var isEmpty: Bool { actionByPath.isEmpty }
 
     public init(sidecars: [String: Sidecar]) {
         for (path, sidecar) in sidecars {
-            actByPath[path] = Self.normText(sidecar.video?["action"])
+            actionByPath[path] = Self.normText(sidecar.video?["action"])
             typeByPath[path] = sidecar.video?["type"] ?? ""
             if let key = Self.actionGroupKey(sidecar) {
                 actionKeyByPath[path] = key
@@ -160,15 +160,15 @@ public struct GroupIndex: Sendable, Equatable {
         return anchored(clips, on: path)
     }
 
-    /// The clip's act done by its different subjects: the family narrowed to
-    /// the anchor's own act (normalized, so casing variants share a row) —
+    /// The clip's action done by its different subjects: the family narrowed to
+    /// the anchor's own action (normalized, so casing variants share a row) —
     /// the narrowing the desktop applies in `seed_family_items`.
     public func seedClips(of path: String) -> [String] {
         guard let key = seedKeyByPath[path], let clips = seedClipsByKey[key] else { return [path] }
-        let act = actByPath[path] ?? ""
-        let sameAct = clips.filter { (actByPath[$0] ?? "") == act }
-        guard sameAct.count > 1 else { return [path] }
-        return anchored(sameAct, on: path)
+        let action = actionByPath[path] ?? ""
+        let sameAction = clips.filter { (actionByPath[$0] ?? "") == action }
+        guard sameAction.count > 1 else { return [path] }
+        return anchored(sameAction, on: path)
     }
 
     public func group(_ mode: LoopMode, of path: String) -> [String]? {
