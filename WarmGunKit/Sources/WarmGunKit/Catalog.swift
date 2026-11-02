@@ -36,6 +36,11 @@ public extension LibraryFile {
 
 /// A playable original, identified everywhere by its library-relative path.
 public struct Clip: Codable, Hashable, Identifiable, Sendable {
+    private enum CodingKeys: String, CodingKey {
+        case path, fileID, size, modified, duration, videoCodec, width, height, source, stem
+        case shape = "orientation"
+    }
+
     public var id: String { path }
     public let path: String
     public let fileID: Int64
@@ -46,7 +51,7 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
     public let width: Int?
     public let height: Int?
     public let source: String
-    public let orientation: Orientation
+    public let shape: VideoShape
     public let stem: String
 
     /// Whether the clip streams straight off its pCloud link rather than
@@ -60,7 +65,7 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
         guard LibraryPaths.isVideo(file.path) else { return nil }
         if let original = LibraryPaths.parseOriginal(file.path) {
             source = original.source
-            orientation = original.orientation
+            shape = original.shape
             stem = original.stem
         } else if file.path.hasPrefix(LibraryPaths.nonAIPrefix) {
             // A real scene. Each exists as an original and often again as a
@@ -74,20 +79,20 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
             guard !bare.hasSuffix(LibraryPaths.upscaleSuffix), !bare.hasSuffix("_apo8_iris2") else { return nil }
             source = "non_AI"
             if let w = file.width, let h = file.height {
-                orientation = h >= w ? .portrait : .landscape
+                shape = h >= w ? .portrait : .landscape
             } else {
-                orientation = .landscape
+                shape = .landscape
             }
             stem = bare
         } else if file.path.hasPrefix(LibraryPaths.genauFlatPrefix) {
-            // A 2D Genau flick: no orientation folder — its pixels decide when
+            // A 2D Genau flick: no shape folder — its pixels decide when
             // the listing has them, and portrait stands in when it does not
             // (the filters lets Genau's flicks through either way).
             source = "genau"
             if let w = file.width, let h = file.height {
-                orientation = h >= w ? .portrait : .landscape
+                shape = h >= w ? .portrait : .landscape
             } else {
-                orientation = .portrait
+                shape = .portrait
             }
             guard let name = LibraryPaths.filename(ofClip: file.path),
                   let dot = name.lastIndex(of: "."), dot != name.startIndex else { return nil }

@@ -547,7 +547,7 @@ final class AppModel: ObservableObject {
 
     private func currentClipFits() -> Bool {
         guard let current = session.current, let clip = clipsByPath[current] else { return true }
-        return PlaylistBuilder.playsInOrientation(clip, options: settings.filters,
+        return PlaylistBuilder.playsInShape(clip, options: settings.filters,
                                                   recorded: groupIndex.typesByPath[current],
                                                   measuredSeconds: measuredSeconds[current], overlay: overlay)
     }
@@ -558,15 +558,15 @@ final class AppModel: ObservableObject {
     /// which library is wanted — there the keys decide, through the road below.
     func deviceRotated(landscape: Bool) {
         guard Platform.screenTurns else { return }
-        setOrientation(landscape ? .landscape : .portrait)
+        setShape(landscape ? .landscape : .portrait)
     }
 
     /// Which library plays: the P and L keys' road on a Mac, the rotation's
     /// on a phone.
-    func setOrientation(_ orientation: Orientation) {
-        guard settings.filters.orientation != orientation else { return }
+    func setShape(_ shape: VideoShape) {
+        guard settings.filters.shape != shape else { return }
         var filters = settings.filters
-        filters.orientation = orientation
+        filters.shape = shape
         update(filters: filters)
     }
 

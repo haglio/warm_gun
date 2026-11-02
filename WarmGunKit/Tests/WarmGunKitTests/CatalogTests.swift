@@ -17,7 +17,7 @@ import Testing
             Self.file("1_sorted/beta/landscape/three.MP4", id: 5),
         ])
         #expect(catalog.clips.map(\.path) == ["1_sorted/alpha/portrait/one.mp4", "1_sorted/beta/landscape/three.MP4"])
-        #expect(catalog.clips[1].orientation == .landscape)
+        #expect(catalog.clips[1].shape == .landscape)
         #expect(catalog.clips[1].source == "beta")
         #expect(catalog.clips[1].stem == "three")
     }
@@ -25,8 +25,8 @@ import Testing
 
 extension CatalogTests {
     @Test func aGenauFlickJoinsTheCatalogUnderItsOwnSource() {
-        // Genau's flicks live outside the sorted tree, carry no orientation
-        // folders, and are filed under the source "genau" — orientation comes
+        // Genau's flicks live outside the sorted tree, carry no shape
+        // folders, and are filed under the source "genau" — shape comes
         // from their pixels when the listing has them, portrait otherwise.
         let wide = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 1, size: 2_000_000,
                                modified: Date(timeIntervalSince1970: 0), duration: nil,
@@ -37,9 +37,9 @@ extension CatalogTests {
         let catalog = Catalog(files: [wide, unknown])
         #expect(catalog.clips.count == 2)
         #expect(catalog.clips[0].source == "genau")
-        #expect(catalog.clips[0].orientation == .landscape)
+        #expect(catalog.clips[0].shape == .landscape)
         #expect(catalog.clips[0].stem == "loop-one")
-        #expect(catalog.clips[1].orientation == .portrait)
+        #expect(catalog.clips[1].shape == .portrait)
     }
 
     @Test func onlyGenausTwoDFlicksReachThePhone() {
@@ -75,8 +75,8 @@ extension CatalogTests {
                                               "non_AI/alpha/tall-one.mp4",
                                               "non_AI/beta/deeper/scene-three.mp4"])
         #expect(catalog.clips[0].source == "non_AI")
-        #expect(catalog.clips[0].orientation == .landscape)
-        #expect(catalog.clips[1].orientation == .portrait)
+        #expect(catalog.clips[0].shape == .landscape)
+        #expect(catalog.clips[1].shape == .portrait)
         #expect(catalog.clips[2].stem == "scene-three")
     }
 }

@@ -24,8 +24,8 @@ import Testing
 }
 
 extension PlaylistTests {
-    /// The orientation picks a whole library, not a subset of one: the
-    /// two orientations never mix on screen, and the folder is the authority
+    /// The shape picks a whole library, not a subset of one: the
+    /// two shapes never mix on screen, and the folder is the authority
     /// because 21 clips in the library are square.
     @Test func onlyTheChosenOrientationEverPlays() {
         var rng = PlaylistSeededRNG(seed: 1)
@@ -35,9 +35,9 @@ extension PlaylistTests {
             Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
         ])
 
-        let portrait = PlaylistBuilder.build(catalog: catalog, options: Filters(orientation: .portrait),
+        let portrait = PlaylistBuilder.build(catalog: catalog, options: Filters(shape: .portrait),
                                              favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
-        let landscape = PlaylistBuilder.build(catalog: catalog, options: Filters(orientation: .landscape),
+        let landscape = PlaylistBuilder.build(catalog: catalog, options: Filters(shape: .landscape),
                                               favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
 
         #expect(portrait.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/gamma/portrait/clip-three.mp4"])
@@ -212,7 +212,7 @@ extension PlaylistTests {
             Self.file("1_sorted/gamma/portrait/clip-six.mp4", seconds: 6.0),
         ])
         let favorites: Set<String> = ["clip-one", "clip-two", "clip-three", "clip-five", "clip-six"]
-        var options = Filters(orientation: .portrait, favoritesOnly: true, types: [.short])
+        var options = Filters(shape: .portrait, favoritesOnly: true, types: [.short])
 
         let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: favorites,
                                            trash: ["1_sorted/alpha/portrait/clip-two.mp4"],
@@ -252,7 +252,7 @@ extension PlaylistTests {
     /// The controls are where they were left: the filters are saved between
     /// launches, so the whole record has to survive a JSON round trip.
     @Test func theFiltersSurviveAJSONRoundTrip() throws {
-        let options = Filters(orientation: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
+        let options = Filters(shape: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
                                     shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
 
         let data = try JSONEncoder().encode(options)
@@ -268,7 +268,7 @@ extension PlaylistTests {
         // not throw away every saved control at once.
         let old = Data(#"{"orientation":"landscape","favoritesOnly":true}"#.utf8)
         let options = try JSONDecoder().decode(Filters.self, from: old)
-        #expect(options.orientation == .landscape)
+        #expect(options.shape == .landscape)
         #expect(options.favoritesOnly)
         #expect(options.shortsMaxSeconds == 10)
         #expect(options.maxBytes == 25_000_000)
@@ -391,8 +391,8 @@ extension PlaylistTests {
         #expect(ClipType.classify(big, shortsMaxSeconds: 10, measuredSeconds: nil) == .fullLength)
     }
 
-    @Test func genauLoopsIgnoreTheOrientationFilterAndMeasuredTimesReachTheBuild() {
-        // A Genau flick has no orientation folder — it plays whichever way the
+    @Test func genauLoopsIgnoreTheShapeFilterAndMeasuredTimesReachTheBuild() {
+        // A Genau flick has no shape folder — it plays whichever way the
         // phone is held; and a measured duration must beat the size stand-in.
         var rng = PlaylistSeededRNG(seed: 11)
         let genau = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9, size: 2_000_000,
@@ -402,7 +402,7 @@ extension PlaylistTests {
             genau,
             PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 2_000_000, seconds: nil),
         ])
-        var options = Filters(orientation: .portrait)
+        var options = Filters(shape: .portrait)
         options.types = [.genauFlick]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
@@ -427,21 +427,21 @@ extension PlaylistTests {
         // The non-AI buckets' folder names are library content, so which
         // bucket is which TYPE comes from a git-ignored overlay: a lane maps a
         // path prefix to a type and, where the folder dictates one, an
-        // orientation. Everything unmatched under non_AI is a full-length
+        // shape. Everything unmatched under non_AI is a full-length
         // scene.
         let overlay = ContentOverlay(lanes: [
-            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, orientation: .landscape),
-            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait),
+            ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, shape: .landscape),
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
         ])
         let special = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4")]).clips[0]
         let tall = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
         let plain = Catalog(files: [Self.nonAI("non_AI/beta/scene-three.mp4")]).clips[0]
         #expect(ClipType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .excerpt)
         #expect(ClipType.classify(plain, shortsMaxSeconds: 10, overlay: overlay) == .fullLength)
-        #expect(overlay.lane(for: tall.path)?.orientation == .portrait)
+        #expect(overlay.lane(for: tall.path)?.shape == .portrait)
 
         var rng = PlaylistSeededRNG(seed: 13)
-        var options = Filters(orientation: .landscape)
+        var options = Filters(shape: .landscape)
         options.types = [.excerpt]
         let catalog = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4"),
                                       Self.nonAI("non_AI/beta/scene-three.mp4")])
@@ -450,19 +450,19 @@ extension PlaylistTests {
                 == ["non_AI/alpha/special/scene-one.mp4"])
     }
 
-    @Test func theLaneOrientationOutranksThePixelsAndTheSizeGateSparesTheScenes() {
+    @Test func theLaneShapeOutranksThePixelsAndTheSizeGateSparesTheScenes() {
         // A portrait-lane scene follows its lane whatever its pixels say, and
         // the size ceiling exists to keep legacy monsters out of the AI
         // originals — a 300 MB real scene must not be filtered by it.
         let overlay = ContentOverlay(lanes: [
-            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait),
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
         ])
         var rng = PlaylistSeededRNG(seed: 17)
         let catalog = Catalog(files: [
             Self.nonAI("non_AI/tall/scene-two.mp4"),   // 1920x1080 pixels, portrait lane
             PlaylistTests.file("1_sorted/alpha/portrait/clip-huge.mp4", size: 300_000_000, seconds: 40),
         ])
-        var options = Filters(orientation: .portrait)
+        var options = Filters(shape: .portrait)
         options.types = [.fullLength]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), overlay: overlay, rng: &rng)
@@ -586,24 +586,24 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    @Test func aClipPlaysInItsLanesOrientationOrItsOwnAndAFlickInEither() {
+    @Test func aClipPlaysInItsLanesShapeOrItsOwnAndAFlickInEither() {
         let overlay = ContentOverlay(lanes: [
-            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, orientation: .portrait),
+            ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
         ])
         let upright = Catalog(files: [Self.file("1_sorted/alpha/portrait/clip-one.mp4")]).clips[0]
         let laned = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
         let flick = Catalog(files: [LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9,
                                                 size: 2_000_000, modified: Date(timeIntervalSince1970: 0),
                                                 duration: nil, videoCodec: nil, width: 1920, height: 1080)]).clips[0]
-        let portrait = Filters(orientation: .portrait)
-        let landscape = Filters(orientation: .landscape)
+        let portrait = Filters(shape: .portrait)
+        let landscape = Filters(shape: .landscape)
 
-        #expect(PlaylistBuilder.playsInOrientation(upright, options: portrait, overlay: overlay))
-        #expect(!PlaylistBuilder.playsInOrientation(upright, options: landscape, overlay: overlay))
+        #expect(PlaylistBuilder.playsInShape(upright, options: portrait, overlay: overlay))
+        #expect(!PlaylistBuilder.playsInShape(upright, options: landscape, overlay: overlay))
         // 1920x1080 pixels, filed in a portrait lane: the lane decides.
-        #expect(PlaylistBuilder.playsInOrientation(laned, options: portrait, overlay: overlay))
-        #expect(!PlaylistBuilder.playsInOrientation(laned, options: landscape, overlay: overlay))
-        #expect(PlaylistBuilder.playsInOrientation(flick, options: portrait, overlay: overlay))
-        #expect(PlaylistBuilder.playsInOrientation(flick, options: landscape, overlay: overlay))
+        #expect(PlaylistBuilder.playsInShape(laned, options: portrait, overlay: overlay))
+        #expect(!PlaylistBuilder.playsInShape(laned, options: landscape, overlay: overlay))
+        #expect(PlaylistBuilder.playsInShape(flick, options: portrait, overlay: overlay))
+        #expect(PlaylistBuilder.playsInShape(flick, options: landscape, overlay: overlay))
     }
 }
