@@ -49,10 +49,17 @@
       "id": "filters",
       "thing": "the buttons on the controls that narrow what plays: Genau, Clips, Full, Favs, the action buttons",
       "code_today": [
-        "browse",
-        "filter"
+        "filters"
       ],
-      "status": "agreed"
+      "status": "agreed",
+      "retired": [
+        "browse",
+        "browse options"
+      ],
+      "keep": [
+        "random_favs_browser",
+        "\"browse\""
+      ]
     },
     {
       "screen": null,

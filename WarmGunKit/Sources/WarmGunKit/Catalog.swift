@@ -82,7 +82,7 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
         } else if file.path.hasPrefix(LibraryPaths.genauFlatPrefix) {
             // A 2D Genau flick: no orientation folder — its pixels decide when
             // the listing has them, and portrait stands in when it does not
-            // (the browse lets Genau's flicks through either way).
+            // (the filters lets Genau's flicks through either way).
             source = "genau"
             if let w = file.width, let h = file.height {
                 orientation = h >= w ? .portrait : .landscape

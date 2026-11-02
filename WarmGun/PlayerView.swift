@@ -241,15 +241,15 @@ private struct ControlsOverlay: View {
     }
 
     private func actChip(_ label: String) -> some View {
-        let shown = !model.settings.browse.disabledActs.contains(label)
+        let shown = !model.settings.filters.disabledActs.contains(label)
         return capsuleButton(label, selected: shown, opacity: shown ? 1 : 0.45, compact: true) {
-            var browse = model.settings.browse
+            var filters = model.settings.filters
             if shown {
-                browse.disabledActs.insert(label)
+                filters.disabledActs.insert(label)
             } else {
-                browse.disabledActs.remove(label)
+                filters.disabledActs.remove(label)
             }
-            model.update(browse: browse)
+            model.update(filters: filters)
         }
     }
 
@@ -293,33 +293,33 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Whether every kind a chip covers is in the browse. Unchecking everything is allowed
+    /// Whether every kind a chip covers is in the filters. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
     private func typesBinding(_ kinds: Set<ClipType>) -> Binding<Bool> {
-        Binding(get: { model.settings.browse.includes(kinds) },
+        Binding(get: { model.settings.filters.includes(kinds) },
                 set: { value in
-                    var browse = model.settings.browse
-                    browse.setIncluded(kinds, value)
-                    model.update(browse: browse)
+                    var filters = model.settings.filters
+                    filters.setIncluded(kinds, value)
+                    model.update(filters: filters)
                 })
     }
 
     /// The desktop's F-mode.
     private func favoritesBinding() -> Binding<Bool> {
-        Binding(get: { model.settings.browse.favoritesOnly },
+        Binding(get: { model.settings.filters.favoritesOnly },
                 set: { value in
-                    var browse = model.settings.browse
-                    browse.favoritesOnly = value
-                    model.update(browse: browse)
+                    var filters = model.settings.filters
+                    filters.favoritesOnly = value
+                    model.update(filters: filters)
                 })
     }
 
     private func orderBinding(latest: Bool) -> Binding<Bool> {
-        Binding(get: { model.settings.browse.latest == latest },
+        Binding(get: { model.settings.filters.latest == latest },
                 set: { _ in
-                    var browse = model.settings.browse
-                    browse.latest = latest
-                    model.update(browse: browse)
+                    var filters = model.settings.filters
+                    filters.latest = latest
+                    model.update(filters: filters)
                 })
     }
 }

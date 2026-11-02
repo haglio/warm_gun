@@ -16,7 +16,7 @@ import Testing
     @Test func anEmptyCatalogBuildsAnEmptyPlaylist() {
         var rng = PlaylistSeededRNG(seed: 1)
 
-        let playlist = PlaylistBuilder.build(catalog: Catalog(files: []), options: BrowseOptions(),
+        let playlist = PlaylistBuilder.build(catalog: Catalog(files: []), options: Filters(),
                                              favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
 
         #expect(playlist.isEmpty)
@@ -35,9 +35,9 @@ extension PlaylistTests {
             Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
         ])
 
-        let portrait = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(orientation: .portrait),
+        let portrait = PlaylistBuilder.build(catalog: catalog, options: Filters(orientation: .portrait),
                                              favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
-        let landscape = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(orientation: .landscape),
+        let landscape = PlaylistBuilder.build(catalog: catalog, options: Filters(orientation: .landscape),
                                               favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
 
         #expect(portrait.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/gamma/portrait/clip-three.mp4"])
@@ -56,7 +56,7 @@ extension PlaylistTests {
             Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
                                              trash: ["1_sorted/alpha/portrait/clip-two.mp4"],
                                              weights: WatchWeights(), rng: &rng)
 
@@ -77,7 +77,7 @@ extension PlaylistTests {
             Self.file("1_sorted/alpha/portrait/clip-three.mp4", size: 25_000_000),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
                                              trash: [], weights: WatchWeights(), rng: &rng)
 
         #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-three.mp4"])
@@ -85,10 +85,10 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// F-mode browses the favorites alone. Favorites are held by stem, not by
+    /// F-mode shows the favorites alone. Favorites are held by stem, not by
     /// path, because that is all the desktop's `favs.csv` carries — and stems
     /// are unique library-wide, so the stem names the clip exactly.
-    @Test func fModeBrowsesOnlyTheFavoritesAndKnowsThemByStem() {
+    @Test func fModeShowsOnlyTheFavoritesAndKnowsThemByStem() {
         var rng = PlaylistSeededRNG(seed: 4)
         let catalog = Catalog(files: [
             Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
@@ -96,7 +96,7 @@ extension PlaylistTests {
             Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(favoritesOnly: true),
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(favoritesOnly: true),
                                              favoriteKeys: ["clip-two", "clip-absent"], trash: [],
                                              weights: WatchWeights(), rng: &rng)
 
@@ -119,7 +119,7 @@ extension PlaylistTests {
             Self.file("1_sorted/alpha/portrait/clip-four.mp4", size: 20_000_000, seconds: nil),
         ])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(types: [.short]),
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(types: [.short]),
                                              favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
 
         #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-two.mp4"])
@@ -142,7 +142,7 @@ extension PlaylistTests {
         let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/clip-new.mp4":
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125))])
 
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(latest: true),
+        let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(latest: true),
                                              favoriteKeys: [], trash: [], weights: weights, rng: &rng)
 
         #expect(playlist == [
@@ -168,7 +168,7 @@ extension PlaylistTests {
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125))])
 
         let builds = (0..<200).map { _ in
-            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
+            PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
                                   trash: [], weights: weights, rng: &rng)
         }
 
@@ -186,7 +186,7 @@ extension PlaylistTests {
         let catalog = Catalog(files: (0..<24).map { Self.file("1_sorted/alpha/portrait/clip-\($0).mp4") })
         func build(seed: UInt64) -> [String] {
             var rng = PlaylistSeededRNG(seed: seed)
-            return PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
+            return PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
                                          trash: [], weights: WatchWeights(), rng: &rng)
         }
 
@@ -212,7 +212,7 @@ extension PlaylistTests {
             Self.file("1_sorted/gamma/portrait/clip-six.mp4", seconds: 6.0),
         ])
         let favorites: Set<String> = ["clip-one", "clip-two", "clip-three", "clip-five", "clip-six"]
-        var options = BrowseOptions(orientation: .portrait, favoritesOnly: true, types: [.short])
+        var options = Filters(orientation: .portrait, favoritesOnly: true, types: [.short])
 
         let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: favorites,
                                            trash: ["1_sorted/alpha/portrait/clip-two.mp4"],
@@ -240,7 +240,7 @@ extension PlaylistTests {
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 8.0))])
 
         let lovedFirst = (0..<200).filter { _ in
-            PlaylistBuilder.build(catalog: catalog, options: BrowseOptions(), favoriteKeys: [],
+            PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
                                   trash: [], weights: weights, rng: &rng).first == "1_sorted/alpha/portrait/clip-loved.mp4"
         }.count
 
@@ -251,23 +251,23 @@ extension PlaylistTests {
 extension PlaylistTests {
     /// The controls are where they were left: the filters are saved between
     /// launches, so the whole record has to survive a JSON round trip.
-    @Test func theBrowseSwitchesSurviveAJSONRoundTrip() throws {
-        let options = BrowseOptions(orientation: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
+    @Test func theFiltersSurviveAJSONRoundTrip() throws {
+        let options = Filters(orientation: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
                                     shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
 
         let data = try JSONEncoder().encode(options)
 
-        #expect(try JSONDecoder().decode(BrowseOptions.self, from: data) == options)
+        #expect(try JSONDecoder().decode(Filters.self, from: data) == options)
     }
 }
 
 extension PlaylistTests {
-    @Test func aPersistedBrowseFromBeforeANewSwitchStillDecodes() throws {
+    @Test func persistedFiltersFromBeforeANewSwitchStillDecode() throws {
         // Settings are persisted and reloaded across app updates: a blob written
         // before a switch existed must decode with that switch at its default,
         // not throw away every saved control at once.
         let old = Data(#"{"orientation":"landscape","favoritesOnly":true}"#.utf8)
-        let options = try JSONDecoder().decode(BrowseOptions.self, from: old)
+        let options = try JSONDecoder().decode(Filters.self, from: old)
         #expect(options.orientation == .landscape)
         #expect(options.favoritesOnly)
         #expect(options.shortsMaxSeconds == 10)
@@ -283,13 +283,13 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-large.mp4", size: 20_000_000, seconds: 12),
         ])
 
-        var sized = BrowseOptions()
+        var sized = Filters()
         sized.maxBytes = 10_000_000
         #expect(PlaylistBuilder.build(catalog: catalog, options: sized, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
                 == ["1_sorted/alpha/portrait/clip-small.mp4"])
 
-        var shorts = BrowseOptions()
+        var shorts = Filters()
         shorts.types = [.short]
         shorts.shortsMaxSeconds = 9
         #expect(PlaylistBuilder.build(catalog: catalog, options: shorts, favoriteKeys: [],
@@ -336,7 +336,7 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 40),
             PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 40),
         ])
-        var options = BrowseOptions()
+        var options = Filters()
         options.types = [.excerpt]
 
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
@@ -354,7 +354,7 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 8),
             PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40),
         ])
-        var options = BrowseOptions()
+        var options = Filters()
         options.types = [.short]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
@@ -366,14 +366,14 @@ extension PlaylistTests {
                               "1_sorted/alpha/portrait/clip-c.mp4"])
     }
 
-    @Test func aPersistedShortsOnlyBrowseMigratesToTheTypes() throws {
+    @Test func aPersistedShortsOnlyFiltersMigrateToTheTypes() throws {
         // There used to be one "shorts only" switch; a blob persisted with it
         // on must come back as the shorts type alone, and one without it as
         // every type.
         let old = Data(#"{"orientation":"portrait","shortsOnly":true}"#.utf8)
-        #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).types == [.short])
+        #expect(try JSONDecoder().decode(Filters.self, from: old).types == [.short])
         let plain = Data(#"{"orientation":"portrait"}"#.utf8)
-        #expect(try JSONDecoder().decode(BrowseOptions.self, from: plain).types == Set(ClipType.allCases))
+        #expect(try JSONDecoder().decode(Filters.self, from: plain).types == Set(ClipType.allCases))
     }
 }
 
@@ -402,7 +402,7 @@ extension PlaylistTests {
             genau,
             PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 2_000_000, seconds: nil),
         ])
-        var options = BrowseOptions(orientation: .portrait)
+        var options = Filters(orientation: .portrait)
         options.types = [.genauFlick]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
@@ -441,7 +441,7 @@ extension PlaylistTests {
         #expect(overlay.lane(for: tall.path)?.orientation == .portrait)
 
         var rng = PlaylistSeededRNG(seed: 13)
-        var options = BrowseOptions(orientation: .landscape)
+        var options = Filters(orientation: .landscape)
         options.types = [.excerpt]
         let catalog = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4"),
                                       Self.nonAI("non_AI/beta/scene-three.mp4")])
@@ -462,7 +462,7 @@ extension PlaylistTests {
             Self.nonAI("non_AI/tall/scene-two.mp4"),   // 1920x1080 pixels, portrait lane
             PlaylistTests.file("1_sorted/alpha/portrait/clip-huge.mp4", size: 300_000_000, seconds: 40),
         ])
-        var options = BrowseOptions(orientation: .portrait)
+        var options = Filters(orientation: .portrait)
         options.types = [.fullLength]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), overlay: overlay, rng: &rng)
@@ -503,7 +503,7 @@ extension PlaylistTests {
     }
 
     @Test func theClipsChipTakesTheShortsAndTheCarvedScenesInAndOutTogether() {
-        var options = BrowseOptions(types: [.genauFlick, .fullLength])
+        var options = Filters(types: [.genauFlick, .fullLength])
         #expect(!options.includes(ClipType.clips))
 
         options.setIncluded(ClipType.clips, true)
@@ -514,25 +514,25 @@ extension PlaylistTests {
         #expect(options.types == [.genauFlick, .fullLength])
     }
 
-    @Test func aBrowseHoldingOnlyOneOfTheTwoReadsAsClipsOff() {
-        #expect(!BrowseOptions(types: [.short]).includes(ClipType.clips))
-        #expect(!BrowseOptions(types: [.excerpt]).includes(ClipType.clips))
+    @Test func filtersHoldingOnlyOneOfTheTwoReadAsClipsOff() {
+        #expect(!Filters(types: [.short]).includes(ClipType.clips))
+        #expect(!Filters(types: [.excerpt]).includes(ClipType.clips))
     }
 
-    @Test func aPersistedBrowseKeepsItsTypesThroughTheRename() throws {
+    @Test func persistedFiltersKeepTheirTypesThroughTheRename() throws {
         // The kinds were this app's own words before the desktop had any; a
-        // browse persisted with them must come back as the same types.
+        // filters persisted with them must come back as the same types.
         let old = Data(#"{"orientation":"portrait","types":["genau","acts","fullLength"]}"#.utf8)
 
-        let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)
+        let restored = try JSONDecoder().decode(Filters.self, from: old)
 
         #expect(restored.types == [.genauFlick, .excerpt, .fullLength])
     }
 
-    @Test func aBrowsePersistedBeforeGenausClipsWereCalledFlicksKeepsItsGenauType() throws {
+    @Test func filtersPersistedBeforeGenausClipsWereCalledFlicksKeepsItsGenauType() throws {
         let old = Data(#"{"orientation":"portrait","types":["genau_clip","short"]}"#.utf8)
 
-        let restored = try JSONDecoder().decode(BrowseOptions.self, from: old)
+        let restored = try JSONDecoder().decode(Filters.self, from: old)
 
         #expect(restored.types == [.genauFlick, .short])
     }
@@ -567,7 +567,7 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 30),
             PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 30),
         ])
-        var options = BrowseOptions()
+        var options = Filters()
         options.disabledActs = ["BE", "O"]
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           trash: [], weights: WatchWeights(), overlay: overlay,
@@ -576,12 +576,12 @@ extension PlaylistTests {
         #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])  // c has no act -> O -> hidden
     }
 
-    @Test func anOverlayOrBrowseWithoutActFiltersChangesNothing() throws {
+    @Test func anOverlayOrFiltersWithoutActFiltersChangesNothing() throws {
         // No filters defined -> no bucketing, nothing hidden; and an old
-        // persisted browse without the key decodes with none disabled.
+        // persisted filters without the key decodes with none disabled.
         #expect(ContentOverlay(lanes: []).actBucket(for: "anything") == nil)
         let old = Data(#"{"orientation":"portrait"}"#.utf8)
-        #expect(try JSONDecoder().decode(BrowseOptions.self, from: old).disabledActs.isEmpty)
+        #expect(try JSONDecoder().decode(Filters.self, from: old).disabledActs.isEmpty)
     }
 }
 
@@ -595,8 +595,8 @@ extension PlaylistTests {
         let flick = Catalog(files: [LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9,
                                                 size: 2_000_000, modified: Date(timeIntervalSince1970: 0),
                                                 duration: nil, videoCodec: nil, width: 1920, height: 1080)]).clips[0]
-        let portrait = BrowseOptions(orientation: .portrait)
-        let landscape = BrowseOptions(orientation: .landscape)
+        let portrait = Filters(orientation: .portrait)
+        let landscape = Filters(orientation: .landscape)
 
         #expect(PlaylistBuilder.playsInOrientation(upright, options: portrait, overlay: overlay))
         #expect(!PlaylistBuilder.playsInOrientation(upright, options: landscape, overlay: overlay))
