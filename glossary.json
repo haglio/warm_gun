@@ -95,10 +95,12 @@
       "id": "button",
       "thing": "a rounded word on the controls that lights while on",
       "code_today": [
-        "chip",
         "button"
       ],
-      "status": "agreed"
+      "status": "agreed",
+      "retired": [
+        "chip"
+      ]
     },
     {
       "screen": [

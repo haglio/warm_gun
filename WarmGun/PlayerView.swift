@@ -137,16 +137,16 @@ private struct ControlsOverlay: View {
         ZStack {
             pinned(.topLeading) {
                 cluster {
-                    chip("Genau", on: typesBinding([.genauFlick]))
-                    chip("Clips", on: typesBinding(ClipType.clips))
-                    chip("Full", on: typesBinding([.fullLength]))
+                    wordButton("Genau", on: typesBinding([.genauFlick]))
+                    wordButton("Clips", on: typesBinding(ClipType.clips))
+                    wordButton("Full", on: typesBinding([.fullLength]))
                 }
             }
             pinned(.topTrailing) {
                 cluster {
-                    chip("Shuffle", on: orderBinding(latest: false))
-                    chip("Latest", on: orderBinding(latest: true))
-                    chip("Favs", on: favoritesBinding())
+                    wordButton("Shuffle", on: orderBinding(latest: false))
+                    wordButton("Latest", on: orderBinding(latest: true))
+                    wordButton("Favs", on: favoritesBinding())
                 }
             }
             // The Loop control, laid so that E's cycle (all, 1, seed, action)
@@ -154,10 +154,10 @@ private struct ControlsOverlay: View {
             // Seed under 1 and Action under All.
             pinned(.bottomLeading) {
                 cluster {
-                    loopChip("All", .all)
-                    loopChip("1", .single)
-                    loopChip("Action", .action, enabled: model.canLoop(.action))
-                    loopChip("Seed", .seed, enabled: model.canLoop(.seed))
+                    loopButton("All", .all)
+                    loopButton("1", .single)
+                    loopButton("Action", .action, enabled: model.canLoop(.action))
+                    loopButton("Seed", .seed, enabled: model.canLoop(.seed))
                 }
             }
             // The combinable action buttons, overlay-defined: 2 wide and 4 tall in
@@ -169,7 +169,7 @@ private struct ControlsOverlay: View {
                                              count: landscape ? 4 : 2),
                               alignment: .trailing, spacing: 5) {
                         ForEach(model.overlay.actionFilters, id: \.label) { filter in
-                            actionChip(filter.label)
+                            actionButton(filter.label)
                         }
                     }
                     .frame(width: landscape ? 200 : 104)
@@ -213,7 +213,7 @@ private struct ControlsOverlay: View {
     }
 
     /// Portrait stacks a cluster tall; landscape folds it into a 2x2 grid so
-    /// a four-chip row cannot reach the edge buttons at top and lower center.
+    /// a four-button row cannot reach the edge buttons at top and lower center.
     @ViewBuilder
     private func cluster(@ViewBuilder _ content: () -> some View) -> some View {
         if landscape {
@@ -240,7 +240,7 @@ private struct ControlsOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func actionChip(_ label: String) -> some View {
+    private func actionButton(_ label: String) -> some View {
         let shown = !model.settings.filters.disabledActions.contains(label)
         return capsuleButton(label, selected: shown, opacity: shown ? 1 : 0.45, compact: true) {
             var filters = model.settings.filters
@@ -253,11 +253,11 @@ private struct ControlsOverlay: View {
         }
     }
 
-    private func chip(_ label: String, on binding: Binding<Bool>) -> some View {
+    private func wordButton(_ label: String, on binding: Binding<Bool>) -> some View {
         capsuleButton(label, selected: binding.wrappedValue) { binding.wrappedValue.toggle() }
     }
 
-    private func loopChip(_ label: String, _ mode: LoopMode, enabled: Bool = true) -> some View {
+    private func loopButton(_ label: String, _ mode: LoopMode, enabled: Bool = true) -> some View {
         capsuleButton(label, selected: model.loopMode == mode, opacity: enabled ? 1 : 0.3, enabled: enabled) {
             model.setLoop(mode)
         }
@@ -293,7 +293,7 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Whether every type a chip covers is in the filters. Unchecking everything is allowed
+    /// Whether every type a button covers is in the filters. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
     private func typesBinding(_ types: Set<ClipType>) -> Binding<Bool> {
         Binding(get: { model.settings.filters.includes(types) },

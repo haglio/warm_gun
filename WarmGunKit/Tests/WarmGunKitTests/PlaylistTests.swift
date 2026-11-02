@@ -502,7 +502,7 @@ extension PlaylistTests {
         #expect(overlay.lanes.map(\.type) == [.excerpt])
     }
 
-    @Test func theClipsChipTakesTheShortsAndTheCarvedScenesInAndOutTogether() {
+    @Test func theClipsButtonTakesTheShortsAndTheCarvedScenesInAndOutTogether() {
         var options = Filters(types: [.genauFlick, .fullLength])
         #expect(!options.includes(ClipType.clips))
 
