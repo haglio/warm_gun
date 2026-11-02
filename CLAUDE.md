@@ -18,9 +18,9 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 - Everything local in one command: `sh tools/check.sh` — the suite, the
   coupling gates (`tools/gates.py`, counts with a target of 0 that fail the
   build) and their tests, and the sanitize guard swept over the whole tree.
-- `PROSE_CEILING` in `tools/gates.py` is this repo's ceiling on comment
-  lines, and it only comes down: a change that removes comment lines lowers
-  it by as many, and one that adds some first removes as many elsewhere.
+- `tools/quality_baseline.json` holds each file's comment lines, and an entry
+  only comes down: `python3 tools/gates.py --lower` takes every fall, carries a
+  renamed file's entry and refuses every rise; a file added enters at zero.
 - On a machine with no Swift (the Windows PC), the merge gate is the only
   place the Kit runs and the app compiles: push each red or green step to a
   throwaway branch whose own copy of `merge-gate.yml` names it under

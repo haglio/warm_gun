@@ -22,17 +22,19 @@ is a failing exit. The invariants, from docs/design.md:
    not only ``os(...)``: a custom compilation condition set per SDK would
    spell the same fork differently.
 6. A comment is a claim nothing runs, so what a name or a test can say is
-   said there, and the comment lines of the Swift sources, the tests and the
-   shell scripts are held to ``PROSE_CEILING``, which only comes down: a
-   change that removes comment lines lowers it by as many, and one that adds
-   some first removes as many elsewhere.
+   said there, and the comment lines of each Swift source, test and shell
+   script are held to that file's entry in ``tools/quality_baseline.json``,
+   which only comes down: ``--lower`` takes every fall and refuses every rise,
+   and a file added enters at zero.
 
 Run: ``python3 tools/gates.py`` (exit 0 = all gates hold).
 """
 
 from __future__ import annotations
 
+import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -47,7 +49,8 @@ PLATFORM_CONDITION = re.compile(r"#\s*(if|elseif)\b(?!\s*!?DEBUG\s*$)")
 PLATFORM_IMPORT = re.compile(r"(^|;)\s*(@\w+(\([^)]*\))?\s+)*import\s+(\w+\s+)?(UIKit|AppKit|Cocoa)\b")
 ACTORS = ("engine", "cache", "prefetcher", "client")
 SHELL_SHEBANG = re.compile(rb"#!.*\b(sh|bash|zsh)\b")
-PROSE_CEILING = 1543
+BASELINE_PATH = "tools/quality_baseline.json"
+PROSE_SECTION = "prose_lines"
 
 
 def kit_sources(root: Path) -> Path:
@@ -93,15 +96,55 @@ def prose_files(root: Path) -> list[Path]:
             + swift_files(app_sources(root)) + scripts)
 
 
-def prose_lines(root: Path) -> int:
-    count = 0
-    for path in prose_files(root):
-        marker = "//" if path.suffix == ".swift" else "#"
-        lines = path.read_text(encoding="utf-8").splitlines()
-        if lines and lines[0].startswith("#!"):
-            lines = lines[1:]
-        count += sum(is_comment(line, marker) for line in lines)
-    return count
+def _comment_lines_in(path: Path) -> int:
+    marker = "//" if path.suffix == ".swift" else "#"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if lines and lines[0].startswith("#!"):
+        lines = lines[1:]
+    return sum(is_comment(line, marker) for line in lines)
+
+
+def prose_by_file(root: Path) -> dict[str, int]:
+    counted = {path.relative_to(root).as_posix(): _comment_lines_in(path) for path in prose_files(root)}
+    return {name: lines for name, lines in counted.items() if lines}
+
+
+def _entries(root: Path) -> dict[str, int]:
+    return json.loads((root / BASELINE_PATH).read_text(encoding="utf-8"))[PROSE_SECTION]
+
+
+def _git(root: Path, *args: str) -> str | None:
+    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, encoding="utf-8", check=False)
+    return done.stdout if done.returncode == 0 else None
+
+
+def _where_this_left_main(root: Path) -> str | None:
+    left = _git(root, "merge-base", "HEAD", "origin/main")
+    return left.strip() if left else None
+
+
+def _renamed_since_main(root: Path) -> dict[str, str]:
+    left = _where_this_left_main(root)
+    listed = _git(root, "diff", "-M", "--name-status", "--diff-filter=R", left) if left else None
+    return {old: new for _, old, new in (line.split("\t") for line in (listed or "").splitlines())}
+
+
+def lower_entries(root: Path) -> list[str]:
+    renames = _renamed_since_main(root)
+    on_file = _entries(root)
+    said = [f"carried {old} to {new}" for old, new in renames.items() if old in on_file]
+    entries = {renames.get(name, name): entry for name, entry in on_file.items()}
+    live = prose_by_file(root)
+    kept = {name: min(live.get(name, 0), entry) for name, entry in entries.items() if live.get(name, 0)}
+    said += [f"lowered {name} from {entry} to {live.get(name, 0)}" for name, entry in sorted(entries.items())
+             if live.get(name, 0) < entry and (root / name).exists()]
+    said += [f"refused {name}: it holds {held}, over its entry of {entries.get(name, 0)}"
+             for name, held in sorted(live.items()) if held > entries.get(name, 0)]
+    said += [f"could not match {name}: nothing is there now and git names no rename of it"
+             for name in sorted(entries) if not (root / name).exists()]
+    text = json.dumps({PROSE_SECTION: kept}, indent=2, sort_keys=True) + "\n"
+    (root / BASELINE_PATH).write_bytes(text.encode("utf-8"))
+    return said
 
 
 def where(path: Path, root: Path, number: int) -> str:
@@ -150,16 +193,28 @@ def gate_views_stay_out_of_actors(root: Path) -> list[str]:
     return hits
 
 
-def gate_prose_ceiling(root: Path, ceiling: int | None = None) -> list[str]:
-    ceiling = PROSE_CEILING if ceiling is None else ceiling
-    prose = prose_lines(root)
-    if prose > ceiling:
-        return [f"{prose} comment lines, over the ceiling of {ceiling}: "
-                "say it in a name or a test, or remove as many elsewhere"]
-    if prose < ceiling:
-        return [f"{prose} comment lines, under the ceiling of {ceiling}: "
-                f"lower PROSE_CEILING to {prose}"]
-    return []
+def gate_prose_ceiling(root: Path) -> list[str]:
+    entries, live = _entries(root), prose_by_file(root)
+    hits = []
+    for name in sorted({*entries, *live}):
+        held, entry = live.get(name, 0), entries.get(name, 0)
+        if held > entry:
+            hits.append(f"{name} holds {held} comment lines, over its entry of {entry}: say it in a name or a test")
+        elif held < entry:
+            hits.append(f"{name} holds {held} comment lines, under its entry of {entry}: "
+                        "run python3 tools/gates.py --lower")
+    return hits
+
+
+def gate_no_entry_above_main(root: Path) -> list[str]:
+    left = _where_this_left_main(root)
+    held = _git(root, "show", f"{left}:{BASELINE_PATH}") if left else None
+    if not held:
+        return []
+    renames = _renamed_since_main(root)
+    at_main = {renames.get(name, name): entry for name, entry in json.loads(held)[PROSE_SECTION].items()}
+    return [f"{name} stands at {entry}, above the {at_main.get(name, 0)} main holds: an entry only comes down"
+            for name, entry in sorted(_entries(root).items()) if entry > at_main.get(name, 0)]
 
 
 def gate_platform_seam(root: Path) -> list[str]:
@@ -180,7 +235,8 @@ GATES = {
     "stored static var": gate_no_static_mutable,
     "view reach-through into model actors": gate_views_stay_out_of_actors,
     f"platform-specific code outside {PLATFORM_FILE}": gate_platform_seam,
-    "comment lines off their ceiling": gate_prose_ceiling,
+    "comment lines off their entries": gate_prose_ceiling,
+    "comment line entries raised above main": gate_no_entry_above_main,
 }
 
 
@@ -196,4 +252,6 @@ def main(root: Path = ROOT) -> int:
 
 
 if __name__ == "__main__":
+    if "--lower" in sys.argv:
+        print("\n".join(lower_entries(ROOT)))
     sys.exit(main())
