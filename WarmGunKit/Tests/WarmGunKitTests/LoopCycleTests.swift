@@ -3,13 +3,13 @@ import Testing
 
 /// The E key: one step clockwise around the Loop control's four stops.
 struct LoopCycleTests {
-    @Test func noLoopStepsToLoopingTheOneClip() {
+    @Test func noLoopStepsToLoopingTheOneVideo() {
         #expect(LoopCycle.next(after: .all, canLoop: { _ in true }) == .single)
     }
 }
 
 extension LoopCycleTests {
-    @Test func theOneClipLoopStepsToTheSeedLoop() {
+    @Test func theOneVideoLoopStepsToTheSeedLoop() {
         #expect(LoopCycle.next(after: .single, canLoop: { _ in true }) == .seed)
     }
 }

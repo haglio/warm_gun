@@ -2,7 +2,7 @@ import Testing
 @testable import WarmGunKit
 
 @Suite struct FetchFailuresTests {
-    @Test func theAwaitedClipIsSkippedOnItsThirdRefusalAndAFifthSkipInARowHoldsTheRun() {
+    @Test func theAwaitedVideoIsSkippedOnItsThirdRefusalAndAFifthSkipInARowHoldsTheRun() {
         // A dead network must leave the run parked and retrying, not sprint it
         // silently through the whole playlist.
         var failures = FetchFailures()
@@ -10,7 +10,7 @@ import Testing
         #expect(answers == [.keepWaiting, .keepWaiting, .skip, .skip, .skip, .skip, .skip, .hold, .hold])
 
         failures.fetched()
-        let afterAClipLands = failures.failed(attempts: 3)
-        #expect(afterAClipLands == .skip)
+        let afterAVideoLands = failures.failed(attempts: 3)
+        #expect(afterAVideoLands == .skip)
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Which way a clip is filed — by folder, never by its pixels: 21 clips in the
+/// Which way a video is filed — by folder, never by its pixels: 21 videos in the
 /// library are square and live wherever the sorter put them.
 public enum VideoShape: String, Codable, CaseIterable, Sendable {
     case portrait
@@ -9,11 +9,11 @@ public enum VideoShape: String, Codable, CaseIterable, Sendable {
 
 /// The shape of the AI library, relative to its root (`.../videos/videos/2D/AI`).
 ///
-/// Every clip exists twice: the original under `1_sorted/<source>/<shape>/`
+/// Every video exists twice: the original under `1_sorted/<source>/<shape>/`
 /// and the Topaz upscale under `2_outbox/upscaled_by_orientation/<shape>/<source>/`
 /// with `_topaz` on the stem — note the two trees nest source and shape
 /// the opposite way round. Warm Gun plays the originals and names the upscales
-/// only to talk to the desktop (favorites, trash), which knows clips by those.
+/// only to talk to the desktop (favorites, trash), which knows videos by those.
 public enum LibraryPaths {
     public struct Original: Equatable, Sendable {
         public let source: String
@@ -42,7 +42,7 @@ public enum LibraryPaths {
     public static let upscaledRoot = "2_outbox/upscaled_by_orientation"
     public static let trashDir = "2_outbox/trash"
 
-    /// The desktop's name for the same clip: what `favs.csv` stores and what the
+    /// The desktop's name for the same video: what `favs.csv` stores and what the
     /// trash gesture moves.
     public static func upscalePath(forOriginal path: String) -> String? {
         guard let o = parseOriginal(path) else { return nil }
@@ -110,7 +110,7 @@ public enum LibraryPaths {
     /// The prefix the app files Genau's flicks under in its own catalog paths.
     public static let genauPrefix = "genau/clips/"
 
-    /// Where the 2D clips are under that prefix -- the ones a phone plays.
+    /// Where the 2D videos are under that prefix -- the ones a phone plays.
     public static let genauFlatPrefix = genauPrefix + "2D/"
 
     /// *entries* with each one named the way Genau's flicks folder named a flick
@@ -132,7 +132,7 @@ public enum LibraryPaths {
         })
     }
 
-    /// The non-AI library — the real scenes, full videos and the clips cut
+    /// The non-AI library — the real scenes, full videos and the videos cut
     /// out of them — beside the AI folder: `2D/non_AI`.
     public static func nonAIPath(forLibrary libraryPath: String) -> String? {
         replacingLastFolders(1, of: libraryPath, with: "non_AI")
@@ -155,7 +155,7 @@ public enum LibraryPaths {
     /// Time plays the UPSCALE, so that is where the sidecar is keyed, and the
     /// upscale tree nests shape above source where `1_sorted` nests
     /// source above shape. There is no `metadata/2D/AI/1_sorted` tree at
-    /// all — a generated clip's own path names no sidecar.
+    /// all — a generated video's own path names no sidecar.
     public enum MetadataBranch: String, CaseIterable, Sendable {
         case ai
         case genau
@@ -171,23 +171,23 @@ public enum LibraryPaths {
             }
         }
 
-        /// Where *clipPath*'s sidecar sits inside this branch — relative to the
+        /// Where *videoPath*'s sidecar sits inside this branch — relative to the
         /// branch folder and WITHOUT the `.json`, because the mirror drops the
         /// video's own extension and a real scene is not always an `.mp4`.
-        /// Nil when the clip belongs to another lane.
-        public func sidecarPath(forClip clipPath: String) -> String? {
+        /// Nil when the video belongs to another lane.
+        public func sidecarPath(forVideo videoPath: String) -> String? {
             switch self {
             case .ai:
-                guard let original = LibraryPaths.parseOriginal(clipPath) else { return nil }
+                guard let original = LibraryPaths.parseOriginal(videoPath) else { return nil }
                 return "\(LibraryPaths.upscaledRoot)/\(original.shape.rawValue)"
                     + "/\(original.source)/\(original.stem)\(LibraryPaths.upscaleSuffix)"
             case .genau:
-                guard clipPath.hasPrefix(LibraryPaths.genauPrefix) else { return nil }
+                guard videoPath.hasPrefix(LibraryPaths.genauPrefix) else { return nil }
                 return LibraryPaths.dropExtension(
-                    String(clipPath.dropFirst(LibraryPaths.genauPrefix.count)))
+                    String(videoPath.dropFirst(LibraryPaths.genauPrefix.count)))
             case .nonAI:
-                guard clipPath.hasPrefix(LibraryPaths.nonAIPrefix) else { return nil }
-                let inner = String(clipPath.dropFirst(LibraryPaths.nonAIPrefix.count))
+                guard videoPath.hasPrefix(LibraryPaths.nonAIPrefix) else { return nil }
+                let inner = String(videoPath.dropFirst(LibraryPaths.nonAIPrefix.count))
                 guard !inner.isEmpty else { return nil }
                 return LibraryPaths.dropExtension(inner)
             }
@@ -207,7 +207,7 @@ public enum LibraryPaths {
     /// The bare file name of a catalog path — what the controls overlay puts
     /// on the glass so the picture can be named. Nil when the path ends in a
     /// separator or is empty: there is no file there to name.
-    public static func filename(ofClip path: String) -> String? {
+    public static func filename(ofVideo path: String) -> String? {
         guard let last = path.split(separator: "/", omittingEmptySubsequences: false).last,
               !last.isEmpty else { return nil }
         return String(last)
@@ -215,7 +215,7 @@ public enum LibraryPaths {
 
     /// What a favorite is filed under.
     ///
-    /// A generated clip is filed under its STEM, because that is the only name
+    /// A generated video is filed under its STEM, because that is the only name
     /// the desktop's `favs.csv` — which lists Windows paths to upscales — and
     /// this store can both say, and because `1_sorted` and `2_outbox` are in
     /// total correspondence the stem is unique across that lane. Nothing makes
@@ -223,14 +223,14 @@ public enum LibraryPaths {
     /// recursively on both sides, and Genau's folder holds flicks carved by
     /// hand beside generated ones, so two same-named files are perfectly
     /// possible. Those are filed under their whole path, which the library
-    /// itself keeps unique — so one star can never cover two clips.
-    public static func favoriteKey(forClip path: String) -> String? {
+    /// itself keeps unique — so one star can never cover two videos.
+    public static func favoriteKey(forVideo path: String) -> String? {
         if let original = parseOriginal(path) { return original.stem }
         guard path.hasPrefix(genauPrefix) || path.hasPrefix(nonAIPrefix) else { return nil }
         return dropExtension(path)
     }
 
-    /// The stem of a GENERATED clip named the desktop's way — a path (Windows
+    /// The stem of a GENERATED video named the desktop's way — a path (Windows
     /// or POSIX, any prefix) to `<stem>_topaz.<ext>` — or nil when the
     /// reference is not one.
     ///

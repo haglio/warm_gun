@@ -2,9 +2,9 @@ import Testing
 @testable import WarmGunKit
 
 @Suite struct SessionTests {
-    static let three = ["1_sorted/alpha/portrait/clip-one.mp4",
-                        "1_sorted/alpha/portrait/clip-two.mp4",
-                        "1_sorted/beta/landscape/clip-three.mp4"]
+    static let three = ["1_sorted/alpha/portrait/video-one.mp4",
+                        "1_sorted/alpha/portrait/video-two.mp4",
+                        "1_sorted/beta/landscape/video-three.mp4"]
 
     @Test func startsOnTheFirstEntryAndStagesTheOneAfterIt() {
         let session = Session(playlist: Self.three)
@@ -28,7 +28,7 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func advanceRollsOntoTheStagedClipAndWrapsAtTheEnd() {
+    @Test func advanceRollsOntoTheStagedVideoAndWrapsAtTheEnd() {
         var session = Session(playlist: Self.three, index: 2)
         #expect(session.staged == Self.three[0])
         session.advance()
@@ -39,11 +39,11 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func lockHoldsTheClipAndStagesNothingUntilItIsReleased() {
+    @Test func lockHoldsTheVideoAndStagesNothingUntilItIsReleased() {
         var session = Session(playlist: Self.three)
         session.setLocked(true)
         #expect(session.locked)
-        #expect(session.staged == nil)  // nothing may roll on off a locked clip
+        #expect(session.staged == nil)  // nothing may roll on off a locked video
         session.advance()
         #expect(session.index == 0)
 
@@ -57,7 +57,7 @@ extension SessionTests {
 extension SessionTests {
     @Test func navigatingReleasesTheLock() {
         // The desktop's dispatcher sends UNLOCK before any NEXT/PREV: a deliberate
-        // step off a held clip means you are done holding it.
+        // step off a held video means you are done holding it.
         var session = Session(playlist: Self.three)
         session.setLocked(true)
         session.step(1)
@@ -77,7 +77,7 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func playingAClipIntoAnEmptySessionStartsTheRunWithIt() {
+    @Test func playingAVideoIntoAnEmptySessionStartsTheRunWithIt() {
         // The session before the first index arrives is empty, and a favorites
         // jump may land in it: it starts the run rather than reaching past its end.
         var session = Session(playlist: [])
@@ -89,11 +89,11 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func playingANewcomerSplicesItInAfterTheCurrentClipAndPlaysIt() {
-        // What a favorites jump does with a clip the live filters exclude: it is
+    @Test func playingANewcomerSplicesItInAfterTheCurrentVideoAndPlaysIt() {
+        // What a favorites jump does with a video the live filters exclude: it is
         // spliced next, so the run carries on into the list it came from.
         var session = Session(playlist: Self.three)
-        let newcomer = "1_sorted/gamma/portrait/clip-four.mp4"
+        let newcomer = "1_sorted/gamma/portrait/video-four.mp4"
         session.playFile(newcomer)
         #expect(session.index == 1)
         #expect(session.current == newcomer)
@@ -102,7 +102,7 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func playingAClipAlreadyInTheListJumpsToItWithoutGrowingIt() {
+    @Test func playingAVideoAlreadyInTheListJumpsToItWithoutGrowingIt() {
         var session = Session(playlist: Self.three)
         session.playFile(Self.three[2])
         #expect(session.index == 2)
@@ -112,10 +112,10 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func replacingThePlaylistRestartsAtTheTopWhenTheClipIsGone() {
+    @Test func replacingThePlaylistRestartsAtTheTopWhenTheVideoIsGone() {
         var session = Session(playlist: Self.three, index: 1)
-        let rebuilt = ["1_sorted/gamma/portrait/clip-four.mp4",
-                       "1_sorted/gamma/landscape/clip-five.mp4"]
+        let rebuilt = ["1_sorted/gamma/portrait/video-four.mp4",
+                       "1_sorted/gamma/landscape/video-five.mp4"]
         session.replacePlaylist(rebuilt)
         #expect(session.index == 0)
         #expect(session.current == rebuilt[0])
@@ -124,14 +124,14 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func replacingThePlaylistKeepsTheClipOnScreenWhenItSurvives() {
-        // A filter toggle rebuilds the list; the clip you are watching should
+    @Test func replacingThePlaylistKeepsTheVideoOnScreenWhenItSurvives() {
+        // A filter toggle rebuilds the list; the video you are watching should
         // keep playing rather than flicker back to the top of the new one.
         var session = Session(playlist: Self.three, index: 1)
         session.setLocked(true)
-        session.replacePlaylist(["1_sorted/gamma/portrait/clip-four.mp4",
+        session.replacePlaylist(["1_sorted/gamma/portrait/video-four.mp4",
                                  Self.three[1],
-                                 "1_sorted/gamma/landscape/clip-five.mp4"])
+                                 "1_sorted/gamma/landscape/video-five.mp4"])
         #expect(session.current == Self.three[1])
         #expect(session.index == 1)
         #expect(session.locked)  // a rebuild is not a gesture: the hold stands
@@ -140,7 +140,7 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func theOnlyRemainingEntryCannotBeDiscarded() {
-        // A satellite must always have something to play, so the final clip is a
+        // A satellite must always have something to play, so the final video is a
         // no-op rather than an empty screen.
         var session = Session(playlist: [Self.three[0]])
         #expect(session.discard() == nil)
@@ -178,7 +178,7 @@ extension SessionTests {
     @Test func discardReleasesTheLockSoTheRunCarriesOn() {
         // The desktop dispatcher sends UNLOCK before TRASH for the same reason it
         // does before NEXT (`command_dispatch.py`): a locked satellite is
-        // repeat-one, and without the release the clip that shifts into the
+        // repeat-one, and without the release the video that shifts into the
         // discarded slot would be held forever with nothing staged after it.
         var session = Session(playlist: Self.three)
         session.setLocked(true)
@@ -206,21 +206,21 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func aRebuildThatLosesTheHeldClipReleasesTheHold() {
+    @Test func aRebuildThatLosesTheHeldVideoReleasesTheHold() {
         // The desktop cancels the lock on every rebuild that touches the Funestra
         // (`command_dispatch.py` `_cancel_lock`): repeat-one must never be
-        // inherited by whatever clip happens to land at the top of a new list.
+        // inherited by whatever video happens to land at the top of a new list.
         var session = Session(playlist: Self.three, index: 1)
         session.setLocked(true)
-        session.replacePlaylist(["1_sorted/gamma/portrait/clip-four.mp4",
-                                 "1_sorted/gamma/landscape/clip-five.mp4"])
+        session.replacePlaylist(["1_sorted/gamma/portrait/video-four.mp4",
+                                 "1_sorted/gamma/landscape/video-five.mp4"])
         #expect(session.index == 0)
         #expect(session.locked == false)
     }
 }
 
 extension SessionTests {
-    @Test func aResumedRunStartsOverWhenEmptyRebuildsWhenItsClipNoLongerFitsAndElseStands() {
+    @Test func aResumedRunStartsOverWhenEmptyRebuildsWhenItsVideoNoLongerFitsAndElseStands() {
         #expect(Session(playlist: []).resumption(currentFits: true) == .startFromTop)
         #expect(Session(playlist: []).resumption(currentFits: false) == .startFromTop)
         #expect(Session(playlist: Self.three).resumption(currentFits: false) == .rebuildAroundCurrent)
@@ -229,14 +229,14 @@ extension SessionTests {
 }
 
 extension SessionTests {
-    @Test func aRelaunchResumesTheSavedRunOnItsClipLessWhatTheLibraryLost() {
+    @Test func aRelaunchResumesTheSavedRunOnItsVideoLessWhatTheLibraryLost() {
         let known = Set([Self.three[0], Self.three[2]])
         let resumed = Session(restoring: Self.three, at: 2, locked: true, keeping: known)
         #expect(resumed.playlist == [Self.three[0], Self.three[2]])
         #expect(resumed.current == Self.three[2])
         #expect(resumed.locked)
 
-        // The held clip left the library: its lock does not pass to the clip
+        // The held video left the library: its lock does not pass to the video
         // that takes its place, as a rebuild that loses it does not either.
         let lost = Session(restoring: Self.three, at: 1, locked: true, keeping: known)
         #expect(lost.current == Self.three[0])

@@ -3,10 +3,10 @@ import Testing
 @testable import WarmGunKit
 
 /// `getfilelink` costs a round-trip the prefetcher would otherwise pay for
-/// every clip in its window, so links are kept until they go stale. Every test
+/// every video in its window, so links are kept until they go stale. Every test
 /// here fixes a clock rather than reading one: expiry is the whole subject.
 @Suite struct LinkCacheTests {
-    static let linkOne = URL(string: "https://edef1.pcloud.com/cBZ7q0Zwarmgun0ZclipOneZ/clip-one.mp4")!
+    static let linkOne = URL(string: "https://edef1.pcloud.com/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4")!
     /// Any instant will do as long as the tests share it; this one is a round
     /// number of seconds so the arithmetic in each test reads at a glance.
     static let noon = Date(timeIntervalSince1970: 1_787_654_400)
@@ -23,7 +23,7 @@ extension LinkCacheTests {
         var cache = LinkCache()
         cache.store(url: Self.linkOne, for: 90_210, expires: Self.noon.addingTimeInterval(3600))
         // A download can fail on a link the cache still believes in — pCloud
-        // can retire a host early. That means "ask again", not "clip is gone",
+        // can retire a host early. That means "ask again", not "video is gone",
         // so the app throws this one link away and re-links.
         cache.forget(90_210)
         #expect(cache.url(for: 90_210, now: Self.noon) == nil)

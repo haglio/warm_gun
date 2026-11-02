@@ -20,7 +20,7 @@ import Testing
 extension WatchWeightsTests {
     /// A weight the sidecar cannot be read for is not a reason to throw the
     /// sidecar away: the same file carries the action the loops group by. Nor is a
-    /// weight that could not be a multiplier — zero would silence a clip
+    /// weight that could not be a multiplier — zero would silence a video
     /// forever, and a negative one sorts FIRST in the draw, the exact inverse.
     @Test func aWeightThatCannotBeUsedReadsAsNoWeightAndKeepsTheRestOfTheSidecar() throws {
         let bodies = [
@@ -66,7 +66,7 @@ extension WatchWeightsTests {
     /// desktop's file. A launch reads that copy before any fetch lands.
     @Test func theStampSurvivesTheCorpusBeingPersistedAndReadBack() throws {
         let corpus = [
-            "1_sorted/alpha/portrait/clip-one.mp4":
+            "1_sorted/alpha/portrait/video-one.mp4":
                 Sidecar(video: ["action": "waving"], sourceImage: nil,
                         watch: Sidecar.Watch(weight: 0.125), favorite: true),
             "genau/clips/2D/AI/loop-two.mp4":
@@ -77,28 +77,28 @@ extension WatchWeightsTests {
         let read = try JSONDecoder().decode([String: Sidecar].self, from: data)
 
         #expect(read == corpus)
-        #expect(read["1_sorted/alpha/portrait/clip-one.mp4"]?.watchWeight == 0.125)
-        #expect(read["1_sorted/alpha/portrait/clip-one.mp4"]?.favorite == true)
+        #expect(read["1_sorted/alpha/portrait/video-one.mp4"]?.watchWeight == 0.125)
+        #expect(read["1_sorted/alpha/portrait/video-one.mp4"]?.favorite == true)
         #expect(read["genau/clips/2D/AI/loop-two.mp4"]?.watchWeight == nil)
         #expect(read["genau/clips/2D/AI/loop-two.mp4"]?.favorite == false)
     }
 }
 
 extension WatchWeightsTests {
-    /// What the draw asks: one number per clip. A clip nobody has watched, one
+    /// What the draw asks: one number per video. A video nobody has watched, one
     /// whose sidecar never arrived, and one whose stamp could not be read all
     /// answer the same — neutral — because none of them is evidence.
-    @Test func aClipWeighsWhatItsSidecarSaysAndOtherwiseWeighsOne() {
+    @Test func aVideoWeighsWhatItsSidecarSaysAndOtherwiseWeighsOne() {
         let weights = WatchWeights(sidecars: [
-            "1_sorted/alpha/portrait/clip-one.mp4":
+            "1_sorted/alpha/portrait/video-one.mp4":
                 Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 8.0)),
-            "1_sorted/beta/landscape/clip-two.mp4":
+            "1_sorted/beta/landscape/video-two.mp4":
                 Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125)),
             "genau/clips/2D/AI/loop-three.mp4": Sidecar(video: nil, sourceImage: nil),
         ])
 
-        #expect(weights.weight(for: "1_sorted/alpha/portrait/clip-one.mp4") == 8.0)
-        #expect(weights.weight(for: "1_sorted/beta/landscape/clip-two.mp4") == 0.125)
+        #expect(weights.weight(for: "1_sorted/alpha/portrait/video-one.mp4") == 8.0)
+        #expect(weights.weight(for: "1_sorted/beta/landscape/video-two.mp4") == 0.125)
         #expect(weights.weight(for: "genau/clips/2D/AI/loop-three.mp4") == 1.0)
         #expect(weights.weight(for: "non_AI/bucket/scene-four.mp4") == 1.0)
     }
@@ -108,12 +108,12 @@ extension WatchWeightsTests {
     /// The `video` block is not all strings any more, and a number in it used
     /// to cost the WHOLE sidecar: Evolver's Video Kinds stage writes
     /// `video.duration_seconds` as a JSON float beside `video.type`
-    /// (`evolver/util/video_type.py:timed`), so every clip that stage has
+    /// (`evolver/util/video_type.py:timed`), so every video that stage has
     /// measured would decode to nothing — no action, no weight, no flag.
     @Test func aNumberInTheVideoBlockCostsNeitherTheBlockNorTheSidecar() throws {
         let json = Data(#"""
         {"video": {"type": "short", "duration_seconds": 4.2, "seed": 12345,
-                   "action": "waving", "wrong_action": null, "clip": {"of": "x"}},
+                   "action": "waving", "wrong_action": null, "video": {"of": "x"}},
          "watch": {"completions": 3, "skips": 0, "locks": 1, "weight": 4.0},
          "favorite": true}
         """#.utf8)
@@ -129,7 +129,7 @@ extension WatchWeightsTests {
         // A null and a nested block name nothing a key is built from, and
         // stand for the empty string either way.
         #expect(sidecar.video?["wrong_action"] == nil)
-        #expect(sidecar.video?["clip"] == nil)
+        #expect(sidecar.video?["video"] == nil)
         #expect(sidecar.watchWeight == 4.0)
         #expect(sidecar.favorite)
     }
@@ -153,10 +153,10 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// Inclusion is the continuous version of marking a clip trash: a clip at or
+    /// Inclusion is the continuous version of marking a video trash: a video at or
     /// above neutral always makes the build, and one below it sits out in
     /// proportion to how far below it has fallen.
-    @Test func inclusionKeepsEveryNeutralOrLovedClipAndThinsTheRest() {
+    @Test func inclusionKeepsEveryNeutralOrLovedVideoAndThinsTheRest() {
         var rng = PlaylistSeededRNG(seed: 3)
         #expect((0..<100).allSatisfy { _ in Weighting.passesInclusion(weight: 1.0, rng: &rng) })
         #expect((0..<100).allSatisfy { _ in Weighting.passesInclusion(weight: 8.0, rng: &rng) })
@@ -168,11 +168,11 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// A shuffle reorders; it never gains or loses a clip — with equal weights
+    /// A shuffle reorders; it never gains or loses a video — with equal weights
     /// it is exactly a uniform shuffle of the same set.
     @Test func theWeightedShuffleKeepsEveryItemAndAcceptsAnEmptyList() {
         var rng = PlaylistSeededRNG(seed: 1)
-        let stems = (0..<10).map { "clip-\($0)" }
+        let stems = (0..<10).map { "video-\($0)" }
 
         let shuffled = Weighting.weightedShuffle(stems, weight: { _ in 1.0 }, rng: &rng)
 
@@ -182,14 +182,14 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// The point of the weighting: over many builds the loved clip is the one
+    /// The point of the weighting: over many builds the loved video is the one
     /// that opens the playlist far more often than the chronically skipped one.
     @Test func theWeightedShuffleFrontLoadsTheHeavierItem() {
         var rng = PlaylistSeededRNG(seed: 7)
-        let weights = ["clip-heavy": 8.0, "clip-light": 0.125]
+        let weights = ["video-heavy": 8.0, "video-light": 0.125]
 
         let heavyFirst = (0..<200).filter { _ in
-            Weighting.weightedShuffle(["clip-light", "clip-heavy"], weight: { weights[$0]! }, rng: &rng).first == "clip-heavy"
+            Weighting.weightedShuffle(["video-light", "video-heavy"], weight: { weights[$0]! }, rng: &rng).first == "video-heavy"
         }.count
 
         #expect(heavyFirst > 150)

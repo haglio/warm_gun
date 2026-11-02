@@ -5,13 +5,13 @@ import Testing
 /// The tracker is fed position samples and classifies what it sees, so every
 /// test here reads as a little playback session against a fixed clock.
 @Suite struct WatchTrackerTests {
-    static let one = "1_sorted/alpha/portrait/clip-one.mp4"
-    static let two = "1_sorted/beta/landscape/clip-two.mp4"
+    static let one = "1_sorted/alpha/portrait/video-one.mp4"
+    static let two = "1_sorted/beta/landscape/video-two.mp4"
     static let start = Date(timeIntervalSince1970: 1_000)
 
     /// Reaching the end and rolling on is a watch, however the roll-on happened:
-    /// the first sample of a clip only starts tracking it.
-    @Test func aClipWatchedToTheEndCountsACompletionWhenItDeparts() {
+    /// the first sample of a video only starts tracking it.
+    @Test func aVideoWatchedToTheEndCountsACompletionWhenItDeparts() {
         var tracker = WatchTracker()
         #expect(tracker.sample(path: Self.one, fraction: 0.1, now: Self.start).isEmpty)
         #expect(tracker.sample(path: Self.one, fraction: 0.9, now: Self.start + 4).isEmpty)
@@ -24,11 +24,11 @@ import Testing
 }
 
 extension WatchTrackerTests {
-    /// A locked clip never departs, so the only evidence it was watched is the
+    /// A locked video never departs, so the only evidence it was watched is the
     /// position jumping back to the top: a satellite has no seek control, so a
     /// big backward jump from near the end can only be a repeat-one wrap, and
     /// each wrap is one more full watch.
-    @Test func eachRepeatOneWrapOfAHeldClipCountsAnotherCompletion() {
+    @Test func eachRepeatOneWrapOfAHeldVideoCountsAnotherCompletion() {
         var tracker = WatchTracker()
         _ = tracker.sample(path: Self.one, fraction: 0.5, now: Self.start)
         #expect(tracker.sample(path: Self.one, fraction: 0.9, now: Self.start + 1).isEmpty)
@@ -45,9 +45,9 @@ extension WatchTrackerTests {
 }
 
 extension WatchTrackerTests {
-    /// A tap that jumps off a clip barely started is the one thing that counts
-    /// against it — the negative signal the shuffle thins clips out by.
-    @Test func aTapAwayFromAClipBarelyStartedCountsASkip() {
+    /// A tap that jumps off a video barely started is the one thing that counts
+    /// against it — the negative signal the shuffle thins videos out by.
+    @Test func aTapAwayFromAVideoBarelyStartedCountsASkip() {
         var tracker = WatchTracker()
         _ = tracker.sample(path: Self.one, fraction: 0.2, now: Self.start)
         tracker.noteUserNav(now: Self.start + 5)
@@ -60,8 +60,8 @@ extension WatchTrackerTests {
 }
 
 extension WatchTrackerTests {
-    /// A clip sent to Trash leaves the playlist mid-play, which looks exactly
-    /// like a skip and would otherwise punish a clip the viewer has already
+    /// A video sent to Trash leaves the playlist mid-play, which looks exactly
+    /// like a skip and would otherwise punish a video the viewer has already
     /// passed a harder judgement on. The discard swallows that one departure
     /// and nothing after it.
     @Test func aDiscardSwallowsOnlyTheDepartureItPrecedes() {
@@ -79,7 +79,7 @@ extension WatchTrackerTests {
 
 extension WatchTrackerTests {
     /// An early departure nobody asked for — the automatic advance after an
-    /// unlock, a clip that went away — must not punish the clip; and leaving
+    /// unlock, a video that went away — must not punish the video; and leaving
     /// late but unfinished is neither a watch nor a skip.
     @Test func aDepartureIsNeutralWithoutARecentTapOrPastTheSkipMark() {
         var tracker = WatchTracker()
@@ -94,8 +94,8 @@ extension WatchTrackerTests {
 }
 
 extension WatchTrackerTests {
-    @Test func backwardJitterOnTheSameClipIsNotAWrap() {
-        // Only a fall of more than half the clip reads as the loop starting
+    @Test func backwardJitterOnTheSameVideoIsNotAWrap() {
+        // Only a fall of more than half the video reads as the loop starting
         // over; scrubbing or stutter a few frames back must not count a play.
         var tracker = WatchTracker()
         _ = tracker.sample(path: Self.one, fraction: 0.90, now: Date(timeIntervalSince1970: 0))
@@ -103,7 +103,7 @@ extension WatchTrackerTests {
         #expect(events.isEmpty)
     }
 
-    @Test func aWrapOnAClipNeverWatchedThroughCountsNothing() {
+    @Test func aWrapOnAVideoNeverWatchedThroughCountsNothing() {
         // The loop restarting only speaks for a play when the run actually
         // reached the completion mark first.
         var tracker = WatchTracker()

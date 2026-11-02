@@ -1,20 +1,20 @@
 import Foundation
 
-/// How much each clip is owed in the draw, as the desktop stamped it.
+/// How much each video is owed in the draw, as the desktop stamped it.
 ///
 /// Evolver sums what Fun Time and Warm Gun each completed, skipped and locked,
 /// and writes the resulting weight onto every library video's metadata sidecar
 /// (`evolver/util/watch.py`). Both apps read that one number instead of each
 /// keeping a copy of the formula — so what the phone did on the road and what
-/// the desktop did at home move the same clip, and neither side can drift.
+/// the desktop did at home move the same video, and neither side can drift.
 ///
-/// A clip with no stamp weighs 1.0: a fresh clip, a clip whose sidecar has not
-/// reached the phone yet, and a clip the stage has not visited are all simply
+/// A video with no stamp weighs 1.0: a fresh video, a video whose sidecar has not
+/// reached the phone yet, and a video the stage has not visited are all simply
 /// without evidence, which is what neutral means.
 public struct WatchWeights: Equatable, Sendable {
     private let byPath: [String: Double]
 
-    /// No corpus is the honest state before the first fetch lands: every clip
+    /// No corpus is the honest state before the first fetch lands: every video
     /// weighs the same, so the draw is an ordinary uniform shuffle.
     public init(sidecars: [String: Sidecar] = [:]) {
         byPath = sidecars.compactMapValues { $0.watchWeight }
@@ -28,8 +28,8 @@ public struct WatchWeights: Equatable, Sendable {
 /// The two random primitives the shuffle is built from, kept apart from the
 /// weights so they can be reasoned about — and seeded — on their own.
 public enum Weighting {
-    /// Whether a clip of this weight makes the build at all. Neutral-or-loved
-    /// clips always play; a disliked one sits out in proportion to its weight,
+    /// Whether a video of this weight makes the build at all. Neutral-or-loved
+    /// videos always play; a disliked one sits out in proportion to its weight,
     /// which is the continuous form of the trash gesture's hard removal.
     public static func passesInclusion(weight: Double, rng: inout some RandomNumberGenerator) -> Bool {
         weight >= 1.0 || uniform(&rng) < weight

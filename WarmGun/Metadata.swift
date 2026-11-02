@@ -5,7 +5,7 @@ import os
 
 /// Fetches the sidecar corpus — one getzip per branch of the metadata mirror,
 /// with a one-file-at-a-time road when the server will not zip — and turns it
-/// into the clip-keyed dictionary the group index, the weights and the
+/// into the video-keyed dictionary the group index, the weights and the
 /// favorites are all read off. The zip walking lives in the Kit; only the raw
 /// DEFLATE step is here, because it needs Apple's Compression framework.
 enum MetadataFetcher {
@@ -20,7 +20,7 @@ enum MetadataFetcher {
     /// simply contributes nothing — the corpus is still worth having without
     /// it, and the alternative is one missing folder costing every weight.
     static func survey(client: PCloudClient, libraryPath: String, genauFlicksFolder: String?,
-                       clipPaths: [String]) async -> MirrorSurvey {
+                       videoPaths: [String]) async -> MirrorSurvey {
         var branches: [SurveyedBranch] = []
         for branch in LibraryPaths.MetadataBranch.allCases {
             guard let path = branch.path(forLibrary: libraryPath, genauFlicksFolder: genauFlicksFolder) else {
@@ -34,17 +34,17 @@ enum MetadataFetcher {
                 log.error("\(String(describing: branch)) branch would not list: \(error.localizedDescription)")
                 continue
             }
-            let index = SidecarIndex(branch: branch, clipPaths: clipPaths,
+            let index = SidecarIndex(branch: branch, videoPaths: videoPaths,
                                      listing: files.map(\.path))
-            log.notice("\(String(describing: branch)) branch: \(files.count) files listed, \(index.clipsByListedSidecar.count) speak for a clip")
-            guard !index.clipsByListedSidecar.isEmpty else { continue }
+            log.notice("\(String(describing: branch)) branch: \(files.count) files listed, \(index.videosByListedSidecar.count) speak for a video")
+            guard !index.videosByListedSidecar.isEmpty else { continue }
             branches.append(SurveyedBranch(path: path, files: files, index: index))
         }
         return MirrorSurvey(branches: branches)
     }
 
     /// Every sidecar the surveyed branches hold, keyed by the catalog path of
-    /// the clip it speaks for. A branch that fails outright is skipped rather
+    /// the video it speaks for. A branch that fails outright is skipped rather
     /// than failing the whole corpus.
     static func fetchSidecars(client: PCloudClient, branches: [SurveyedBranch]) async -> [String: Sidecar] {
         var sidecars: [String: Sidecar] = [:]
@@ -59,7 +59,7 @@ enum MetadataFetcher {
                 // road.
                 log.error("\(branch.path, privacy: .private): zip failed (\(error.localizedDescription)), fetching singly")
                 fetched = await fetchSingly(client: client, branch: branch)
-                log.notice("\(branch.path, privacy: .private): \(fetched.count) of \(branch.index.clipsByListedSidecar.count) sidecars singly")
+                log.notice("\(branch.path, privacy: .private): \(fetched.count) of \(branch.index.videosByListedSidecar.count) sidecars singly")
             }
             sidecars.merge(fetched) { _, new in new }
         }
@@ -78,16 +78,16 @@ enum MetadataFetcher {
         let decoder = JSONDecoder()
         var sidecars: [String: Sidecar] = [:]
         for entry in try ZipArchive.entries(in: body, inflate: inflate) {
-            guard let clip = branch.index.clip(forZipEntry: entry.name),
+            guard let video = branch.index.video(forZipEntry: entry.name),
                   let sidecar = try? decoder.decode(Sidecar.self, from: entry.data) else { continue }
-            sidecars[clip] = sidecar
+            sidecars[video] = sidecar
         }
         return sidecars
     }
 
-    /// The slow road: only the sidecars that speak for a clip, six at a time.
+    /// The slow road: only the sidecars that speak for a video, six at a time.
     private static func fetchSingly(client: PCloudClient, branch: SurveyedBranch) async -> [String: Sidecar] {
-        let wanted = branch.index.clipsByListedSidecar
+        let wanted = branch.index.videosByListedSidecar
         let files = branch.files.filter { wanted[$0.path] != nil }
         let decoder = JSONDecoder()
         var sidecars: [String: Sidecar] = [:]
@@ -109,9 +109,9 @@ enum MetadataFetcher {
             while inFlight > 0 {
                 guard let result = await group.next() else { break }
                 inFlight -= 1
-                if let (path, data) = result, let clip = wanted[path],
+                if let (path, data) = result, let video = wanted[path],
                    let sidecar = try? decoder.decode(Sidecar.self, from: data) {
-                    sidecars[clip] = sidecar
+                    sidecars[video] = sidecar
                 }
                 addNext(&group)
             }

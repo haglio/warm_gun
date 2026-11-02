@@ -1,7 +1,7 @@
 {
   "prose_lines": {
     "WarmGun/AppModel.swift": 185,
-    "WarmGun/ClipCache.swift": 12,
+    "WarmGun/VideoCache.swift": 12,
     "WarmGun/Keychain.swift": 7,
     "WarmGun/Metadata.swift": 23,
     "WarmGun/PCloudClient.swift": 23,

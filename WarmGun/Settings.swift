@@ -9,7 +9,7 @@ struct Settings: Codable, Equatable {
     var libraryPath = ""
     var syncFolder = "/WarmGun"
     var filters = Filters(shape: Platform.defaultShape)
-    var loopClip = false
+    var loopVideo = false
     var cacheCapMB = 2048
     var prefetchAhead = 12
     // Named for the direction it looks, in the spelling already written into
@@ -20,8 +20,9 @@ struct Settings: Codable, Equatable {
     var moveToTrashInCloud = true
 
     private enum CodingKeys: String, CodingKey {
-        case apiHost, username, libraryPath, syncFolder, loopClip, cacheCapMB, prefetchAhead, prefetchBehind
+        case apiHost, username, libraryPath, syncFolder, cacheCapMB, prefetchAhead, prefetchBehind
         case filters = "browse"
+        case loopVideo = "loopClip"
         case moveToTrashInCloud = "moveWeirdInCloud"
     }
 

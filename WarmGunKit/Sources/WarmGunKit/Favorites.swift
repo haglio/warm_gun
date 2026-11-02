@@ -1,7 +1,7 @@
 import Foundation
 
-/// The clips held onto, each under the key its lane is filed by
-/// (`LibraryPaths.favoriteKey`): a generated clip's stem, which is the one name
+/// The videos held onto, each under the key its lane is filed by
+/// (`LibraryPaths.favoriteKey`): a generated video's stem, which is the one name
 /// the desktop's `favs.csv` and this store can both say, and the whole path for
 /// a Genau flick or a real scene, where nothing promises two files do not share
 /// a name. Every lane can be held, which is what lets the flag the desktop
@@ -36,30 +36,30 @@ public struct Favorites: Codable, Equatable, Sendable {
     }
 
     public func contains(path: String) -> Bool {
-        guard let key = LibraryPaths.favoriteKey(forClip: path) else { return false }
+        guard let key = LibraryPaths.favoriteKey(forVideo: path) else { return false }
         return held.contains(key)
     }
 
     /// True when this tap actually added something, which is what the journal
-    /// records: locking an already-favorited clip is not a second favorite.
+    /// records: locking an already-favorited video is not a second favorite.
     public mutating func insert(path: String) -> Bool {
-        guard let key = LibraryPaths.favoriteKey(forClip: path) else { return false }
+        guard let key = LibraryPaths.favoriteKey(forVideo: path) else { return false }
         // Holding it again settles the question: a refusal made before says
         // nothing about the choice just made.
         released.remove(key)
         return held.insert(key).inserted
     }
 
-    /// True when the clip really was a favorite until now — what the trash
+    /// True when the video really was a favorite until now — what the trash
     /// gesture's first step reads to know whether it demoted or dropped.
     public mutating func remove(path: String) -> Bool {
-        guard let key = LibraryPaths.favoriteKey(forClip: path) else { return false }
+        guard let key = LibraryPaths.favoriteKey(forVideo: path) else { return false }
         released.insert(key)
         return held.remove(key) != nil
     }
 
     /// Keys named the way Genau's flicks folder named a flick before it split
-    /// into 2D and VR, carried to where the clip is now
+    /// into 2D and VR, carried to where the video is now
     /// (`LibraryPaths.rekeyedFlatGenau`), so the split costs no favorites.
     public mutating func rekeyFlatGenau(against current: Set<String>) {
         held = LibraryPaths.rekeyedFlatGenau(held, against: current)
@@ -90,7 +90,7 @@ public struct Favorites: Codable, Equatable, Sendable {
 /// with its inner quotes doubled. Warm Gun only ever reads one — dropped into the
 /// pCloud folder it syncs through — and only for the stems.
 public enum FavsCSV {
-    /// Every generated clip the file names. The formula's *second* argument is
+    /// Every generated video the file names. The formula's *second* argument is
     /// the one read, exactly as `random_favs_browser.py` reads it: it is the
     /// plain Windows path, where the first is a percent-encoded `file://` URI.
     ///
@@ -99,7 +99,7 @@ public enum FavsCSV {
     /// but those are filed under their library-relative path, which a Windows
     /// absolute path cannot be turned into without knowing where the library
     /// root sits on that machine. They arrive by the other road instead: the
-    /// flag Evolver stamps on their sidecars, which is keyed by the clip.
+    /// flag Evolver stamps on their sidecars, which is keyed by the video.
     public static func keys(in text: String) -> Set<String> {
         var keys: Set<String> = []
         // A byte-order mark is part of the first line, not of the first cell, so

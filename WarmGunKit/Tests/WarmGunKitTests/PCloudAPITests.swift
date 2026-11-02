@@ -53,7 +53,7 @@ extension PCloudAPITests {
         #expect(request.query == [
             URLQueryItem(name: "path", value: "/lib/AI"),
             // One recursive call is the whole index: it also carries each
-            // clip's size, duration, codec and dimensions, so nothing is probed.
+            // video's size, duration, codec and dimensions, so nothing is probed.
             URLQueryItem(name: "recursive", value: "1"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
@@ -133,37 +133,37 @@ extension PCloudAPITests {
         // choose from and a path that is only valid on one of them.
         let json = Data("""
         {"result": 0, "dwltag": "7Qm2vXpLrK", "hash": 4471209983314, "size": 2295611,
-         "expires": 1787654400, "path": "/cBZ7q0Zwarmgun0ZclipOneZ/clip-one.mp4",
+         "expires": 1787654400, "path": "/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4",
          "hosts": ["edef1.pcloud.com", "c210.pcloud.com"]}
         """.utf8)
         let response = try PCloudAPI.decode(FileLinkResponse.self, from: json)
         #expect(response.hosts == ["edef1.pcloud.com", "c210.pcloud.com"])
-        #expect(response.path == "/cBZ7q0Zwarmgun0ZclipOneZ/clip-one.mp4")
+        #expect(response.path == "/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4")
         // timeformat=timestamp, so the expiry arrives as plain unix seconds.
         #expect(response.expires == Date(timeIntervalSince1970: 1_787_654_400))
-        #expect(response.url == URL(string: "https://edef1.pcloud.com/cBZ7q0Zwarmgun0ZclipOneZ/clip-one.mp4"))
+        #expect(response.url == URL(string: "https://edef1.pcloud.com/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4"))
     }
 }
 
 extension PCloudAPITests {
     /// One recursive `listfolder` body, shaped the way the library is: sources
-    /// under the root, shapes under each source, clips under those, with
+    /// under the root, shapes under each source, videos under those, with
     /// a stray non-video sitting where the sorter left it.
     static let listing = Data("""
     {"result": 0, "metadata": {"name": "AI", "isfolder": true, "folderid": 10100, "contents": [
       {"name": "alpha", "isfolder": true, "folderid": 10101, "contents": [
         {"name": "portrait", "isfolder": true, "folderid": 10102, "contents": [
-          {"name": "clip-one.mp4", "isfolder": false, "fileid": 90210, "size": 2295611,
+          {"name": "video-one.mp4", "isfolder": false, "fileid": 90210, "size": 2295611,
            "modified": 1723456789, "contenttype": "video/mp4", "category": 2,
            "duration": "5.03", "videocodec": "h264", "width": 720, "height": 1280},
-          {"name": "clip-two.mp4", "isfolder": false, "fileid": 90211, "size": 1884210,
+          {"name": "video-two.mp4", "isfolder": false, "fileid": 90211, "size": 1884210,
            "modified": 1723456999, "contenttype": "video/mp4", "category": 2,
            "videocodec": "h264", "width": 720, "height": 1280}
         ]}
       ]},
       {"name": "beta", "isfolder": true, "folderid": 10103, "contents": [
         {"name": "landscape", "isfolder": true, "folderid": 10104, "contents": [
-          {"name": "clip-three.mp4", "isfolder": false, "fileid": 90212, "size": 3120044,
+          {"name": "video-three.mp4", "isfolder": false, "fileid": 90212, "size": 3120044,
            "modified": 1723457400, "contenttype": "video/mp4", "category": 2,
            "duration": "9.5", "videocodec": "hevc", "width": 1920, "height": 1080}
         ]}
@@ -182,21 +182,21 @@ extension PCloudAPITests {
         #expect(root.fileid == nil)
         #expect(root.contents?.count == 3)
 
-        let clip = try #require(root.contents?.first?.contents?.first?.contents?.first)
-        #expect(clip.name == "clip-one.mp4")
-        #expect(!clip.isfolder)
-        #expect(clip.fileid == 90_210)
-        #expect(clip.size == 2_295_611)
-        #expect(clip.modified == Date(timeIntervalSince1970: 1_723_456_789))
+        let video = try #require(root.contents?.first?.contents?.first?.contents?.first)
+        #expect(video.name == "video-one.mp4")
+        #expect(!video.isfolder)
+        #expect(video.fileid == 90_210)
+        #expect(video.size == 2_295_611)
+        #expect(video.modified == Date(timeIntervalSince1970: 1_723_456_789))
         // pCloud quotes the duration — "5.03", not 5.03 — which a plain
         // `Double?` would reject outright and take the whole listing down with it.
-        #expect(clip.duration == 5.03)
-        #expect(clip.videocodec == "h264")
-        #expect(clip.width == 720)
-        #expect(clip.height == 1280)
+        #expect(video.duration == 5.03)
+        #expect(video.videocodec == "h264")
+        #expect(video.width == 720)
+        #expect(video.height == 1280)
 
         // No duration on this one: pCloud omits the field for anything it did
-        // not manage to probe, and that is not a reason to drop the clip.
+        // not manage to probe, and that is not a reason to drop the video.
         let second = try #require(root.contents?.first?.contents?.first?.contents?.last)
         #expect(second.duration == nil)
     }
@@ -210,12 +210,12 @@ extension PCloudAPITests {
         // folder that was listed — the root's own name is not part of any path,
         // because the library root is a setting and the paths outlive it.
         #expect(files.map(\.path) == [
-            "alpha/portrait/clip-one.mp4",
-            "alpha/portrait/clip-two.mp4",
-            "beta/landscape/clip-three.mp4",
+            "alpha/portrait/video-one.mp4",
+            "alpha/portrait/video-two.mp4",
+            "beta/landscape/video-three.mp4",
             "sorter-notes.txt",
         ])
-        #expect(files.first == LibraryFile(path: "alpha/portrait/clip-one.mp4",
+        #expect(files.first == LibraryFile(path: "alpha/portrait/video-one.mp4",
                                            fileID: 90_210,
                                            size: 2_295_611,
                                            modified: Date(timeIntervalSince1970: 1_723_456_789),
@@ -230,15 +230,15 @@ extension PCloudAPITests {
     @Test func leavesOutWhatCannotBeFetchedAndDatesTheUndatedToTheDawnOfTime() {
         let root = PCloudEntry(name: "AI", isfolder: true, folderid: 10100, contents: [
             PCloudEntry(name: "gamma", isfolder: true, folderid: 10105, contents: [
-                PCloudEntry(name: "clip-four.mp4", isfolder: false, size: 1_000_000),
-                PCloudEntry(name: "clip-five.mp4", isfolder: false, fileid: 90_214),
-                PCloudEntry(name: "clip-six.mp4", isfolder: false, fileid: 90_215, size: 2_000_000),
+                PCloudEntry(name: "video-four.mp4", isfolder: false, size: 1_000_000),
+                PCloudEntry(name: "video-five.mp4", isfolder: false, fileid: 90_214),
+                PCloudEntry(name: "video-six.mp4", isfolder: false, fileid: 90_215, size: 2_000_000),
             ]),
             PCloudEntry(name: "delta", isfolder: true, folderid: 10106),
         ])
         // Without an id there is nothing to ask pCloud for, and without a size
         // the cache cannot budget for it, so neither is a library file.
-        #expect(root.flattenedFiles().map(\.path) == ["gamma/clip-six.mp4"])
+        #expect(root.flattenedFiles().map(\.path) == ["gamma/video-six.mp4"])
         // Undated sorts oldest under "Latest" instead of leading it.
         #expect(root.flattenedFiles().first?.modified == Date.distantPast)
     }
@@ -248,7 +248,7 @@ extension PCloudAPITests {
     @Test func hasNoURLToOfferWhenTheLinkCameBackWithoutAHost() {
         // The downloader treats a missing URL as "ask for the link again",
         // which is why this is nil rather than a URL that would 404 on fetch.
-        let response = FileLinkResponse(hosts: [], path: "/cBZ7q0Zwarmgun0ZclipOneZ/clip-one.mp4",
+        let response = FileLinkResponse(hosts: [], path: "/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4",
                                         expires: Date(timeIntervalSince1970: 1_787_654_400))
         #expect(response.url == nil)
     }
@@ -283,11 +283,11 @@ extension PCloudAPITests {
         // configuration: read with a plain JSONDecoder (a cache replay, a test,
         // a future helper), the same integer must not silently land in 2057.
         let link = try JSONDecoder().decode(FileLinkResponse.self, from: Data(
-            #"{"hosts":["cdn.example.test"],"path":"/a/clip-one.mp4","expires":1787654400}"#.utf8))
+            #"{"hosts":["cdn.example.test"],"path":"/a/video-one.mp4","expires":1787654400}"#.utf8))
         #expect(link.expires == Date(timeIntervalSince1970: 1_787_654_400))
 
         let entry = try JSONDecoder().decode(PCloudEntry.self, from: Data(
-            #"{"name":"clip-one.mp4","isfolder":false,"modified":1700000000}"#.utf8))
+            #"{"name":"video-one.mp4","isfolder":false,"modified":1700000000}"#.utf8))
         #expect(entry.modified == Date(timeIntervalSince1970: 1_700_000_000))
     }
 }
@@ -298,8 +298,8 @@ extension PCloudAPITests {
         // default RFC-1123 strings — so the parameter rides on every request,
         // not just the ones whose responses carry dates today.
         let requests = [
-            PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4",
-                                 toPath: "/lib/2_outbox/trash/clip-one_topaz.mp4", auth: "t"),
+            PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4",
+                                 toPath: "/lib/2_outbox/trash/video-one_topaz.mp4", auth: "t"),
             PCloudAPI.createFolderIfNotExists(path: "/Sync", auth: "t"),
             PCloudAPI.uploadFile(folderPath: "/Sync", filename: "journal.jsonl", auth: "t"),
         ]
@@ -312,9 +312,9 @@ extension PCloudAPITests {
     @Test func aDownloadPathWithAQueryDelimiterSurvivesIntoTheURL() {
         // A raw "#" or "?" in the path must not be read as a fragment or query
         // and silently truncate the download URL into a 404.
-        let link = FileLinkResponse(hosts: ["cdn.example.test"], path: "/a/clip#one?.mp4",
+        let link = FileLinkResponse(hosts: ["cdn.example.test"], path: "/a/video#one?.mp4",
                                     expires: Date(timeIntervalSince1970: 1))
-        #expect(link.url?.absoluteString == "https://cdn.example.test/a/clip%23one%3F.mp4")
+        #expect(link.url?.absoluteString == "https://cdn.example.test/a/video%23one%3F.mp4")
     }
 
     @Test func durationReadsFromANumberAndRefusesTheUnreadable() throws {
@@ -322,14 +322,14 @@ extension PCloudAPITests {
         // string (already covered), and the unreadable shapes — which must read
         // as absent, never sink the listing.
         let number = try PCloudAPI.decode(PCloudEntry.self, from: Data(
-            #"{"result":0,"name":"clip-one.mp4","isfolder":false,"duration":5}"#.utf8))
+            #"{"result":0,"name":"video-one.mp4","isfolder":false,"duration":5}"#.utf8))
         #expect(number.duration == 5.0)
         for bad in [#""abc""#, #""""#, "null", "true"] {
             // Built as one string: the pieces were `Data(...)`s added together,
             // which the compiler resolved here and not on the CI runner (it
             // read the first as a `String.UTF8View` and asked it to be
             // range-replaceable). One literal cannot be read two ways.
-            let body = #"{"result":0,"name":"clip-one.mp4","isfolder":false,"duration":"# + bad + "}"
+            let body = #"{"result":0,"name":"video-one.mp4","isfolder":false,"duration":"# + bad + "}"
             let entry = try PCloudAPI.decode(PCloudEntry.self, from: Data(body.utf8))
             #expect(entry.duration == nil, "duration \(bad) should read as absent")
         }
@@ -341,13 +341,13 @@ extension PCloudAPITests {
         // The trash gesture on the wire: the index keeps no id for an upscale,
         // so it is named by path, and `topath` carries the filename, so the
         // move and the rename are one call.
-        let request = PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4",
-                                           toPath: "/lib/2_outbox/trash/clip-one_topaz.mp4",
+        let request = PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4",
+                                           toPath: "/lib/2_outbox/trash/video-one_topaz.mp4",
                                            auth: "token-abc")
         #expect(request.method == "renamefile")
         #expect(request.query == [
-            URLQueryItem(name: "path", value: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4"),
-            URLQueryItem(name: "topath", value: "/lib/2_outbox/trash/clip-one_topaz.mp4"),
+            URLQueryItem(name: "path", value: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4"),
+            URLQueryItem(name: "topath", value: "/lib/2_outbox/trash/video-one_topaz.mp4"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])

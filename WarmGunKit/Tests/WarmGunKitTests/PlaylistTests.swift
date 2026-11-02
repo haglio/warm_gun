@@ -26,13 +26,13 @@ import Testing
 extension PlaylistTests {
     /// The shape picks a whole library, not a subset of one: the
     /// two shapes never mix on screen, and the folder is the authority
-    /// because 21 clips in the library are square.
+    /// because 21 videos in the library are square.
     @Test func onlyTheChosenOrientationEverPlays() {
         var rng = PlaylistSeededRNG(seed: 1)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
-            Self.file("1_sorted/beta/landscape/clip-two.mp4"),
-            Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-one.mp4"),
+            Self.file("1_sorted/beta/landscape/video-two.mp4"),
+            Self.file("1_sorted/gamma/portrait/video-three.mp4"),
         ])
 
         let portrait = PlaylistBuilder.build(catalog: catalog, options: Filters(shape: .portrait),
@@ -40,131 +40,131 @@ extension PlaylistTests {
         let landscape = PlaylistBuilder.build(catalog: catalog, options: Filters(shape: .landscape),
                                               favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
 
-        #expect(portrait.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/gamma/portrait/clip-three.mp4"])
-        #expect(landscape == ["1_sorted/beta/landscape/clip-two.mp4"])
+        #expect(portrait.sorted() == ["1_sorted/alpha/portrait/video-one.mp4", "1_sorted/gamma/portrait/video-three.mp4"])
+        #expect(landscape == ["1_sorted/beta/landscape/video-two.mp4"])
     }
 }
 
 extension PlaylistTests {
     /// A trash mark is the hard removal the weighting is the soft version of:
-    /// the clip is gone from every later build, not merely made rarer, and it
+    /// the video is gone from every later build, not merely made rarer, and it
     /// stays gone until the next index refresh drops it from the catalog too.
-    @Test func aClipMarkedTrashNeverComesBack() {
+    @Test func aVideoMarkedTrashNeverComesBack() {
         var rng = PlaylistSeededRNG(seed: 2)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
-            Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-one.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-two.mp4"),
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
-                                             trash: ["1_sorted/alpha/portrait/clip-two.mp4"],
+                                             trash: ["1_sorted/alpha/portrait/video-two.mp4"],
                                              weights: WatchWeights(), rng: &rng)
 
-        #expect(playlist == ["1_sorted/alpha/portrait/clip-one.mp4"])
+        #expect(playlist == ["1_sorted/alpha/portrait/video-one.mp4"])
     }
 }
 
 extension PlaylistTests {
     /// A handful of legacy HEVC upscales sit in the originals tree at hundreds
-    /// of megabytes each, and the phone fetches a clip whole before it plays —
+    /// of megabytes each, and the phone fetches a video whole before it plays —
     /// so a file over the cap is minutes of black screen and is left out.
     /// A file exactly at the cap still plays: the cap is what is allowed.
-    @Test func aClipOverTheSizeCapIsLeftOutAndOneExactlyAtItPlays() {
+    @Test func aVideoOverTheSizeCapIsLeftOutAndOneExactlyAtItPlays() {
         var rng = PlaylistSeededRNG(seed: 3)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-one.mp4", size: 2_000_000),
-            Self.file("1_sorted/alpha/portrait/clip-two.mp4", size: 25_000_001),
-            Self.file("1_sorted/alpha/portrait/clip-three.mp4", size: 25_000_000),
+            Self.file("1_sorted/alpha/portrait/video-one.mp4", size: 2_000_000),
+            Self.file("1_sorted/alpha/portrait/video-two.mp4", size: 25_000_001),
+            Self.file("1_sorted/alpha/portrait/video-three.mp4", size: 25_000_000),
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
                                              trash: [], weights: WatchWeights(), rng: &rng)
 
-        #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-three.mp4"])
+        #expect(playlist.sorted() == ["1_sorted/alpha/portrait/video-one.mp4", "1_sorted/alpha/portrait/video-three.mp4"])
     }
 }
 
 extension PlaylistTests {
     /// F-mode shows the favorites alone. Favorites are held by stem, not by
     /// path, because that is all the desktop's `favs.csv` carries — and stems
-    /// are unique library-wide, so the stem names the clip exactly.
+    /// are unique library-wide, so the stem names the video exactly.
     @Test func fModeShowsOnlyTheFavoritesAndKnowsThemByStem() {
         var rng = PlaylistSeededRNG(seed: 4)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
-            Self.file("1_sorted/beta/portrait/clip-two.mp4"),
-            Self.file("1_sorted/gamma/portrait/clip-three.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-one.mp4"),
+            Self.file("1_sorted/beta/portrait/video-two.mp4"),
+            Self.file("1_sorted/gamma/portrait/video-three.mp4"),
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(favoritesOnly: true),
-                                             favoriteKeys: ["clip-two", "clip-absent"], trash: [],
+                                             favoriteKeys: ["video-two", "video-absent"], trash: [],
                                              weights: WatchWeights(), rng: &rng)
 
-        #expect(playlist == ["1_sorted/beta/portrait/clip-two.mp4"])
+        #expect(playlist == ["1_sorted/beta/portrait/video-two.mp4"])
     }
 }
 
 extension PlaylistTests {
-    /// Shorts is a length filter, and a clip whose duration the listing never
+    /// Shorts is a length filter, and a video whose duration the listing never
     /// reported cannot be shown to be short — so it sits the build out, the
     /// same way the Main Funestra's length filter drops what it cannot measure rather than
     /// guessing. The bound is inclusive.
-    @Test func shortsKeepsClipsUpToTheBoundAndJudgesUnknownLengthBySize() {
+    @Test func shortsKeepsVideosUpToTheBoundAndJudgesUnknownLengthBySize() {
         var rng = PlaylistSeededRNG(seed: 5)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-one.mp4", seconds: 4.0),
-            Self.file("1_sorted/alpha/portrait/clip-two.mp4", seconds: 10.0),
-            Self.file("1_sorted/alpha/portrait/clip-three.mp4", seconds: 10.5),
+            Self.file("1_sorted/alpha/portrait/video-one.mp4", seconds: 4.0),
+            Self.file("1_sorted/alpha/portrait/video-two.mp4", seconds: 10.0),
+            Self.file("1_sorted/alpha/portrait/video-three.mp4", seconds: 10.5),
             // Unknown length: the size stands in — a big file reads full length.
-            Self.file("1_sorted/alpha/portrait/clip-four.mp4", size: 20_000_000, seconds: nil),
+            Self.file("1_sorted/alpha/portrait/video-four.mp4", size: 20_000_000, seconds: nil),
         ])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(types: [.short]),
                                              favoriteKeys: [], trash: [], weights: WatchWeights(), rng: &rng)
 
-        #expect(playlist.sorted() == ["1_sorted/alpha/portrait/clip-one.mp4", "1_sorted/alpha/portrait/clip-two.mp4"])
+        #expect(playlist.sorted() == ["1_sorted/alpha/portrait/video-one.mp4", "1_sorted/alpha/portrait/video-two.mp4"])
     }
 }
 
 extension PlaylistTests {
     /// Latest is a review order: newest first, and deliberately unweighted, so a
-    /// clip that has been skipped away from a dozen times still surfaces when it
-    /// is new. Clips filed in the same second fall back to their path, so the
+    /// video that has been skipped away from a dozen times still surfaces when it
+    /// is new. Videos filed in the same second fall back to their path, so the
     /// order is one order and not whatever the index happened to hold.
     @Test func latestIsNewestFirstTiedOnPathAndCarriesNoWeighting() {
         var rng = PlaylistSeededRNG(seed: 6)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-old.mp4", modifiedAt: 1_000),
-            Self.file("1_sorted/gamma/portrait/clip-tied-b.mp4", modifiedAt: 2_000),
-            Self.file("1_sorted/beta/portrait/clip-tied-a.mp4", modifiedAt: 2_000),
-            Self.file("1_sorted/alpha/portrait/clip-new.mp4", modifiedAt: 3_000),
+            Self.file("1_sorted/alpha/portrait/video-old.mp4", modifiedAt: 1_000),
+            Self.file("1_sorted/gamma/portrait/video-tied-b.mp4", modifiedAt: 2_000),
+            Self.file("1_sorted/beta/portrait/video-tied-a.mp4", modifiedAt: 2_000),
+            Self.file("1_sorted/alpha/portrait/video-new.mp4", modifiedAt: 3_000),
         ])
-        let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/clip-new.mp4":
+        let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/video-new.mp4":
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125))])
 
         let playlist = PlaylistBuilder.build(catalog: catalog, options: Filters(latest: true),
                                              favoriteKeys: [], trash: [], weights: weights, rng: &rng)
 
         #expect(playlist == [
-            "1_sorted/alpha/portrait/clip-new.mp4",
-            "1_sorted/beta/portrait/clip-tied-a.mp4",
-            "1_sorted/gamma/portrait/clip-tied-b.mp4",
-            "1_sorted/alpha/portrait/clip-old.mp4",
+            "1_sorted/alpha/portrait/video-new.mp4",
+            "1_sorted/beta/portrait/video-tied-a.mp4",
+            "1_sorted/gamma/portrait/video-tied-b.mp4",
+            "1_sorted/alpha/portrait/video-old.mp4",
         ])
     }
 }
 
 extension PlaylistTests {
-    /// Shuffle thins rather than removes: a clip skipped away from again and
+    /// Shuffle thins rather than removes: a video skipped away from again and
     /// again sits most builds out — the soft counterpart of the trash gesture —
-    /// while a clip at neutral weight or above is in every single build.
-    @Test func shuffleLeavesAChronicallySkippedClipOutOfMostBuilds() {
+    /// while a video at neutral weight or above is in every single build.
+    @Test func shuffleLeavesAChronicallySkippedVideoOutOfMostBuilds() {
         var rng = PlaylistSeededRNG(seed: 8)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-one.mp4"),
-            Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-one.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-two.mp4"),
         ])
-        let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/clip-two.mp4":
+        let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/video-two.mp4":
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 0.125))])
 
         let builds = (0..<200).map { _ in
@@ -172,8 +172,8 @@ extension PlaylistTests {
                                   trash: [], weights: weights, rng: &rng)
         }
 
-        #expect(builds.allSatisfy { $0.contains("1_sorted/alpha/portrait/clip-one.mp4") })
-        let skipped = builds.filter { $0.contains("1_sorted/alpha/portrait/clip-two.mp4") }.count
+        #expect(builds.allSatisfy { $0.contains("1_sorted/alpha/portrait/video-one.mp4") })
+        let skipped = builds.filter { $0.contains("1_sorted/alpha/portrait/video-two.mp4") }.count
         #expect(skipped > 5 && skipped < 60)
     }
 }
@@ -183,7 +183,7 @@ extension PlaylistTests {
     /// run is knowable in advance: one seed is one playlist, every time. It is
     /// still a shuffle — another seed gives another order.
     @Test func oneSeedAlwaysBuildsTheSamePlaylistAndAnotherSeedDoesNot() {
-        let catalog = Catalog(files: (0..<24).map { Self.file("1_sorted/alpha/portrait/clip-\($0).mp4") })
+        let catalog = Catalog(files: (0..<24).map { Self.file("1_sorted/alpha/portrait/video-\($0).mp4") })
         func build(seed: UInt64) -> [String] {
             var rng = PlaylistSeededRNG(seed: seed)
             return PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
@@ -192,56 +192,56 @@ extension PlaylistTests {
 
         #expect(build(seed: 11) == build(seed: 11))
         #expect(build(seed: 11) != build(seed: 12))
-        #expect(build(seed: 11).sorted() == catalog.clips.map(\.path).sorted())
-        #expect(build(seed: 11) != catalog.clips.map(\.path))
+        #expect(build(seed: 11).sorted() == catalog.videos.map(\.path).sorted())
+        #expect(build(seed: 11) != catalog.videos.map(\.path))
     }
 }
 
 extension PlaylistTests {
-    /// Every switch narrows the same list, so with them all on only a clip that
+    /// Every switch narrows the same list, so with them all on only a video that
     /// clears all five plays. Each of the others here fails exactly one test,
-    /// which is what makes relaxing one switch bring back exactly one clip.
+    /// which is what makes relaxing one switch bring back exactly one video.
     @Test func theFiltersCompose() {
         var rng = PlaylistSeededRNG(seed: 9)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/landscape/clip-one.mp4"),
-            Self.file("1_sorted/alpha/portrait/clip-two.mp4"),
-            Self.file("1_sorted/beta/portrait/clip-three.mp4", size: 30_000_000),
-            Self.file("1_sorted/beta/portrait/clip-four.mp4"),
-            Self.file("1_sorted/gamma/portrait/clip-five.mp4", seconds: 30.0),
-            Self.file("1_sorted/gamma/portrait/clip-six.mp4", seconds: 6.0),
+            Self.file("1_sorted/alpha/landscape/video-one.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-two.mp4"),
+            Self.file("1_sorted/beta/portrait/video-three.mp4", size: 30_000_000),
+            Self.file("1_sorted/beta/portrait/video-four.mp4"),
+            Self.file("1_sorted/gamma/portrait/video-five.mp4", seconds: 30.0),
+            Self.file("1_sorted/gamma/portrait/video-six.mp4", seconds: 6.0),
         ])
-        let favorites: Set<String> = ["clip-one", "clip-two", "clip-three", "clip-five", "clip-six"]
+        let favorites: Set<String> = ["video-one", "video-two", "video-three", "video-five", "video-six"]
         var options = Filters(shape: .portrait, favoritesOnly: true, types: [.short])
 
         let strict = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: favorites,
-                                           trash: ["1_sorted/alpha/portrait/clip-two.mp4"],
+                                           trash: ["1_sorted/alpha/portrait/video-two.mp4"],
                                            weights: WatchWeights(), rng: &rng)
-        #expect(strict == ["1_sorted/gamma/portrait/clip-six.mp4"])
+        #expect(strict == ["1_sorted/gamma/portrait/video-six.mp4"])
 
         options.favoritesOnly = false
         let relaxed = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: favorites,
-                                            trash: ["1_sorted/alpha/portrait/clip-two.mp4"],
+                                            trash: ["1_sorted/alpha/portrait/video-two.mp4"],
                                             weights: WatchWeights(), rng: &rng)
-        #expect(relaxed.sorted() == ["1_sorted/beta/portrait/clip-four.mp4", "1_sorted/gamma/portrait/clip-six.mp4"])
+        #expect(relaxed.sorted() == ["1_sorted/beta/portrait/video-four.mp4", "1_sorted/gamma/portrait/video-six.mp4"])
     }
 }
 
 extension PlaylistTests {
     /// The counts have to reach the ordering, not only the inclusion draw:
-    /// a loved clip is what the run opens on, most of the time.
-    @Test func aLovedClipOpensTheRunFarMoreOftenThanANeutralOne() {
+    /// a loved video is what the run opens on, most of the time.
+    @Test func aLovedVideoOpensTheRunFarMoreOftenThanANeutralOne() {
         var rng = PlaylistSeededRNG(seed: 10)
         let catalog = Catalog(files: [
-            Self.file("1_sorted/alpha/portrait/clip-plain.mp4"),
-            Self.file("1_sorted/alpha/portrait/clip-loved.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-plain.mp4"),
+            Self.file("1_sorted/alpha/portrait/video-loved.mp4"),
         ])
-        let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/clip-loved.mp4":
+        let weights = WatchWeights(sidecars: ["1_sorted/alpha/portrait/video-loved.mp4":
             Sidecar(video: nil, sourceImage: nil, watch: Sidecar.Watch(weight: 8.0))])
 
         let lovedFirst = (0..<200).filter { _ in
             PlaylistBuilder.build(catalog: catalog, options: Filters(), favoriteKeys: [],
-                                  trash: [], weights: weights, rng: &rng).first == "1_sorted/alpha/portrait/clip-loved.mp4"
+                                  trash: [], weights: weights, rng: &rng).first == "1_sorted/alpha/portrait/video-loved.mp4"
         }.count
 
         #expect(lovedFirst > 150)
@@ -279,91 +279,91 @@ extension PlaylistTests {
     @Test func theSizeCeilingAndShortsThresholdAreTheOptionsNotConstants() {
         var rng = PlaylistSeededRNG(seed: 9)
         let catalog = Catalog(files: [
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 5_000_000, seconds: 8),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-large.mp4", size: 20_000_000, seconds: 12),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-small.mp4", size: 5_000_000, seconds: 8),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-large.mp4", size: 20_000_000, seconds: 12),
         ])
 
         var sized = Filters()
         sized.maxBytes = 10_000_000
         #expect(PlaylistBuilder.build(catalog: catalog, options: sized, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
-                == ["1_sorted/alpha/portrait/clip-small.mp4"])
+                == ["1_sorted/alpha/portrait/video-small.mp4"])
 
         var shorts = Filters()
         shorts.types = [.short]
         shorts.shortsMaxSeconds = 9
         #expect(PlaylistBuilder.build(catalog: catalog, options: shorts, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
-                == ["1_sorted/alpha/portrait/clip-small.mp4"])
+                == ["1_sorted/alpha/portrait/video-small.mp4"])
     }
 }
 
 extension PlaylistTests {
-    @Test func everyClipFallsIntoExactlyOneType() {
+    @Test func everyVideoFallsIntoExactlyOneType() {
         // Genau's flicks are named by their source folder (the desktop delivers
         // them from origenerator's genau lane); shorts are by running time; the
         // rest — unknown durations included — are full length. Act-based types
         // wait on the metadata sidecar index and classify nowhere yet.
-        let genau = PlaylistTests.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4)
-        let short = PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 8)
-        let long = PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)
-        let unknown = PlaylistTests.file("1_sorted/alpha/portrait/clip-d.mp4", size: 20_000_000, seconds: nil)
-        let clips = Catalog(files: [genau, short, long, unknown]).clips
-        #expect(ClipType.classify(clips[0], shortsMaxSeconds: 10) == .genauFlick)
-        #expect(ClipType.classify(clips[1], shortsMaxSeconds: 10) == .short)
-        #expect(ClipType.classify(clips[2], shortsMaxSeconds: 10) == .fullLength)
-        #expect(ClipType.classify(clips[3], shortsMaxSeconds: 10) == .fullLength)
+        let genau = PlaylistTests.file("1_sorted/alpha_genau/portrait/video-a.mp4", seconds: 4)
+        let short = PlaylistTests.file("1_sorted/alpha/portrait/video-b.mp4", seconds: 8)
+        let long = PlaylistTests.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 40)
+        let unknown = PlaylistTests.file("1_sorted/alpha/portrait/video-d.mp4", size: 20_000_000, seconds: nil)
+        let videos = Catalog(files: [genau, short, long, unknown]).videos
+        #expect(VideoType.classify(videos[0], shortsMaxSeconds: 10) == .genauFlick)
+        #expect(VideoType.classify(videos[1], shortsMaxSeconds: 10) == .short)
+        #expect(VideoType.classify(videos[2], shortsMaxSeconds: 10) == .fullLength)
+        #expect(VideoType.classify(videos[3], shortsMaxSeconds: 10) == .fullLength)
     }
 
     @Test func theTypeTheDesktopRecordedOutranksEveryGuessHere() {
         // The desktop writes one type on every video's sidecar, so the phone
-        // reads it instead of running its own three tests. A 40-second clip
+        // reads it instead of running its own three tests. A 40-second video
         // this would have called full length is a short if that is what the
-        // sidecar says, and a clip in the genau lane is whatever it says too.
-        let long = Catalog(files: [Self.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40)]).clips[0]
-        let inGenauLane = Catalog(files: [Self.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4)]).clips[0]
+        // sidecar says, and a video in the genau lane is whatever it says too.
+        let long = Catalog(files: [Self.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 40)]).videos[0]
+        let inGenauLane = Catalog(files: [Self.file("1_sorted/alpha_genau/portrait/video-a.mp4", seconds: 4)]).videos[0]
 
-        #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "short") == .short)
-        #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "excerpt") == .excerpt)
-        #expect(ClipType.classify(inGenauLane, shortsMaxSeconds: 10, recorded: "full_length") == .fullLength)
+        #expect(VideoType.classify(long, shortsMaxSeconds: 10, recorded: "short") == .short)
+        #expect(VideoType.classify(long, shortsMaxSeconds: 10, recorded: "excerpt") == .excerpt)
+        #expect(VideoType.classify(inGenauLane, shortsMaxSeconds: 10, recorded: "full_length") == .fullLength)
         // A type this build has never heard of is no type at all.
-        #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "medium_length") == .fullLength)
+        #expect(VideoType.classify(long, shortsMaxSeconds: 10, recorded: "medium_length") == .fullLength)
     }
 
     @Test func theTypeButtonsNarrowTheRecordedTypesToo() {
         var rng = PlaylistSeededRNG(seed: 31)
         let catalog = Catalog(files: [
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 40),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 40),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-a.mp4", seconds: 40),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-b.mp4", seconds: 40),
         ])
         var options = Filters()
         options.types = [.excerpt]
 
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           trash: [], weights: WatchWeights(),
-                                          recordedTypes: ["1_sorted/alpha/portrait/clip-a.mp4": "excerpt"],
+                                          recordedTypes: ["1_sorted/alpha/portrait/video-a.mp4": "excerpt"],
                                           rng: &rng)
 
-        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
+        #expect(built == ["1_sorted/alpha/portrait/video-a.mp4"])
     }
 
     @Test func theTypeButtonsNarrowTheBuild() {
         var rng = PlaylistSeededRNG(seed: 5)
         let catalog = Catalog(files: [
-            PlaylistTests.file("1_sorted/alpha_genau/portrait/clip-a.mp4", seconds: 4),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 8),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 40),
+            PlaylistTests.file("1_sorted/alpha_genau/portrait/video-a.mp4", seconds: 4),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-b.mp4", seconds: 8),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 40),
         ])
         var options = Filters()
         options.types = [.short]
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(), rng: &rng)
-                == ["1_sorted/alpha/portrait/clip-b.mp4"])
+                == ["1_sorted/alpha/portrait/video-b.mp4"])
         options.types = [.genauFlick, .fullLength]
         let both = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                          trash: [], weights: WatchWeights(), rng: &rng)
-        #expect(Set(both) == ["1_sorted/alpha_genau/portrait/clip-a.mp4",
-                              "1_sorted/alpha/portrait/clip-c.mp4"])
+        #expect(Set(both) == ["1_sorted/alpha_genau/portrait/video-a.mp4",
+                              "1_sorted/alpha/portrait/video-c.mp4"])
     }
 
     @Test func aPersistedShortsOnlyFiltersMigrateToTheTypes() throws {
@@ -373,22 +373,22 @@ extension PlaylistTests {
         let old = Data(#"{"orientation":"portrait","shortsOnly":true}"#.utf8)
         #expect(try JSONDecoder().decode(Filters.self, from: old).types == [.short])
         let plain = Data(#"{"orientation":"portrait"}"#.utf8)
-        #expect(try JSONDecoder().decode(Filters.self, from: plain).types == Set(ClipType.allCases))
+        #expect(try JSONDecoder().decode(Filters.self, from: plain).types == Set(VideoType.allCases))
     }
 }
 
 extension PlaylistTests {
-    @Test func aClipTheServerNeverTimedIsJudgedByMeasureThenBySize() {
+    @Test func aVideoTheServerNeverTimedIsJudgedByMeasureThenBySize() {
         // The real pCloud listing carries no durations at all, so the phone
-        // measures each clip as it lands in the cache — and until it has, the
+        // measures each video as it lands in the cache — and until it has, the
         // size stands in (the originals run near half a megabyte a second).
-        let clip = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4",
-                                                      size: 2_000_000, seconds: nil)]).clips[0]
-        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, measuredSeconds: 40) == .fullLength)
-        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, measuredSeconds: nil) == .short)
-        let big = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4",
-                                                     size: 20_000_000, seconds: nil)]).clips[0]
-        #expect(ClipType.classify(big, shortsMaxSeconds: 10, measuredSeconds: nil) == .fullLength)
+        let video = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/video-a.mp4",
+                                                      size: 2_000_000, seconds: nil)]).videos[0]
+        #expect(VideoType.classify(video, shortsMaxSeconds: 10, measuredSeconds: 40) == .fullLength)
+        #expect(VideoType.classify(video, shortsMaxSeconds: 10, measuredSeconds: nil) == .short)
+        let big = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/video-b.mp4",
+                                                     size: 20_000_000, seconds: nil)]).videos[0]
+        #expect(VideoType.classify(big, shortsMaxSeconds: 10, measuredSeconds: nil) == .fullLength)
     }
 
     @Test func genauLoopsIgnoreTheShapeFilterAndMeasuredTimesReachTheBuild() {
@@ -400,7 +400,7 @@ extension PlaylistTests {
                                 videoCodec: nil, width: 1920, height: 1080)
         let catalog = Catalog(files: [
             genau,
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-small.mp4", size: 2_000_000, seconds: nil),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-small.mp4", size: 2_000_000, seconds: nil),
         ])
         var options = Filters(shape: .portrait)
         options.types = [.genauFlick]
@@ -411,8 +411,8 @@ extension PlaylistTests {
         // Measured as 40 s, the small file stops reading as a short.
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(),
-                                      measuredSeconds: ["1_sorted/alpha/portrait/clip-small.mp4": 40], rng: &rng)
-                == ["1_sorted/alpha/portrait/clip-small.mp4"])
+                                      measuredSeconds: ["1_sorted/alpha/portrait/video-small.mp4": 40], rng: &rng)
+                == ["1_sorted/alpha/portrait/video-small.mp4"])
     }
 }
 
@@ -433,11 +433,11 @@ extension PlaylistTests {
             ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, shape: .landscape),
             ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
         ])
-        let special = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4")]).clips[0]
-        let tall = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
-        let plain = Catalog(files: [Self.nonAI("non_AI/beta/scene-three.mp4")]).clips[0]
-        #expect(ClipType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .excerpt)
-        #expect(ClipType.classify(plain, shortsMaxSeconds: 10, overlay: overlay) == .fullLength)
+        let special = Catalog(files: [Self.nonAI("non_AI/alpha/special/scene-one.mp4")]).videos[0]
+        let tall = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).videos[0]
+        let plain = Catalog(files: [Self.nonAI("non_AI/beta/scene-three.mp4")]).videos[0]
+        #expect(VideoType.classify(special, shortsMaxSeconds: 10, overlay: overlay) == .excerpt)
+        #expect(VideoType.classify(plain, shortsMaxSeconds: 10, overlay: overlay) == .fullLength)
         #expect(overlay.lane(for: tall.path)?.shape == .portrait)
 
         var rng = PlaylistSeededRNG(seed: 13)
@@ -460,7 +460,7 @@ extension PlaylistTests {
         var rng = PlaylistSeededRNG(seed: 17)
         let catalog = Catalog(files: [
             Self.nonAI("non_AI/tall/scene-two.mp4"),   // 1920x1080 pixels, portrait lane
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-huge.mp4", size: 300_000_000, seconds: 40),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-huge.mp4", size: 300_000_000, seconds: 40),
         ])
         var options = Filters(shape: .portrait)
         options.types = [.fullLength]
@@ -504,19 +504,19 @@ extension PlaylistTests {
 
     @Test func theClipsButtonTakesTheShortsAndTheCarvedScenesInAndOutTogether() {
         var options = Filters(types: [.genauFlick, .fullLength])
-        #expect(!options.includes(ClipType.clips))
+        #expect(!options.includes(VideoType.clips))
 
-        options.setIncluded(ClipType.clips, true)
-        #expect(options.types == Set(ClipType.allCases))
-        #expect(options.includes(ClipType.clips))
+        options.setIncluded(VideoType.clips, true)
+        #expect(options.types == Set(VideoType.allCases))
+        #expect(options.includes(VideoType.clips))
 
-        options.setIncluded(ClipType.clips, false)
+        options.setIncluded(VideoType.clips, false)
         #expect(options.types == [.genauFlick, .fullLength])
     }
 
     @Test func filtersHoldingOnlyOneOfTheTwoReadAsClipsOff() {
-        #expect(!Filters(types: [.short]).includes(ClipType.clips))
-        #expect(!Filters(types: [.excerpt]).includes(ClipType.clips))
+        #expect(!Filters(types: [.short]).includes(VideoType.clips))
+        #expect(!Filters(types: [.excerpt]).includes(VideoType.clips))
     }
 
     @Test func persistedFiltersKeepTheirTypesThroughTheRename() throws {
@@ -538,19 +538,19 @@ extension PlaylistTests {
     }
 
     @Test func aSidecarRecordedBeforeGenausClipsWereCalledFlicksStillNamesAFlick() {
-        let clip = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 4)]).clips[0]
+        let video = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/video-a.mp4", seconds: 4)]).videos[0]
 
-        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, recorded: "genau_clip") == .genauFlick)
-        #expect(ClipType.classify(clip, shortsMaxSeconds: 10, recorded: "genau_flick") == .genauFlick)
+        #expect(VideoType.classify(video, shortsMaxSeconds: 10, recorded: "genau_clip") == .genauFlick)
+        #expect(VideoType.classify(video, shortsMaxSeconds: 10, recorded: "genau_flick") == .genauFlick)
     }
 }
 
 extension PlaylistTests {
-    @Test func theActionButtonsBucketEveryClipAndCombine() {
+    @Test func theActionButtonsBucketEveryVideoAndCombine() {
         // Eight combinable action buttons, overlay-defined (the words are library
-        // vocabulary): a clip lands in the first bucket whose query matches its
-        // recorded action, and in the catch-all otherwise — including clips with
-        // no action at all. Deselecting a bucket hides its clips.
+        // vocabulary): a video lands in the first bucket whose query matches its
+        // recorded action, and in the catch-all otherwise — including videos with
+        // no action at all. Deselecting a bucket hides its videos.
         let overlay = ContentOverlay(lanes: [], actionFilters: [
             ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
             ContentOverlay.ActionFilter(label: "BE", queries: ["beta"], isOther: false),
@@ -563,17 +563,17 @@ extension PlaylistTests {
 
         var rng = PlaylistSeededRNG(seed: 29)
         let catalog = Catalog(files: [
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 30),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-b.mp4", seconds: 30),
-            PlaylistTests.file("1_sorted/alpha/portrait/clip-c.mp4", seconds: 30),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-a.mp4", seconds: 30),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-b.mp4", seconds: 30),
+            PlaylistTests.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 30),
         ])
         var options = Filters()
         options.disabledActions = ["BE", "O"]
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           trash: [], weights: WatchWeights(), overlay: overlay,
-                                          actions: ["1_sorted/alpha/portrait/clip-a.mp4": "alpha",
-                                                 "1_sorted/alpha/portrait/clip-b.mp4": "beta"], rng: &rng)
-        #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])  // c has no action -> O -> hidden
+                                          actions: ["1_sorted/alpha/portrait/video-a.mp4": "alpha",
+                                                 "1_sorted/alpha/portrait/video-b.mp4": "beta"], rng: &rng)
+        #expect(built == ["1_sorted/alpha/portrait/video-a.mp4"])  // c has no action -> O -> hidden
     }
 
     @Test func anOverlayOrFiltersWithoutActionFiltersChangesNothing() throws {
@@ -586,15 +586,15 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    @Test func aClipPlaysInItsLanesShapeOrItsOwnAndAFlickInEither() {
+    @Test func aVideoPlaysInItsLanesShapeOrItsOwnAndAFlickInEither() {
         let overlay = ContentOverlay(lanes: [
             ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
         ])
-        let upright = Catalog(files: [Self.file("1_sorted/alpha/portrait/clip-one.mp4")]).clips[0]
-        let laned = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).clips[0]
+        let upright = Catalog(files: [Self.file("1_sorted/alpha/portrait/video-one.mp4")]).videos[0]
+        let laned = Catalog(files: [Self.nonAI("non_AI/tall/scene-two.mp4")]).videos[0]
         let flick = Catalog(files: [LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9,
                                                 size: 2_000_000, modified: Date(timeIntervalSince1970: 0),
-                                                duration: nil, videoCodec: nil, width: 1920, height: 1080)]).clips[0]
+                                                duration: nil, videoCodec: nil, width: 1920, height: 1080)]).videos[0]
         let portrait = Filters(shape: .portrait)
         let landscape = Filters(shape: .landscape)
 

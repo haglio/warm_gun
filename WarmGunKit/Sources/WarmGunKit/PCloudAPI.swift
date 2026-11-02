@@ -114,7 +114,7 @@ public enum PCloudAPI {
 
     /// The whole index in one call. Recursive because the library is a fixed
     /// three-deep tree and a per-folder walk would be hundreds of round-trips
-    /// on a phone connection; the listing already carries every clip's size
+    /// on a phone connection; the listing already carries every video's size
     /// and dimensions, so no file is probed to build the index.
     public static func listFolder(path: String, auth: String) -> PCloudRequest {
         PCloudRequest(method: "listfolder", query: [
@@ -153,7 +153,7 @@ public enum PCloudAPI {
         ])
     }
 
-    /// The trash gesture: move a clip's upscale into `2_outbox/trash`,
+    /// The trash gesture: move a video's upscale into `2_outbox/trash`,
     /// named by path because the index keeps no id for an upscale. `topath` is
     /// a full destination path including the filename — pCloud treats move and
     /// rename as the same operation.
@@ -274,7 +274,7 @@ public struct PCloudError: Error, LocalizedError, Equatable, Sendable {
     public var isLoginRequired: Bool { code == 1000 || code == 2000 }
 }
 
-/// Where one clip can be fetched from, until it can't. pCloud hands back the
+/// Where one video can be fetched from, until it can't. pCloud hands back the
 /// pieces rather than a URL — a list of hosts serving the file and a path that
 /// is only meaningful on one of them — and the link stops working at `expires`,
 /// which is why the cache that holds it has to know when to stop trusting it.
@@ -330,7 +330,7 @@ public struct PCloudEntry: Decodable, Equatable, Sendable {
     public let modified: Date?
     /// Seconds of video. pCloud quotes it — `"5.03"` — so this is read from a
     /// string or a number, and is nil when it is missing or unreadable rather
-    /// than failing the whole listing over one clip it could not probe.
+    /// than failing the whole listing over one video it could not probe.
     public let duration: Double?
     public let videocodec: String?
     public let width: Int?

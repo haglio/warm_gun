@@ -1,7 +1,7 @@
 # Warm Gun
 
 An iPhone satellite player for the Fun Time library: a never-ending,
-auto-advancing run of the library's clips, cached on the phone so nothing
+auto-advancing run of the library's videos, cached on the phone so nothing
 ever waits. No OSR2, no voice — four taps and the controls laid over the
 picture. The name and the magenta 5x5 lettermark follow Fun Time's. The
 same app builds for the Mac, where it takes the whole screen, taps are
@@ -9,7 +9,7 @@ clicks, and the P and L keys stand in for turning the phone.
 
 - **Taps**: left third = previous, right third = next, top-middle = trash,
   lower-middle = lock (favorite + repeat-one). Tap the middle for the
-  controls — the type buttons (Genau, Clips, Full), Shuffle/Latest and Favs,
+  controls — the type buttons (Genau, Videos, Full), Shuffle/Latest and Favs,
   the Loop control, the action buttons, the four gestures as buttons and pause
   in the center — and double-tap it to pause. On the Mac the keyboard does
   the same: the arrows and WASD are previous, next, trash and lock (left,
@@ -18,7 +18,7 @@ clicks, and the P and L keys stand in for turning the phone.
   portrait or the landscape library.
 - **Source**: the AI library's originals under `1_sorted/` (small H.264),
   Genau's 2D flicks and the non-AI scenes, through the pCloud HTTP API. Small
-  clips are fetched whole and played from an on-device cache, with a deep
+  videos are fetched whole and played from an on-device cache, with a deep
   two-sided prefetch window keeping the neighbors resident; a real scene
   streams. The Topaz upscales stay home.
 - **Shared state**: favorites and trash marks live on the phone, and every
@@ -27,13 +27,13 @@ clicks, and the P and L keys stand in for turning the phone.
   and a favorites flag back onto each video's metadata sidecar — which is where
   the phone reads both, so neither app keeps a copy of the formula and what the
   PC watched moves the phone's shuffle. A `favs.csv` dropped in the sync folder
-  is still imported. The trash gesture parks the clip's upscale in
+  is still imported. The trash gesture parks the video's upscale in
   `2_outbox/trash/`, where it waits to be reviewed — same as the desktop.
 
 ## Layout
 
 - `WarmGun/` — the SwiftUI app: player engine (AVQueuePlayer), prefetcher,
-  clip cache, pCloud transport, metadata fetcher, Keychain, settings, views,
+  video cache, pCloud transport, metadata fetcher, Keychain, settings, views,
   and `Platform.swift`, the one file where the phone and the Mac part ways.
 - `WarmGunKit/` — the pure logic, Foundation-only, fully tested headlessly:
   library paths, catalog, pCloud request/response shapes and the login's

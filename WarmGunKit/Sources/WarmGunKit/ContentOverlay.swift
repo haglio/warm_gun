@@ -8,15 +8,15 @@ import Foundation
 /// full-length landscape scene.
 ///
 /// The lanes are a *fallback*: the desktop records every video's type on its
-/// sidecar, and a lane answers only for a clip whose sidecar the phone has not
+/// sidecar, and a lane answers only for a video whose sidecar the phone has not
 /// read.
 public struct ContentOverlay: Codable, Equatable, Sendable {
     public struct Lane: Codable, Equatable, Sendable {
         /// Library-relative path prefix, e.g. `non_AI/<bucket>/<folder>`.
         public let prefix: String
-        public let type: ClipType
+        public let type: VideoType
         /// Set when the folder dictates one (a portrait-cuts folder); nil
-        /// leaves the clip's own pixels in charge.
+        /// leaves the video's own pixels in charge.
         public let shape: VideoShape?
 
         private enum CodingKeys: String, CodingKey {
@@ -24,7 +24,7 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
             case shape = "orientation"
         }
 
-        public init(prefix: String, type: ClipType, shape: VideoShape?) {
+        public init(prefix: String, type: VideoType, shape: VideoShape?) {
             self.prefix = prefix
             self.type = type
             self.shape = shape
@@ -32,8 +32,8 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
     }
 
     /// One of the combinable action buttons: a two-letter label, the queries that
-    /// claim a clip's recorded action for it (first filter to match wins), and
-    /// whether it is the catch-all that takes everything unclaimed — clips
+    /// claim a video's recorded action for it (first filter to match wins), and
+    /// whether it is the catch-all that takes everything unclaimed — videos
     /// with no recorded action included.
     public struct ActionFilter: Codable, Equatable, Sendable {
         public let label: String
