@@ -4,7 +4,9 @@
 """
 from __future__ import annotations
 
+import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +17,7 @@ from tools import gates
 class GateTests(unittest.TestCase):
     def plant(self, files: dict[str, str]) -> Path:
         root = Path(tempfile.mkdtemp(prefix="warm-gun-gates-"))
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         for relative, text in files.items():
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -102,15 +104,79 @@ class GateTests(unittest.TestCase):
             ".gitignore": "# not a script\nbuild/\n",
             "README.md": "# Not a script\n",
         })
-        self.assertEqual(gates.prose_lines(root), 5)
+        self.assertEqual(sum(gates.prose_by_file(root).values()), 5)
 
-    def test_the_comment_lines_hold_their_ceiling_and_a_drop_must_lower_it(self):
-        root = self.plant({"WarmGun/A.swift": "// one\n// two\nlet x = 1\n"})
-        self.assertEqual(gates.gate_prose_ceiling(root, ceiling=2), [])
-        self.assertEqual(gates.gate_prose_ceiling(root, ceiling=1), [
-            "2 comment lines, over the ceiling of 1: say it in a name or a test, or remove as many elsewhere"])
-        self.assertEqual(gates.gate_prose_ceiling(root, ceiling=3), [
-            "2 comment lines, under the ceiling of 3: lower PROSE_CEILING to 2"])
+    def test_prose_is_kept_per_file(self):
+        root = self.plant({"WarmGun/A.swift": "// one\n// two\nlet x = 1\n", "WarmGun/B.swift": "let y = 2\n",
+                           "install.sh": "#!/bin/sh\n# why\n"})
+        self.assertEqual(gates.prose_by_file(root), {"WarmGun/A.swift": 2, "install.sh": 1})
+
+    def with_entries(self, files: dict[str, str], entries: dict[str, int]) -> Path:
+        return self.plant({**files, gates.BASELINE_PATH: json.dumps({gates.PROSE_SECTION: entries})})
+
+    def test_a_file_at_its_entry_passes(self):
+        root = self.with_entries({"WarmGun/A.swift": "// one\n"}, {"WarmGun/A.swift": 1})
+        self.assertEqual(gates.gate_prose_ceiling(root), [])
+
+    def test_a_file_that_grew_is_named_even_when_another_shrank_by_as_much(self):
+        root = self.with_entries({"WarmGun/A.swift": "// one\n// two\n", "WarmGun/B.swift": "let y = 2\n"},
+                                 {"WarmGun/A.swift": 1, "WarmGun/B.swift": 1})
+        self.assertEqual(gates.gate_prose_ceiling(root), [
+            "WarmGun/A.swift holds 2 comment lines, over its entry of 1: say it in a name or a test",
+            "WarmGun/B.swift holds 0 comment lines, under its entry of 1: run python3 tools/gates.py --lower"])
+
+    def test_a_new_file_enters_at_zero(self):
+        root = self.with_entries({"WarmGun/New.swift": "// one\n"}, {})
+        self.assertEqual(gates.gate_prose_ceiling(root), [
+            "WarmGun/New.swift holds 1 comment lines, over its entry of 0: say it in a name or a test"])
+
+    def test_lowering_takes_every_fall_and_refuses_every_rise(self):
+        root = self.with_entries({"WarmGun/A.swift": "// one\n", "WarmGun/B.swift": "// one\n// two\n"},
+                                 {"WarmGun/A.swift": 3, "WarmGun/B.swift": 1, "WarmGun/Gone.swift": 2})
+        said = gates.lower_entries(root)
+        self.assertEqual(json.loads((root / gates.BASELINE_PATH).read_text(encoding="utf-8")),
+                         {gates.PROSE_SECTION: {"WarmGun/A.swift": 1, "WarmGun/B.swift": 1}})
+        self.assertEqual(said, [
+            "lowered WarmGun/A.swift from 3 to 1",
+            "refused WarmGun/B.swift: it holds 2, over its entry of 1",
+            "could not match WarmGun/Gone.swift: nothing is there now and git names no rename of it"])
+
+    def git(self, root: Path, *args: str) -> None:
+        subprocess.run(["git", "-C", str(root), "-c", "user.name=a", "-c", "user.email=a@example.invalid", *args],
+                       capture_output=True, check=True)
+
+    def with_a_main(self, files: dict[str, str], entries: dict[str, int]) -> Path:
+        root = self.with_entries(files, entries)
+        self.git(root, "init", "-q", "-b", "main")
+        self.git(root, "add", "-A")
+        self.git(root, "commit", "-q", "-m", "first")
+        self.git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+        return root
+
+    def test_lowering_carries_a_renamed_files_entry(self):
+        root = self.with_a_main({"WarmGun/A.swift": "// one\n// two\nlet x = 1\n"}, {"WarmGun/A.swift": 2})
+        self.git(root, "mv", "WarmGun/A.swift", "WarmGun/B.swift")
+        said = gates.lower_entries(root)
+        self.assertEqual(json.loads((root / gates.BASELINE_PATH).read_text(encoding="utf-8")),
+                         {gates.PROSE_SECTION: {"WarmGun/B.swift": 2}})
+        self.assertEqual(said, ["carried WarmGun/A.swift to WarmGun/B.swift"])
+
+    def test_an_entry_raised_by_hand_stands_above_what_main_holds(self):
+        root = self.with_a_main({"WarmGun/A.swift": "// one\n"}, {"WarmGun/A.swift": 1})
+        self.plant_over(root, {"WarmGun/A.swift": "// one\n// two\n",
+                               gates.BASELINE_PATH: json.dumps({gates.PROSE_SECTION: {"WarmGun/A.swift": 2}})})
+        self.assertEqual(gates.gate_no_entry_above_main(root), [
+            "WarmGun/A.swift stands at 2, above the 1 main holds: an entry only comes down"])
+
+    def test_a_renamed_files_entry_is_no_raise(self):
+        root = self.with_a_main({"WarmGun/A.swift": "// one\n// two\nlet x = 1\n"}, {"WarmGun/A.swift": 2})
+        self.git(root, "mv", "WarmGun/A.swift", "WarmGun/B.swift")
+        self.plant_over(root, {gates.BASELINE_PATH: json.dumps({gates.PROSE_SECTION: {"WarmGun/B.swift": 2}})})
+        self.assertEqual(gates.gate_no_entry_above_main(root), [])
+
+    def plant_over(self, root: Path, files: dict[str, str]) -> None:
+        for relative, text in files.items():
+            (root / relative).write_text(text, encoding="utf-8")
 
     def test_main_runs_every_gate_this_file_defines(self):
         defined = {name for name in dir(gates) if name.startswith("gate_")}
