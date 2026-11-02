@@ -178,6 +178,46 @@ class GateTests(unittest.TestCase):
         for relative, text in files.items():
             (root / relative).write_text(text, encoding="utf-8")
 
+    def glossary_tree(self, rows: list[dict], swift: str) -> Path:
+        return self.plant({
+            gates.GLOSSARY_PATH: json.dumps({"things": rows}),
+            "WarmGun/A.swift": swift,
+        })
+
+    def row(self, **fields) -> dict:
+        return {"id": "video", "thing": "what plays", "screen": None, "his_word": "video", "code_today": ["video"],
+                "code_word": "video", "status": "agreed", **fields}
+
+    def test_a_glossary_the_code_agrees_with_holds(self):
+        root = self.glossary_tree([self.row()], "let video = 1\n")
+        self.assertEqual(gates.gate_glossary(root), [])
+
+    def test_a_row_missing_a_column_is_named(self):
+        row = self.row()
+        del row["thing"]
+        root = self.glossary_tree([row], "let video = 1\n")
+        self.assertEqual(gates.gate_glossary(root), ["video lacks ['thing']"])
+
+    def test_a_ruled_row_says_where(self):
+        root = self.glossary_tree([self.row(status="ruled")], "let video = 1\n")
+        self.assertEqual(gates.gate_glossary(root), ["video is ruled but says not when or where"])
+
+    def test_a_word_the_code_no_longer_says_is_a_stale_row(self):
+        root = self.glossary_tree([self.row(code_today=["video", "reel"])], "let video = 1\n")
+        self.assertEqual(gates.gate_glossary(root), ["video names 'reel', which the code no longer says"])
+
+    def test_a_retired_word_in_a_compound_name_is_found(self):
+        root = self.glossary_tree([self.row(retired=["clip"])], "let video = 1\nlet loopClip = 2\n")
+        self.assertEqual(gates.gate_glossary(root), ["video retired 'clip': WarmGun/A.swift:2 loopClip"])
+
+    def test_a_retired_word_inside_a_kept_token_is_left_alone(self):
+        root = self.glossary_tree([self.row(retired=["clip"], keep=["loopClip"])], "let video = 1\nlet loopClip = 2\n")
+        self.assertEqual(gates.gate_glossary(root), [])
+
+    def test_a_screen_noun_with_no_row_is_named(self):
+        root = self.glossary_tree([self.row()], "let video = 1\nlet tileWidth = 2\n")
+        self.assertEqual(gates.gate_glossary(root), ["the code says 'tile' for something on screen and no row has it"])
+
     def test_main_runs_every_gate_this_file_defines(self):
         defined = {name for name in dir(gates) if name.startswith("gate_")}
         self.assertEqual({gate.__name__ for gate in gates.GATES.values()}, defined)

@@ -21,6 +21,11 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 - `tools/quality_baseline.json` holds each file's comment lines, and an entry
   only comes down: `python3 tools/gates.py --lower` takes every fall, carries a
   renamed file's entry and refuses every rise; a file added enters at zero.
+- `glossary.json` lists the things on this app's screen and their words, and
+  `tools/gates.py` holds the Swift to it. A noun for a drawn thing is a row there
+  before it is a word in the code; a rename moves the old word from the row's
+  `code_today` to its `retired`. A stored key keeps its old spelling, spelled
+  once in that type's `CodingKeys`.
 - On a machine with no Swift (the Windows PC), the merge gate is the only
   place the Kit runs and the app compiles: push each red or green step to a
   throwaway branch whose own copy of `merge-gate.yml` names it under
