@@ -293,13 +293,13 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Whether every kind a chip covers is in the filters. Unchecking everything is allowed
+    /// Whether every type a chip covers is in the filters. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
-    private func typesBinding(_ kinds: Set<ClipType>) -> Binding<Bool> {
-        Binding(get: { model.settings.filters.includes(kinds) },
+    private func typesBinding(_ types: Set<ClipType>) -> Binding<Bool> {
+        Binding(get: { model.settings.filters.includes(types) },
                 set: { value in
                     var filters = model.settings.filters
-                    filters.setIncluded(kinds, value)
+                    filters.setIncluded(types, value)
                     model.update(filters: filters)
                 })
     }

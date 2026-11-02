@@ -27,14 +27,14 @@ decision with the owner, not alone.
   in memory, with no network on a tap. A refresh never reshuffles the run in
   progress: what left the library is pruned, new arrivals join at the next
   rebuild he asks for.
-- **What kind a clip is comes from the desktop.** Evolver records one of
+- **What type a clip is comes from the desktop.** Evolver records one of
   `genau_flick` / `excerpt` / `short` / `full_length` on every video's
   metadata sidecar (`video.type`), and `ClipType` is that field's
-  vocabulary, so a clip is the same kind here as in Fun Time. For a clip
+  vocabulary, so a clip is the same type here as in Fun Time. For a clip
   whose sidecar has not arrived, the overlay's lanes, the source folder and
   a running time stand in, in that order. The act a clip records
   (`video.action`) is a different axis, the act buttons'; it never decides
-  a kind.
+  a type.
 - **What the repo cannot name lives in a git-ignored overlay.** The non-AI
   lanes' folder names and the act buttons are library vocabulary, so they
   ship in `WarmGun/content.local.json`, bundled at build time and never

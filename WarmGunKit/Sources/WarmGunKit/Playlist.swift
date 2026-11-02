@@ -1,9 +1,9 @@
 import Foundation
 
-/// The kinds of clip the type buttons let the filters narrow to. Every clip
-/// is exactly one, and the desktop settles which: it records the kind on the
+/// The types of clip the type buttons let the filters narrow to. Every clip
+/// is exactly one, and the desktop settles which: it records the type on the
 /// video's metadata sidecar (`video.type`), for the whole library, so the same
-/// clip is the same kind in every app that reads it. The raw values are that
+/// clip is the same type in every app that reads it. The raw values are that
 /// field's own words.
 ///
 /// Everything after the record is a fallback for a clip the phone has no
@@ -25,7 +25,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
                                 recorded: String? = nil,
                                 measuredSeconds: Double? = nil,
                                 overlay: ContentOverlay = .empty) -> ClipType {
-        if let recorded, let kind = ClipType(named: recorded) { return kind }
+        if let recorded, let type = ClipType(named: recorded) { return type }
         if let lane = overlay.lane(for: clip.path) { return lane.type }
         if clip.source.localizedCaseInsensitiveContains("genau") { return .genauFlick }
         if clip.source == "non_AI" { return .fullLength }
@@ -39,7 +39,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
         return estimated <= shortsMaxSeconds ? .short : .fullLength
     }
 
-    /// What a kind was called in a filters persisted before the desktop's
+    /// What a type was called in a filters persisted before the desktop's
     /// vocabulary arrived, and in a sidecar recorded before Genau's clips were
     /// called flicks. An app update must never cost the saved controls.
     static let retiredNames: [String: ClipType] = [
@@ -47,8 +47,8 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     ]
 
     init?(named name: String) {
-        guard let kind = ClipType(rawValue: name) ?? Self.retiredNames[name] else { return nil }
-        self = kind
+        guard let type = ClipType(rawValue: name) ?? Self.retiredNames[name] else { return nil }
+        self = type
     }
 
     private static let estimatedBytesPerSecond = 500_000.0
@@ -122,15 +122,15 @@ public struct Filters: Codable, Equatable, Sendable {
         try c.encode(maxBytes, forKey: .maxBytes)
     }
 
-    public func includes(_ kinds: Set<ClipType>) -> Bool {
-        types.isSuperset(of: kinds)
+    public func includes(_ wanted: Set<ClipType>) -> Bool {
+        types.isSuperset(of: wanted)
     }
 
-    public mutating func setIncluded(_ kinds: Set<ClipType>, _ included: Bool) {
+    public mutating func setIncluded(_ wanted: Set<ClipType>, _ included: Bool) {
         if included {
-            types.formUnion(kinds)
+            types.formUnion(wanted)
         } else {
-            types.subtract(kinds)
+            types.subtract(wanted)
         }
     }
 }
@@ -157,10 +157,10 @@ public enum PlaylistBuilder {
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
                              acts: [String: String] = [:],
-                             kinds: [String: String] = [:],
+                             recordedTypes: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
         let clips = catalog.clips.filter {
-            survivesFilters($0, options, favoriteKeys, trash, kinds[$0.path],
+            survivesFilters($0, options, favoriteKeys, trash, recordedTypes[$0.path],
                             measuredSeconds[$0.path], overlay, acts[$0.path])
         }
         if options.latest {

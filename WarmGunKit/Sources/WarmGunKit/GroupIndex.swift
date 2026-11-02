@@ -75,7 +75,7 @@ public struct Sidecar: Codable, Equatable, Sendable {
     /// `video.type` (`evolver/util/video_type.py`) — while the desktop reads
     /// every field through `str(value or "")` and never notices. Decoded as
     /// `[String: String]` a single number cost the WHOLE sidecar, and with it
-    /// the act, the weight and the flag. So a scalar of any kind is taken and
+    /// the act, the weight and the flag. So a scalar of any sort is taken and
     /// spelled the way that call would spell it, and anything that is not a
     /// scalar is left out: no field a group key is built from is ever one, and
     /// an absent key already stands for the empty string.
@@ -116,7 +116,7 @@ public struct GroupIndex: Sendable, Equatable {
     private var actionKeyByPath: [String: String] = [:]
     private var seedKeyByPath: [String: String] = [:]
     private var actByPath: [String: String] = [:]
-    private var kindByPath: [String: String] = [:]
+    private var typeByPath: [String: String] = [:]
     private var actionClipsByKey: [String: [String]] = [:]
     private var seedClipsByKey: [String: [String]] = [:]
 
@@ -125,10 +125,10 @@ public struct GroupIndex: Sendable, Equatable {
         actByPath.filter { !$0.value.isEmpty }
     }
 
-    /// Every clip's recorded kind — what the desktop wrote in `video.type`,
+    /// Every clip's recorded type — what the desktop wrote in `video.type`,
     /// which is what the type buttons narrow by wherever it is there.
-    public var kindsByPath: [String: String] {
-        kindByPath.filter { !$0.value.isEmpty }
+    public var typesByPath: [String: String] {
+        typeByPath.filter { !$0.value.isEmpty }
     }
 
     /// True until any sidecar has been indexed — the UI's cue that the loops
@@ -138,7 +138,7 @@ public struct GroupIndex: Sendable, Equatable {
     public init(sidecars: [String: Sidecar]) {
         for (path, sidecar) in sidecars {
             actByPath[path] = Self.normText(sidecar.video?["action"])
-            kindByPath[path] = sidecar.video?["type"] ?? ""
+            typeByPath[path] = sidecar.video?["type"] ?? ""
             if let key = Self.actionGroupKey(sidecar) {
                 actionKeyByPath[path] = key
                 actionClipsByKey[key, default: []].append(path)

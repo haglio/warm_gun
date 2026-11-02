@@ -68,10 +68,15 @@
       "id": "type",
       "thing": "which of Genau, Clips or Full a video is, recorded in its metadata as video.type",
       "code_today": [
-        "kind",
         "type"
       ],
-      "status": "agreed"
+      "status": "agreed",
+      "retired": [
+        "kind"
+      ],
+      "keep": [
+        "Kinds"
+      ]
     },
     {
       "screen": [

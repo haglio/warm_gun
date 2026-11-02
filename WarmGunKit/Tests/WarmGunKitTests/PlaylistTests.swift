@@ -315,8 +315,8 @@ extension PlaylistTests {
         #expect(ClipType.classify(clips[3], shortsMaxSeconds: 10) == .fullLength)
     }
 
-    @Test func theKindTheDesktopRecordedOutranksEveryGuessHere() {
-        // The desktop writes one kind on every video's sidecar, so the phone
+    @Test func theTypeTheDesktopRecordedOutranksEveryGuessHere() {
+        // The desktop writes one type on every video's sidecar, so the phone
         // reads it instead of running its own three tests. A 40-second clip
         // this would have called full length is a short if that is what the
         // sidecar says, and a clip in the genau lane is whatever it says too.
@@ -326,11 +326,11 @@ extension PlaylistTests {
         #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "short") == .short)
         #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "excerpt") == .excerpt)
         #expect(ClipType.classify(inGenauLane, shortsMaxSeconds: 10, recorded: "full_length") == .fullLength)
-        // A kind this build has never heard of is no kind at all.
+        // A type this build has never heard of is no type at all.
         #expect(ClipType.classify(long, shortsMaxSeconds: 10, recorded: "medium_length") == .fullLength)
     }
 
-    @Test func theTypeButtonsNarrowTheRecordedKindsToo() {
+    @Test func theTypeButtonsNarrowTheRecordedTypesToo() {
         var rng = PlaylistSeededRNG(seed: 31)
         let catalog = Catalog(files: [
             PlaylistTests.file("1_sorted/alpha/portrait/clip-a.mp4", seconds: 40),
@@ -341,7 +341,7 @@ extension PlaylistTests {
 
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                           trash: [], weights: WatchWeights(),
-                                          kinds: ["1_sorted/alpha/portrait/clip-a.mp4": "excerpt"],
+                                          recordedTypes: ["1_sorted/alpha/portrait/clip-a.mp4": "excerpt"],
                                           rng: &rng)
 
         #expect(built == ["1_sorted/alpha/portrait/clip-a.mp4"])
@@ -472,7 +472,7 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func theBundledOverlayDecodesInTheShapeItsExampleDocuments() throws {
-        // The lane types are the desktop's own words for the kinds, so the
+        // The lane types are the desktop's own words for the types, so the
         // file beside the app and this enum have to keep saying the same
         // thing: a mismatch decodes as no overlay at all, and every non-AI
         // scene silently becomes a full-length landscape one.
@@ -520,7 +520,7 @@ extension PlaylistTests {
     }
 
     @Test func persistedFiltersKeepTheirTypesThroughTheRename() throws {
-        // The kinds were this app's own words before the desktop had any; a
+        // The types were this app's own words before the desktop had any; a
         // filters persisted with them must come back as the same types.
         let old = Data(#"{"orientation":"portrait","types":["genau","acts","fullLength"]}"#.utf8)
 

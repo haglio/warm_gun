@@ -471,7 +471,7 @@ final class AppModel: ObservableObject {
                                              favoriteKeys: favorites.held, trash: trash,
                                              weights: weights, measuredSeconds: measuredSeconds,
                                              overlay: overlay, acts: groupIndex.actsByPath,
-                                             kinds: groupIndex.kindsByPath, rng: &rng)
+                                             recordedTypes: groupIndex.typesByPath, rng: &rng)
         if playlist.isEmpty {
             // Nothing fits these switches: say exactly that on a blank screen
             // (the view reads the empty playlist) rather than playing on as if
@@ -548,7 +548,7 @@ final class AppModel: ObservableObject {
     private func currentClipFits() -> Bool {
         guard let current = session.current, let clip = clipsByPath[current] else { return true }
         return PlaylistBuilder.playsInOrientation(clip, options: settings.filters,
-                                                  recorded: groupIndex.kindsByPath[current],
+                                                  recorded: groupIndex.typesByPath[current],
                                                   measuredSeconds: measuredSeconds[current], overlay: overlay)
     }
 
