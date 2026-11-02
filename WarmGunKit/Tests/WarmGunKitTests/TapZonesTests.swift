@@ -30,8 +30,8 @@ extension TapZonesTests {
 }
 
 extension TapZonesTests {
-    @Test func onlyTheMiddleColumnSplitsIntoWeirdAboveAndLockBelow() {
-        #expect(TapZones.action(x: 195, y: 100, width: 390, height: 844) == .weird)
+    @Test func onlyTheMiddleColumnSplitsIntoTrashAboveAndLockBelow() {
+        #expect(TapZones.action(x: 195, y: 100, width: 390, height: 844) == .trash)
         #expect(TapZones.action(x: 195, y: 800, width: 390, height: 844) == .lock)
         #expect(TapZones.action(x: 195, y: 422, width: 390, height: 844) == .center)
     }

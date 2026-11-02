@@ -153,14 +153,14 @@ public enum PlaylistBuilder {
     /// knowable in advance, which is what lets the prefetcher work both
     /// directions from the current clip.
     public static func build(catalog: Catalog, options: BrowseOptions, favoriteKeys: Set<String>,
-                             weird: Set<String>, weights: WatchWeights,
+                             trash: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
                              acts: [String: String] = [:],
                              kinds: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
         let clips = catalog.clips.filter {
-            survivesFilters($0, options, favoriteKeys, weird, kinds[$0.path],
+            survivesFilters($0, options, favoriteKeys, trash, kinds[$0.path],
                             measuredSeconds[$0.path], overlay, acts[$0.path])
         }
         if options.latest {
@@ -193,7 +193,7 @@ public enum PlaylistBuilder {
     /// themselves cannot matter. Favorites are matched by the key their lane is
     /// filed under (`LibraryPaths.favoriteKey`).
     private static func survivesFilters(_ clip: Clip, _ options: BrowseOptions,
-                                        _ favoriteKeys: Set<String>, _ weird: Set<String>,
+                                        _ favoriteKeys: Set<String>, _ trash: Set<String>,
                                         _ recorded: String?, _ measured: Double?,
                                         _ overlay: ContentOverlay, _ act: String?) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
@@ -206,7 +206,7 @@ public enum PlaylistBuilder {
             return false
         }
         return fitsOrientation(clip, type, options, overlay)
-            && !weird.contains(clip.path)
+            && !trash.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)
             && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)
             && options.types.contains(type)

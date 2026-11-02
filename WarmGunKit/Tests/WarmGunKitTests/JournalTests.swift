@@ -26,7 +26,7 @@ extension JournalTests {
 
         // A control character would end the line early and take the rest of the
         // file's parse with it, so every one of them is spelled out.
-        let torn = JournalEvent(t: 2, event: "weird", path: "clip\ttwo\nthree\u{01}")
+        let torn = JournalEvent(t: 2, event: "trash", path: "clip\ttwo\nthree\u{01}")
         let line = Journal.line(torn)
         #expect(!line.unicodeScalars.contains { $0.value < 0x20 })
         #expect(Self.read(line) == torn)

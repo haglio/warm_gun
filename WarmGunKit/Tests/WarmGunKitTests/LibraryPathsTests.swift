@@ -50,8 +50,8 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    @Test func namesTheFolderTheWeirdGestureMovesAnUpscaleInto() {
-        #expect(LibraryPaths.weirdDir == "2_outbox/kinda_weird")
+    @Test func namesTheFolderTheTrashGestureMovesAnUpscaleInto() {
+        #expect(LibraryPaths.trashDir == "2_outbox/trash")
     }
 }
 
@@ -115,7 +115,7 @@ extension LibraryPathsTests {
             Self.folder("genau", [
                 Self.folder("audio"),
                 Self.folder(name, [Self.folder("2D", [Self.folder("AI"), Self.folder("non_AI")]), Self.folder("VR")]),
-                Self.folder("weird", [Self.folder("2D"), Self.folder("VR")]),
+                Self.folder("trash", [Self.folder("2D"), Self.folder("VR")]),
             ])
         }
 
@@ -124,7 +124,7 @@ extension LibraryPathsTests {
     }
 
     @Test func findsNoGenauFlicksWhereNoFolderOrMoreThanOneHasTheirShape() {
-        let none = Self.folder("genau", [Self.folder("audio"), Self.folder("weird", [Self.folder("2D")])])
+        let none = Self.folder("genau", [Self.folder("audio"), Self.folder("trash", [Self.folder("2D")])])
         let two = Self.folder("genau", [Self.folder("alpha", [Self.folder("2D")]),
                                         Self.folder("beta", [Self.folder("2D")])])
 
@@ -177,7 +177,7 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    /// What the phone remembers by name -- the clips marked weird, the
+    /// What the phone remembers by name -- the clips sent to Trash, the
     /// favorites -- outlives the split of Genau's flicks folder into 2D and VR:
     /// a name from before it is carried to the one flick with that file name.
     @Test func aNameFromBeforeGenausFolderSplitIsCarriedToWhereTheClipIsNow() {

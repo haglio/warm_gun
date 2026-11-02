@@ -17,7 +17,7 @@ struct Settings: Codable, Equatable {
     // throws on a key it cannot find, which would drop every other setting
     // back to its default. Renaming it needs a migration, not an edit.
     var prefetchBehind = 3
-    var moveWeirdInCloud = true
+    var moveToTrashInCloud = true
 
     var cacheCapBytes: Int64 { Int64(cacheCapMB) * 1_000_000 }
 

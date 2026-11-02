@@ -60,7 +60,7 @@ extension WatchTrackerTests {
 }
 
 extension WatchTrackerTests {
-    /// A clip marked weird leaves the playlist mid-play, which looks exactly
+    /// A clip sent to Trash leaves the playlist mid-play, which looks exactly
     /// like a skip and would otherwise punish a clip the viewer has already
     /// passed a harder judgement on. The discard swallows that one departure
     /// and nothing after it.

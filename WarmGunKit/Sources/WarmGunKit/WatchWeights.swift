@@ -30,7 +30,7 @@ public struct WatchWeights: Equatable, Sendable {
 public enum Weighting {
     /// Whether a clip of this weight makes the build at all. Neutral-or-loved
     /// clips always play; a disliked one sits out in proportion to its weight,
-    /// which is the continuous form of the weird gesture's hard removal.
+    /// which is the continuous form of the trash gesture's hard removal.
     public static func passesInclusion(weight: Double, rng: inout some RandomNumberGenerator) -> Bool {
         weight >= 1.0 || uniform(&rng) < weight
     }

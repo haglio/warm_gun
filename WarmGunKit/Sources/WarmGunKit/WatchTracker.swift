@@ -73,7 +73,7 @@ public struct WatchTracker: Sendable {
     /// What the clip leaving the screen earned. Reaching the end is a watch
     /// however the roll-on happened; leaving it barely started counts against it
     /// only when a tap just before says the viewer chose to leave. A discard —
-    /// the clip marked weird and pulled out of the playlist — is a harder
+    /// the clip sent to Trash and pulled out of the playlist — is a harder
     /// judgement already made, so it swallows the departure entirely.
     private func departureEvent(now: Date) -> (event: WatchEvent, path: String)? {
         guard !path.isEmpty, !suppressDeparted else { return nil }

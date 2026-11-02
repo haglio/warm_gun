@@ -144,7 +144,7 @@ public enum PCloudAPI {
     }
 
     /// A short-lived direct download URL. Keyed by file id, not path, because
-    /// the weird gesture renames files out from under any path we cached.
+    /// the trash gesture renames files out from under any path we cached.
     public static func fileLink(fileID: Int64, auth: String) -> PCloudRequest {
         PCloudRequest(method: "getfilelink", query: [
             URLQueryItem(name: "fileid", value: String(fileID)),
@@ -153,7 +153,7 @@ public enum PCloudAPI {
         ])
     }
 
-    /// The weird gesture: move a clip's upscale into `2_outbox/kinda_weird`,
+    /// The trash gesture: move a clip's upscale into `2_outbox/trash`,
     /// named by path because the index keeps no id for an upscale. `topath` is
     /// a full destination path including the filename — pCloud treats move and
     /// rename as the same operation.

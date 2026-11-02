@@ -153,7 +153,7 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// Inclusion is the continuous version of marking a clip weird: a clip at or
+    /// Inclusion is the continuous version of marking a clip trash: a clip at or
     /// above neutral always makes the build, and one below it sits out in
     /// proportion to how far below it has fallen.
     @Test func inclusionKeepsEveryNeutralOrLovedClipAndThinsTheRest() {

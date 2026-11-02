@@ -8,7 +8,7 @@ public struct JournalEvent: Codable, Equatable, Sendable {
     /// Unix seconds — the merge is chronological, and a phone away from home has
     /// no other clock the desktop trusts.
     public let t: Int
-    /// `favorite`, `unfavorite`, `weird`, `lock`, `completion` or `skip`.
+    /// `favorite`, `unfavorite`, `trash`, `lock`, `completion` or `skip`.
     public let event: String
     /// The library-relative path of the *original*, which is how Warm Gun names a
     /// clip everywhere.

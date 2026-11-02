@@ -13,7 +13,7 @@ public struct Favorites: Codable, Equatable, Sendable {
     /// agrees. The desktop's record — the flag on the sidecars, or a dropped
     /// `favs.csv` — is a snapshot from the last time its stage ran, and it is
     /// read again on every launch, so without this an unfavorite made away from
-    /// home is undone by the next one: the weird gesture's two-step demotion
+    /// home is undone by the next one: the trash gesture's two-step demotion
     /// would take its first step forever and never reach the second.
     public private(set) var released: Set<String>
 
@@ -50,7 +50,7 @@ public struct Favorites: Codable, Equatable, Sendable {
         return held.insert(key).inserted
     }
 
-    /// True when the clip really was a favorite until now — what the weird
+    /// True when the clip really was a favorite until now — what the trash
     /// gesture's first step reads to know whether it demoted or dropped.
     public mutating func remove(path: String) -> Bool {
         guard let key = LibraryPaths.favoriteKey(forClip: path) else { return false }

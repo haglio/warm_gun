@@ -178,7 +178,7 @@ private struct ControlsOverlay: View {
             // Edges: the four gestures, drawn where their tap zones live.
             pinned(.leading) { iconButton("backward.frame.fill") { act(.previous) } }
             pinned(.trailing) { iconButton("forward.frame.fill") { act(.next) } }
-            pinned(.top) { iconButton("hand.thumbsdown.fill") { act(.weird) } }
+            pinned(.top) { iconButton("hand.thumbsdown.fill") { act(.trash) } }
             lowEdge {
                 iconButton(model.session.locked ? "lock.fill" : "lock.open") { act(.lock) }
             }
@@ -325,7 +325,7 @@ private struct ControlsOverlay: View {
 }
 
 /// The keyboard, where there is one. The arrows are the desktop satellite's
-/// — left previous, right next, up weird, down lock — and WASD is the same
+/// — left previous, right next, up trash, down lock — and WASD is the same
 /// hand on the same four; E steps the Loop control clockwise, all, 1, seed,
 /// action; space and Esc pause and play; P and L pick the portrait or the
 /// landscape library, since a laptop's screen never turns.
@@ -339,7 +339,7 @@ private struct KeyboardShortcuts: View {
         Group {
             gesture(.previous, .leftArrow, "a")
             gesture(.next, .rightArrow, "d")
-            gesture(.weird, .upArrow, "w")
+            gesture(.trash, .upArrow, "w")
             gesture(.lock, .downArrow, "s")
             Button("Loop") { model.cycleLoop() }
                 .keyboardShortcut("e", modifiers: [])
