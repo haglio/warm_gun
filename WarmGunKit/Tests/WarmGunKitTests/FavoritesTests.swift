@@ -4,35 +4,35 @@ import Testing
 
 @Suite struct FavoritesTests {
     @Test func aGenauFavoriteFromBeforeTheSplitIsCarriedToWhereTheFlickIsNow() {
-        var favorites = Favorites(held: ["genau/clips/loop-one", "clip-one"],
+        var favorites = Favorites(held: ["genau/clips/loop-one", "video-one"],
                                   released: ["genau/clips/loop-two"])
 
         favorites.rekeyFlatGenau(against: ["genau/clips/2D/AI/loop-one",
                                            "genau/clips/2D/non_AI/loop-two"])
 
-        #expect(favorites.held == ["genau/clips/2D/AI/loop-one", "clip-one"])
+        #expect(favorites.held == ["genau/clips/2D/AI/loop-one", "video-one"])
         #expect(favorites.released == ["genau/clips/2D/non_AI/loop-two"])
     }
 
-    @Test func keepsAClipByItsStemSoEitherRenditionAsksTheSameQuestion() {
+    @Test func keepsAVideoByItsStemSoEitherRenditionAsksTheSameQuestion() {
         // Stems are unique library-wide, which is what lets the phone's store and
-        // the desktop's favs.csv — which knows only upscale names — mean one clip.
+        // the desktop's favs.csv — which knows only upscale names — mean one video.
         var favorites = Favorites()
-        let added = favorites.insert(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        let added = favorites.insert(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(added)
-        #expect(favorites.held == ["clip-one"])
-        #expect(favorites.contains(path: "1_sorted/alpha/portrait/clip-one.mp4"))
-        #expect(!favorites.contains(path: "1_sorted/alpha/portrait/clip-two.mp4"))
+        #expect(favorites.held == ["video-one"])
+        #expect(favorites.contains(path: "1_sorted/alpha/portrait/video-one.mp4"))
+        #expect(!favorites.contains(path: "1_sorted/alpha/portrait/video-two.mp4"))
     }
 }
 
 extension FavoritesTests {
     /// A favorite is a favorite in every lane. The desktop now flags genau
     /// loops and real scenes on their sidecars too, so a store that could only
-    /// name a generated clip would disagree with the flag on two thirds of the
+    /// name a generated video would disagree with the flag on two thirds of the
     /// library. They are filed under their whole path, not a bare name, because
     /// nothing stops two files in that tree sharing one.
-    @Test func aLoopOrASceneCanBeHeldJustAsAGeneratedClipCan() {
+    @Test func aLoopOrASceneCanBeHeldJustAsAGeneratedVideoCan() {
         var favorites = Favorites()
 
         let heldLoop = favorites.insert(path: "genau/clips/2D/AI/loop-two.mp4")
@@ -47,7 +47,7 @@ extension FavoritesTests {
         let dropped = favorites.remove(path: "genau/clips/2D/AI/loop-two.mp4")
         #expect(dropped)
         #expect(!favorites.contains(path: "genau/clips/2D/AI/loop-two.mp4"))
-        // A path naming no file names no clip.
+        // A path naming no file names no video.
         let nothing = favorites.insert(path: "genau/clips/")
         #expect(!nothing)
     }
@@ -58,14 +58,14 @@ extension FavoritesTests {
 /// below is invented; the shape is what matters.
 @Suite struct FavsCSVTests {
     static let header = "local_file,web_url"
-    static let firstRow = #""=HYPERLINK(""file:///C:/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4"";""C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"")","=HYPERLINK(""https://example.test/gallery/clip-one"";""https://example.test/gallery/clip-one"")""#
-    static let secondRow = #""=HYPERLINK(""file:///C:/lib/2_outbox/upscaled_by_orientation/landscape/beta/clip-two_topaz.mp4"";""C:\lib\2_outbox\upscaled_by_orientation\landscape\beta\clip-two_topaz.mp4"")",""""#
+    static let firstRow = #""=HYPERLINK(""file:///C:/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4"";""C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\video-one_topaz.mp4"")","=HYPERLINK(""https://example.test/gallery/video-one"";""https://example.test/gallery/video-one"")""#
+    static let secondRow = #""=HYPERLINK(""file:///C:/lib/2_outbox/upscaled_by_orientation/landscape/beta/video-two_topaz.mp4"";""C:\lib\2_outbox\upscaled_by_orientation\landscape\beta\video-two_topaz.mp4"")",""""#
 
     @Test func readsTheStemOutOfTheDisplayArgumentOfEveryHyperlinkRow() {
         // The second argument is the plain Windows path, which round-trips
         // exactly; the first is percent-encoded as a file:// URI.
         let text = [Self.header, Self.firstRow, Self.secondRow].joined(separator: "\r\n") + "\r\n"
-        #expect(FavsCSV.keys(in: text) == ["clip-one", "clip-two"])
+        #expect(FavsCSV.keys(in: text) == ["video-one", "video-two"])
     }
 }
 
@@ -74,7 +74,7 @@ extension FavsCSVTests {
         // The file reaches the phone through pCloud and whatever touched it on
         // the way; a BOM in front of the first row must not eat that row.
         let text = "\u{FEFF}" + [Self.firstRow, Self.secondRow].joined(separator: "\n")
-        #expect(FavsCSV.keys(in: text) == ["clip-one", "clip-two"])
+        #expect(FavsCSV.keys(in: text) == ["video-one", "video-two"])
     }
 }
 
@@ -85,14 +85,14 @@ extension FavsCSVTests {
     /// Windows absolute path cannot be reduced to. The trap is that a delivered
     /// Genau flick keeps the upscale's own name, `_topaz` and all
     /// (`evolver/tasks/genau_deliver.py`), so stripping the suffix on the
-    /// strength of the name alone would file it under a clip that is not it.
+    /// strength of the name alone would file it under a video that is not it.
     @Test func readsOnlyTheUpscaleRowsAndNotAGenauFlickThatMerelyLooksLikeOne() {
-        let flick = #""=HYPERLINK(""file:///D:/lib/videos/videos/genau/clips/2D/AI/loop-two_topaz.mp4"";""D:\lib\videos\videos\genau\clips\2D\AI\loop-two_topaz.mp4"")",""""#
+        let flick = #""=HYPERLINK(""file:///D:/lib/videos/videos/genau/clips/2D/AI/loop-two_topaz.mp4"";""D:\lib\videos\videos\genau\videos\2D\AI\loop-two_topaz.mp4"")",""""#
         let scene = #""=HYPERLINK(""file:///D:/lib/videos/2D/non_AI/bucket/scene-three.mkv"";""D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"")",""""#
 
         let keys = FavsCSV.keys(in: [Self.header, Self.firstRow, flick, scene].joined(separator: "\r\n"))
 
-        #expect(keys == ["clip-one"])
+        #expect(keys == ["video-one"])
     }
 }
 
@@ -101,7 +101,7 @@ extension FavsCSVTests {
         #expect(FavsCSV.keys(in: "").isEmpty)
         #expect(FavsCSV.keys(in: Self.header + "\r\n").isEmpty)
         // A row whose formula is truncated names nothing.
-        let torn = #""=HYPERLINK(""file:///C:/lib/clip-three_topaz.mp4"";""C:\lib\clip-three_topaz.mp4"#
+        let torn = #""=HYPERLINK(""file:///C:/lib/video-three_topaz.mp4"";""C:\lib\video-three_topaz.mp4"#
         #expect(FavsCSV.keys(in: [Self.header, torn].joined(separator: "\r\n")).isEmpty)
     }
 }
@@ -111,9 +111,9 @@ extension FavoritesTests {
         // The desktop's record — a favs.csv dropped in, or the flag on the
         // sidecars — is a snapshot from before the trip, not the truth: what was
         // favorited on the phone since must survive it.
-        var favorites = Favorites(held: ["clip-one"])
-        favorites.adopt(flagged: ["clip-one", "clip-two"])
-        #expect(favorites.held == ["clip-one", "clip-two"])
+        var favorites = Favorites(held: ["video-one"])
+        favorites.adopt(flagged: ["video-one", "video-two"])
+        #expect(favorites.held == ["video-one", "video-two"])
     }
 }
 
@@ -123,39 +123,39 @@ extension FavoritesTests {
     /// the next one — and the trash gesture's two-step demotion could never
     /// reach its second step, because the first step keeps being re-taken.
     @Test func aStemLetGoOnThePhoneIsNotHandedBackByAStaleSnapshot() {
-        var favorites = Favorites(held: ["clip-one", "clip-two"])
+        var favorites = Favorites(held: ["video-one", "video-two"])
 
-        let dropped = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        let dropped = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(dropped)
-        favorites.adopt(flagged: ["clip-one", "clip-two"])
-        #expect(favorites.held == ["clip-two"])
+        favorites.adopt(flagged: ["video-one", "video-two"])
+        #expect(favorites.held == ["video-two"])
 
         // Two launches, three, a hundred: the answer does not drift.
-        favorites.adopt(flagged: ["clip-one", "clip-two"])
-        #expect(favorites.held == ["clip-two"])
+        favorites.adopt(flagged: ["video-one", "video-two"])
+        #expect(favorites.held == ["video-two"])
     }
 }
 
 extension FavoritesTests {
     /// The hold is released the moment the desktop agrees — its record no
-    /// longer names the clip, so the round trip is complete and the phone stops
-    /// carrying the refusal. And a clip held again on the phone is held, full
+    /// longer names the video, so the round trip is complete and the phone stops
+    /// carrying the refusal. And a video held again on the phone is held, full
     /// stop: the refusal it once made says nothing about the choice it just did.
     @Test func theRefusalIsDroppedOnceTheDesktopAgreesOrThePhoneChangesItsMind() {
-        var favorites = Favorites(held: ["clip-one"])
-        _ = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        var favorites = Favorites(held: ["video-one"])
+        _ = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
 
-        favorites.adopt(flagged: ["clip-two"])          // the desktop caught up
-        #expect(favorites.held == ["clip-two"])
-        favorites.adopt(flagged: ["clip-one", "clip-two"])  // and later re-favorited it
-        #expect(favorites.held == ["clip-one", "clip-two"])
+        favorites.adopt(flagged: ["video-two"])          // the desktop caught up
+        #expect(favorites.held == ["video-two"])
+        favorites.adopt(flagged: ["video-one", "video-two"])  // and later re-favorited it
+        #expect(favorites.held == ["video-one", "video-two"])
 
-        var again = Favorites(held: ["clip-one"])
-        _ = again.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
-        let heldAgain = again.insert(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        var again = Favorites(held: ["video-one"])
+        _ = again.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
+        let heldAgain = again.insert(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(heldAgain)
-        again.adopt(flagged: ["clip-one"])
-        #expect(again.held == ["clip-one"])
+        again.adopt(flagged: ["video-one"])
+        #expect(again.held == ["video-one"])
     }
 }
 
@@ -163,32 +163,32 @@ extension FavoritesTests {
     /// The refusals outlive the app run, or a relaunch is exactly the moment
     /// the snapshot wins. A blob written before they existed still decodes.
     @Test func theRefusalsSurviveAJSONRoundTripAndAnOlderBlobStillDecodes() throws {
-        var favorites = Favorites(held: ["clip-one", "clip-two"])
-        _ = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        var favorites = Favorites(held: ["video-one", "video-two"])
+        _ = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
 
         let data = try JSONEncoder().encode(favorites)
         var read = try JSONDecoder().decode(Favorites.self, from: data)
-        read.adopt(flagged: ["clip-one", "clip-two"])
-        #expect(read.held == ["clip-two"])
+        read.adopt(flagged: ["video-one", "video-two"])
+        #expect(read.held == ["video-two"])
 
         // Written before the refusals existed, and under the old field name.
-        let old = try JSONDecoder().decode(Favorites.self, from: Data(#"{"stems":["clip-one"]}"#.utf8))
-        #expect(old.held == ["clip-one"])
+        let old = try JSONDecoder().decode(Favorites.self, from: Data(#"{"stems":["video-one"]}"#.utf8))
+        #expect(old.held == ["video-one"])
     }
 }
 
 extension FavoritesTests {
     @Test func saysWhenNothingChangedSoTheJournalRecordsOnlyRealTurns() {
-        // Locking a clip that is already a favorite is not a second favorite.
-        var favorites = Favorites(held: ["clip-one"])
-        let again = favorites.insert(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        // Locking a video that is already a favorite is not a second favorite.
+        var favorites = Favorites(held: ["video-one"])
+        let again = favorites.insert(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(!again)
-        #expect(favorites.held == ["clip-one"])
+        #expect(favorites.held == ["video-one"])
 
-        let removed = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        let removed = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(removed)
         #expect(favorites.held.isEmpty)
-        let removedTwice = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        let removedTwice = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(!removedTwice)
     }
 }
@@ -214,16 +214,16 @@ extension FavoritesTests {
     /// is skipped, so absence from THAT record means the lane was missing —
     /// reading it as agreement would hand a dropped favorite straight back.
     @Test func aRefusalOutsideWhatTheRecordCoveredIsKept() {
-        var favorites = Favorites(held: ["clip-one", "genau/clips/2D/AI/loop-two"])
-        _ = favorites.remove(path: "1_sorted/alpha/portrait/clip-one.mp4")
+        var favorites = Favorites(held: ["video-one", "genau/clips/2D/AI/loop-two"])
+        _ = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         _ = favorites.remove(path: "genau/clips/2D/AI/loop-two.mp4")
 
         // Only the genau branch answered this time.
         favorites.adopt(flagged: [], covering: ["genau/clips/2D/AI/loop-two"])
 
-        // The loop's refusal is settled; the clip's is still owed an answer.
-        favorites.adopt(flagged: ["clip-one", "genau/clips/2D/AI/loop-two"],
-                        covering: ["clip-one", "genau/clips/2D/AI/loop-two"])
+        // The loop's refusal is settled; the video's is still owed an answer.
+        favorites.adopt(flagged: ["video-one", "genau/clips/2D/AI/loop-two"],
+                        covering: ["video-one", "genau/clips/2D/AI/loop-two"])
         #expect(favorites.held == ["genau/clips/2D/AI/loop-two"])
     }
 }

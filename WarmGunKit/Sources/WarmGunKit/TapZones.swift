@@ -1,7 +1,7 @@
 import Foundation
 
 /// What a tap on the video means: the desktop satellite's four arrow keys, plus
-/// the middle of the screen, which belongs to the controls rather than to a clip.
+/// the middle of the screen, which belongs to the controls rather than to a video.
 public enum TapAction: Equatable, Sendable {
     case previous, next, trash, lock, center
 }

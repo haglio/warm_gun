@@ -16,10 +16,10 @@ import Testing
             Self.file("2_outbox/upscaled_by_orientation/portrait/alpha/one_topaz.mp4", id: 4),
             Self.file("1_sorted/beta/landscape/three.MP4", id: 5),
         ])
-        #expect(catalog.clips.map(\.path) == ["1_sorted/alpha/portrait/one.mp4", "1_sorted/beta/landscape/three.MP4"])
-        #expect(catalog.clips[1].shape == .landscape)
-        #expect(catalog.clips[1].source == "beta")
-        #expect(catalog.clips[1].stem == "three")
+        #expect(catalog.videos.map(\.path) == ["1_sorted/alpha/portrait/one.mp4", "1_sorted/beta/landscape/three.MP4"])
+        #expect(catalog.videos[1].shape == .landscape)
+        #expect(catalog.videos[1].source == "beta")
+        #expect(catalog.videos[1].stem == "three")
     }
 }
 
@@ -35,23 +35,23 @@ extension CatalogTests {
                                   size: 2_000_000, modified: Date(timeIntervalSince1970: 0),
                                   duration: nil, videoCodec: nil, width: nil, height: nil)
         let catalog = Catalog(files: [wide, unknown])
-        #expect(catalog.clips.count == 2)
-        #expect(catalog.clips[0].source == "genau")
-        #expect(catalog.clips[0].shape == .landscape)
-        #expect(catalog.clips[0].stem == "loop-one")
-        #expect(catalog.clips[1].shape == .portrait)
+        #expect(catalog.videos.count == 2)
+        #expect(catalog.videos[0].source == "genau")
+        #expect(catalog.videos[0].shape == .landscape)
+        #expect(catalog.videos[0].stem == "loop-one")
+        #expect(catalog.videos[1].shape == .portrait)
     }
 
     @Test func onlyGenausTwoDFlicksReachThePhone() {
         // Genau's flicks folder holds a 2D folder and a VR folder, as the
-        // library's videos do; a VR clip is for the headset, and a file still
+        // library's videos do; a VR video is for the headset, and a file still
         // at the top of the folder is from before the split.
         let catalog = Catalog(files: [
             Self.file("genau/clips/2D/AI/loop-one.mp4", id: 1),
             Self.file("genau/clips/VR/scene-one_180.mp4", id: 2),
             Self.file("genau/clips/loop-two.mp4", id: 3),
         ])
-        #expect(catalog.clips.map(\.path) == ["genau/clips/2D/AI/loop-one.mp4"])
+        #expect(catalog.videos.map(\.path) == ["genau/clips/2D/AI/loop-one.mp4"])
     }
 }
 
@@ -71,13 +71,13 @@ extension CatalogTests {
             file("non_AI/alpha/scene-two_topaz.mp4"),
             file("non_AI/beta/deeper/scene-three.mp4"),
         ])
-        #expect(catalog.clips.map(\.path) == ["non_AI/alpha/scene-one.mp4",
+        #expect(catalog.videos.map(\.path) == ["non_AI/alpha/scene-one.mp4",
                                               "non_AI/alpha/tall-one.mp4",
                                               "non_AI/beta/deeper/scene-three.mp4"])
-        #expect(catalog.clips[0].source == "non_AI")
-        #expect(catalog.clips[0].shape == .landscape)
-        #expect(catalog.clips[1].shape == .portrait)
-        #expect(catalog.clips[2].stem == "scene-three")
+        #expect(catalog.videos[0].source == "non_AI")
+        #expect(catalog.videos[0].shape == .landscape)
+        #expect(catalog.videos[1].shape == .portrait)
+        #expect(catalog.videos[2].stem == "scene-three")
     }
 }
 
@@ -93,11 +93,11 @@ extension CatalogTests {
 }
 
 extension CatalogTests {
-    @Test func aClipOverTwentyFiveMegabytesStreamsAndOneAtItIsFetchedWhole() {
-        let clips = Catalog(files: [
+    @Test func aVideoOverTwentyFiveMegabytesStreamsAndOneAtItIsFetchedWhole() {
+        let videos = Catalog(files: [
             Self.file("1_sorted/alpha/portrait/at.mp4", id: 1, size: 25_000_000),
             Self.file("1_sorted/alpha/portrait/over.mp4", id: 2, size: 25_000_001),
-        ]).clips
-        #expect(clips.map(\.streams) == [false, true])
+        ]).videos
+        #expect(videos.map(\.streams) == [false, true])
     }
 }

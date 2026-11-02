@@ -1,13 +1,13 @@
 import Foundation
 import WarmGunKit
 
-/// The on-device copy of every clip Warm Gun has fetched, keyed by library path.
+/// The on-device copy of every video Warm Gun has fetched, keyed by library path.
 ///
 /// Lives in Application Support rather than Caches, which iOS empties under
 /// pressure, and is excluded from backups because the library is the backup.
 /// The index is held in memory and written beside the files, so a relaunch
 /// knows what it has without stat-ing a few thousand files.
-actor ClipCache {
+actor VideoCache {
     private let directory: URL
     private var entries: [String: PrefetchPlanner.CachedFile] = [:]
 

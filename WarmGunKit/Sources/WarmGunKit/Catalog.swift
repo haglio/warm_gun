@@ -35,7 +35,7 @@ public extension LibraryFile {
 }
 
 /// A playable original, identified everywhere by its library-relative path.
-public struct Clip: Codable, Hashable, Identifiable, Sendable {
+public struct Video: Codable, Hashable, Identifiable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case path, fileID, size, modified, duration, videoCodec, width, height, source, stem
         case shape = "orientation"
@@ -54,7 +54,7 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
     public let shape: VideoShape
     public let stem: String
 
-    /// Whether the clip streams straight off its pCloud link rather than
+    /// Whether the video streams straight off its pCloud link rather than
     /// being fetched whole: a real scene runs to hundreds of megabytes, and
     /// most carry their index up front, so playback starts in seconds.
     public var streams: Bool { size > Self.streamThresholdBytes }
@@ -94,7 +94,7 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
             } else {
                 shape = .portrait
             }
-            guard let name = LibraryPaths.filename(ofClip: file.path),
+            guard let name = LibraryPaths.filename(ofVideo: file.path),
                   let dot = name.lastIndex(of: "."), dot != name.startIndex else { return nil }
             stem = String(name[..<dot])
         } else {
@@ -114,13 +114,17 @@ public struct Clip: Codable, Hashable, Identifiable, Sendable {
 /// The local index of the library: built once from a listing, persisted, and
 /// the only thing a playlist rebuild ever reads.
 public struct Catalog: Codable, Equatable, Sendable {
-    public let clips: [Clip]
+    public let videos: [Video]
 
-    public init(clips: [Clip]) {
-        self.clips = clips
+    private enum CodingKeys: String, CodingKey {
+        case videos = "clips"
+    }
+
+    public init(videos: [Video]) {
+        self.videos = videos
     }
 
     public init(files: [LibraryFile]) {
-        clips = files.compactMap(Clip.init(file:))
+        videos = files.compactMap(Video.init(file:))
     }
 }

@@ -3,10 +3,10 @@ import Testing
 @testable import WarmGunKit
 
 @Suite struct PrefetchPlannerTests {
-    /// A fabricated run of ten clips, numbered so a fetch order reads at a glance.
-    static let ten = (0..<10).map { "1_sorted/alpha/portrait/clip-\($0).mp4" }
+    /// A fabricated run of ten videos, numbered so a fetch order reads at a glance.
+    static let ten = (0..<10).map { "1_sorted/alpha/portrait/video-\($0).mp4" }
 
-    @Test func fetchesTheClipOnScreenFirstAndThenTheOnesComingUp() {
+    @Test func fetchesTheVideoOnScreenFirstAndThenTheOnesComingUp() {
         #expect(PrefetchPlanner.plan(playlist: Self.ten, index: 3, ahead: 2, back: 0)
                 == [Self.ten[3], Self.ten[4], Self.ten[5]])
     }
@@ -22,7 +22,7 @@ extension PrefetchPlannerTests {
     }
 
     @Test func neverEvictsWhatTheWindowIsHoldingEvenWhenThatLeavesItOverTheCap() {
-        // The window is what the next taps will play; deleting a clip inside it
+        // The window is what the next taps will play; deleting a video inside it
         // to satisfy a cap would just fetch it again, and a cap set below the
         // window's own size is a setting to live with, not a reason to stall.
         let cached = [Self.cached(0, megabytes: 4, usedAfter: 0),
@@ -35,7 +35,7 @@ extension PrefetchPlannerTests {
     }
 
     @Test func evictsTheLeastRecentlyPlayedUntilTheCacheIsUnderItsCap() {
-        // Cached clips are keyed by file, so a reshuffle costs nothing; what
+        // Cached videos are keyed by file, so a reshuffle costs nothing; what
         // decides is how long ago each was last watched.
         let cached = [Self.cached(1, megabytes: 4, usedAfter: 60),
                       Self.cached(0, megabytes: 4, usedAfter: 0),
@@ -53,7 +53,7 @@ extension PrefetchPlannerTests {
 }
 
 extension PrefetchPlannerTests {
-    @Test func windowsThatRunPastTheEndsWrapAndStillNameEachClipOnce() {
+    @Test func windowsThatRunPastTheEndsWrapAndStillNameEachVideoOnce() {
         // The playlist is a ring, so a window deeper than the run itself would
         // otherwise ask for the same file several times over.
         let four = Array(Self.ten.prefix(4))
@@ -81,9 +81,9 @@ extension PrefetchPlannerTests {
         // The plan is capped at the playlist's length — and so is the work: a
         // pathological window must not materialize millions of offsets first.
         let start = Date()
-        let plan = PrefetchPlanner.plan(playlist: ["1_sorted/alpha/portrait/clip-one.mp4"],
+        let plan = PrefetchPlanner.plan(playlist: ["1_sorted/alpha/portrait/video-one.mp4"],
                                         index: 0, ahead: 50_000_000, back: 50_000_000)
-        #expect(plan == ["1_sorted/alpha/portrait/clip-one.mp4"])
+        #expect(plan == ["1_sorted/alpha/portrait/video-one.mp4"])
         #expect(Date().timeIntervalSince(start) < 0.05)
     }
 }

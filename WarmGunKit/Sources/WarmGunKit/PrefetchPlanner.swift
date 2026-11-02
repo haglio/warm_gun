@@ -3,14 +3,14 @@ import Foundation
 /// What to fetch next, and what to throw away to make room for it.
 ///
 /// The playlist is deterministic, so both the future and the past of a run are
-/// knowable: the window keeps clips resident on either side of the one playing
+/// knowable: the window keeps videos resident on either side of the one playing
 /// and never waits on the network for a tap.
 public enum PrefetchPlanner {
-    /// The order to fetch the window in — nearest first, the clip on screen
+    /// The order to fetch the window in — nearest first, the video on screen
     /// ahead of everything.
     ///
     /// The playlist is a ring, so the offsets wrap; on a run shorter than the
-    /// window that would name the same clip several times, and the cache is
+    /// window that would name the same video several times, and the cache is
     /// keyed by file, so each one is asked for once and the plan is never longer
     /// than the run itself.
     public static func plan(playlist: [String], index: Int, ahead: Int, back: Int) -> [String] {
@@ -29,7 +29,7 @@ public enum PrefetchPlanner {
         return planned
     }
 
-    /// A clip already on disk: what it costs to keep, and when it last earned
+    /// A video already on disk: what it costs to keep, and when it last earned
     /// its place.
     public struct CachedFile: Equatable, Sendable {
         public let path: String
@@ -47,7 +47,7 @@ public enum PrefetchPlanner {
     /// played first, and only as far as it takes.
     ///
     /// Nothing in `keep` — the live window — is ever offered up, even when that
-    /// leaves the cache over the cap: those clips are what the next taps play, so
+    /// leaves the cache over the cap: those videos are what the next taps play, so
     /// deleting one only buys the same download back again.
     public static func evictions(cached: [CachedFile], keep: Set<String>, capBytes: Int64) -> [String] {
         var total = cached.reduce(Int64(0)) { $0 + $1.size }

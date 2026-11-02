@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the run does when the clip it is waiting on fails to download again.
+/// What the run does when the video it is waiting on fails to download again.
 public struct FetchFailures: Equatable, Sendable {
     public enum Answer: Equatable, Sendable {
         case keepWaiting, skip, hold

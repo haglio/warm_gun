@@ -1,7 +1,7 @@
 import Foundation
 
 /// The download URLs pCloud has handed out, kept so the prefetcher does not
-/// spend a `getfilelink` round-trip per clip on a phone connection. Every link
+/// spend a `getfilelink` round-trip per video on a phone connection. Every link
 /// dies at a stated moment, so the cache is only useful if it is asked with a
 /// clock in hand — which is why `now` is a parameter and never read from here.
 public struct LinkCache: Equatable, Sendable {
@@ -15,20 +15,20 @@ public struct LinkCache: Equatable, Sendable {
     public init() {}
 
     /// Keyed by file id rather than by path, because the trash gesture renames
-    /// clips out from under any path a link was fetched for.
+    /// videos out from under any path a link was fetched for.
     public mutating func store(url: URL, for fileID: Int64, expires: Date) {
         links[fileID] = Link(url: url, expires: expires)
     }
 
     /// Throw one link away. A fetch that failed on a link the cache still
-    /// believed in means the URL died early, not that the clip is gone: the
+    /// believed in means the URL died early, not that the video is gone: the
     /// answer is to re-link and retry, and this is how the dead one leaves.
     public mutating func forget(_ fileID: Int64) {
         links[fileID] = nil
     }
 
     /// The link, or nil when there isn't one or it is too close to the end of
-    /// its life to hand to a download. The default margin is a minute: a clip
+    /// its life to hand to a download. The default margin is a minute: a video
     /// is a couple of megabytes and a link that expires mid-transfer fails the
     /// fetch, which costs far more than re-linking would have.
     public func url(for fileID: Int64, now: Date, margin: TimeInterval = 60) -> URL? {

@@ -7,8 +7,8 @@ import Testing
         // The desktop merges this file by eye as much as by parser, so the shape
         // is fixed: t, then event, then path, and nothing else on the line.
         let line = Journal.line(JournalEvent(t: 1_700_000_000, event: "favorite",
-                                             path: "1_sorted/alpha/portrait/clip-one.mp4"))
-        #expect(line == #"{"t":1700000000,"event":"favorite","path":"1_sorted/alpha/portrait/clip-one.mp4"}"#)
+                                             path: "1_sorted/alpha/portrait/video-one.mp4"))
+        #expect(line == #"{"t":1700000000,"event":"favorite","path":"1_sorted/alpha/portrait/video-one.mp4"}"#)
     }
 
     static func read(_ line: String) -> JournalEvent? {
@@ -19,14 +19,14 @@ import Testing
 extension JournalTests {
     @Test func escapesWhatJSONCannotCarryRawSoOneOddStemCannotTearTheLine() {
         let awkward = JournalEvent(t: 1, event: "skip",
-                                   path: #"1_sorted/alpha/portrait/clip "one"\two.mp4"#)
+                                   path: #"1_sorted/alpha/portrait/video "one"\two.mp4"#)
         #expect(Journal.line(awkward)
-                == #"{"t":1,"event":"skip","path":"1_sorted/alpha/portrait/clip \"one\"\\two.mp4"}"#)
+                == #"{"t":1,"event":"skip","path":"1_sorted/alpha/portrait/video \"one\"\\two.mp4"}"#)
         #expect(Self.read(Journal.line(awkward)) == awkward)
 
         // A control character would end the line early and take the rest of the
         // file's parse with it, so every one of them is spelled out.
-        let torn = JournalEvent(t: 2, event: "trash", path: "clip\ttwo\nthree\u{01}")
+        let torn = JournalEvent(t: 2, event: "trash", path: "video\ttwo\nthree\u{01}")
         let line = Journal.line(torn)
         #expect(!line.unicodeScalars.contains { $0.value < 0x20 })
         #expect(Self.read(line) == torn)

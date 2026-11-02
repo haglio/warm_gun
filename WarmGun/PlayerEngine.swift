@@ -1,31 +1,31 @@
 import AVFoundation
 import Foundation
 
-/// The screen's player: an AVQueuePlayer holding exactly the clip on screen
+/// The screen's player: an AVQueuePlayer holding exactly the video on screen
 /// and the one staged to follow it, the same two-entry window the desktop
 /// satellite keeps in mpv. Both come from local files, so a swap is a swap.
 ///
 /// It reports three things up, each named by the FILE it concerns, because the
-/// queue is not the session: the clip that rolled on (so the model can check
-/// the roll matches what it staged), the fraction played, and a clip that
+/// queue is not the session: the video that rolled on (so the model can check
+/// the roll matches what it staged), the fraction played, and a video that
 /// failed to play at all. It decides nothing about what plays next.
 @MainActor
 final class PlayerEngine {
     let player = AVQueuePlayer()
 
-    /// Called when the queue rolled from one clip onto the next by itself,
+    /// Called when the queue rolled from one video onto the next by itself,
     /// with the URL it rolled onto — the model advances only when that is the
-    /// clip it staged, so a stale roll can never move the session.
+    /// video it staged, so a stale roll can never move the session.
     var onAdvanced: ((URL) -> Void)?
     /// Called with the fraction played, a few times a second.
     var onProgress: ((Double) -> Void)?
-    /// Called when the clip played out with nothing staged after it and no
+    /// Called when the video played out with nothing staged after it and no
     /// loop holding it — the session's cue to move on.
     var onFinished: (() -> Void)?
     /// Called as the player enters and leaves its buffering stall — the only
     /// sign a streaming scene gives before its first frame.
     var onBuffering: ((Bool) -> Void)?
-    /// Called when a clip cannot be played at all — a truncated download, a
+    /// Called when a video cannot be played at all — a truncated download, a
     /// container AVFoundation refuses. Without this an unplayable file would
     /// freeze the endless run silently and forever.
     var onItemFailed: ((URL) -> Void)?
@@ -69,7 +69,7 @@ final class PlayerEngine {
         }
     }
 
-    /// Shows `current`, with `next` ready after it. Re-showing the clip already
+    /// Shows `current`, with `next` ready after it. Re-showing the video already
     /// on screen only refreshes what is staged — it never restarts the picture.
     func show(current: URL, next: URL?, loop: Bool, autoplay: Bool = true) {
         self.loop = loop

@@ -138,7 +138,7 @@ private struct ControlsOverlay: View {
             pinned(.topLeading) {
                 cluster {
                     wordButton("Genau", on: typesBinding([.genauFlick]))
-                    wordButton("Clips", on: typesBinding(ClipType.clips))
+                    wordButton("Clips", on: typesBinding(VideoType.clips))
                     wordButton("Full", on: typesBinding([.fullLength]))
                 }
             }
@@ -190,7 +190,7 @@ private struct ControlsOverlay: View {
             // The name of what is on the glass, under the pause button: the
             // only band clear of the corner clusters and the edge buttons,
             // which sit at the centers of the sides.
-            if let name = model.showing.flatMap(LibraryPaths.filename(ofClip:)) {
+            if let name = model.showing.flatMap(LibraryPaths.filename(ofVideo:)) {
                 Text(name)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.white.opacity(0.9))
@@ -295,7 +295,7 @@ private struct ControlsOverlay: View {
 
     /// Whether every type a button covers is in the filters. Unchecking everything is allowed
     /// — the screen just says nothing matches until a type comes back.
-    private func typesBinding(_ types: Set<ClipType>) -> Binding<Bool> {
+    private func typesBinding(_ types: Set<VideoType>) -> Binding<Bool> {
         Binding(get: { model.settings.filters.includes(types) },
                 set: { value in
                     var filters = model.settings.filters

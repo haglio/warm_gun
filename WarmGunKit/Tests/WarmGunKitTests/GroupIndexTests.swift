@@ -37,9 +37,9 @@ import Testing
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta"),
             "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "beta", videoSeed: "222"),
         ])
-        #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.actionVideos(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
-        #expect(index.actionClips(of: "1_sorted/a/portrait/three.mp4")
+        #expect(index.actionVideos(of: "1_sorted/a/portrait/three.mp4")
                 == ["1_sorted/a/portrait/three.mp4"])
         #expect(!index.isEmpty)
         #expect(GroupIndex(sidecars: [:]).isEmpty)
@@ -54,11 +54,11 @@ import Testing
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "alpha", videoSeed: "222"),
             "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "beta", videoSeed: "333"),
         ])
-        #expect(index.seedClips(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.seedVideos(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
     }
 
-    @Test func imageToVideoClipsGroupOnTheSourceImageIdentity() {
+    @Test func imageToVideoVideosGroupOnTheSourceImageIdentity() {
         // With a source_image block the IMAGE's identity is the key: the image
         // seed varies the seed family; the actions vary within one image.
         let index = GroupIndex(sidecars: [
@@ -66,23 +66,23 @@ import Testing
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta", image: true, imageSeed: "901"),
             "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "alpha", image: true, imageSeed: "902"),
         ])
-        #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.actionVideos(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
         // The image family spans actions, so the seed row narrows to the anchor's.
-        #expect(index.seedClips(of: "1_sorted/a/portrait/one.mp4")
+        #expect(index.seedVideos(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/three.mp4"])
     }
 
-    @Test func aClipWithoutTheKeyFieldsBelongsToNoGroup() {
+    @Test func aVideoWithoutTheKeyFieldsBelongsToNoGroup() {
         // No sidecar, no prompt, or no seed: the desktop returns None — the
-        // clip loops as itself alone.
+        // video loops as itself alone.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(prompt: nil),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(videoSeed: nil),
         ])
-        #expect(index.actionClips(of: "1_sorted/a/portrait/one.mp4") == ["1_sorted/a/portrait/one.mp4"])
-        #expect(index.seedClips(of: "1_sorted/a/portrait/two.mp4") == ["1_sorted/a/portrait/two.mp4"])
-        #expect(index.actionClips(of: "1_sorted/a/portrait/unknown.mp4") == ["1_sorted/a/portrait/unknown.mp4"])
+        #expect(index.actionVideos(of: "1_sorted/a/portrait/one.mp4") == ["1_sorted/a/portrait/one.mp4"])
+        #expect(index.seedVideos(of: "1_sorted/a/portrait/two.mp4") == ["1_sorted/a/portrait/two.mp4"])
+        #expect(index.actionVideos(of: "1_sorted/a/portrait/unknown.mp4") == ["1_sorted/a/portrait/unknown.mp4"])
     }
 
     @Test func sidecarsDecodeFromTheRealJSONShape() throws {
@@ -125,7 +125,7 @@ extension GroupIndexTests {
 }
 
 extension GroupIndexTests {
-    @Test func onlyAGroupHoldingAnotherClipCanBeLoopedWhileAllAndOneAlwaysCan() {
+    @Test func onlyAGroupHoldingAnotherVideoCanBeLoopedWhileAllAndOneAlwaysCan() {
         let one = "1_sorted/a/portrait/one.mp4"
         let index = GroupIndex(sidecars: [
             one: Self.sidecar(action: "alpha", videoSeed: "111"),

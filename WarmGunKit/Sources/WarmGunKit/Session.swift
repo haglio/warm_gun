@@ -17,7 +17,7 @@ public struct Session: Equatable, Sendable {
     }
 
     /// The run a relaunch resumes: the saved order less what the index no
-    /// longer has, on the clip it was on.
+    /// longer has, on the video it was on.
     public init(restoring playlist: [String], at index: Int, locked: Bool, keeping known: Set<String>) {
         self.init(playlist: playlist.filter(known.contains))
         guard playlist.indices.contains(index), known.contains(playlist[index]) else { return }
@@ -29,14 +29,14 @@ public struct Session: Equatable, Sendable {
         playlist.isEmpty ? nil : playlist[index]
     }
 
-    /// The clip auto-advance will roll onto — what the prefetcher opens early.
+    /// The video auto-advance will roll onto — what the prefetcher opens early.
     public var staged: String? {
         guard !locked, !playlist.isEmpty else { return nil }
         return playlist[(index + 1) % playlist.count]
     }
 
     /// Navigate *delta* entries, wrapping in both directions: previous is the
-    /// list neighbor, never a history stack. A deliberate step off a held clip
+    /// list neighbor, never a history stack. A deliberate step off a held video
     /// releases the lock, as the desktop dispatcher's UNLOCK-before-NEXT does.
     public mutating func step(_ delta: Int) {
         guard !playlist.isEmpty else { return }
@@ -51,7 +51,7 @@ public struct Session: Equatable, Sendable {
     /// discarded: that is a no-op, never an empty playlist.
     public mutating func discard() -> String? {
         // Discarding releases any hold first, as the desktop dispatcher's
-        // UNLOCK-before-TRASH does: repeat-one must not survive onto the clip
+        // UNLOCK-before-TRASH does: repeat-one must not survive onto the video
         // that shifts into the discarded slot.
         locked = false
         guard playlist.count > 1 else { return nil }
@@ -60,20 +60,20 @@ public struct Session: Equatable, Sendable {
         return dropped
     }
 
-    /// Lock the satellite onto its clip (repeat-one) or let it run again.
+    /// Lock the satellite onto its video (repeat-one) or let it run again.
     public mutating func setLocked(_ locked: Bool) {
         self.locked = locked
     }
 
-    /// End of clip: the player rolled onto the staged entry, so the index
-    /// follows it. A locked satellite is repeat-one and holds its clip instead.
+    /// End of video: the player rolled onto the staged entry, so the index
+    /// follows it. A locked satellite is repeat-one and holds its video instead.
     public mutating func advance() {
         guard !locked, !playlist.isEmpty else { return }
         index = (index + 1) % playlist.count
     }
 
-    /// Play one exact clip: jump to it when the playlist already holds it, else
-    /// splice it in right after the current entry and play it there — a clip
+    /// Play one exact video: jump to it when the playlist already holds it, else
+    /// splice it in right after the current entry and play it there — a video
     /// reached from the favorites is not in the live list, and dropping the run
     /// to a one-entry playlist would strand it.
     public mutating func playFile(_ path: String) {
@@ -86,7 +86,7 @@ public struct Session: Equatable, Sendable {
         index = slot
     }
 
-    /// Swap in a rebuilt playlist without interrupting the clip on screen: a
+    /// Swap in a rebuilt playlist without interrupting the video on screen: a
     /// filter toggle is not a navigation, so if the current entry survives the
     /// rebuild the index simply re-points at it and the lock stands.
     public mutating func replacePlaylist(_ playlist: [String]) {
@@ -98,7 +98,7 @@ public struct Session: Equatable, Sendable {
         if let kept = playing.flatMap(playlist.firstIndex(of:)) {
             index = kept
         } else {
-            // The held clip is gone, and repeat-one must not be inherited by
+            // The held video is gone, and repeat-one must not be inherited by
             // whatever lands at the top — the desktop cancels the lock on
             // every rebuild that moves a Funestra for the same reason.
             index = 0

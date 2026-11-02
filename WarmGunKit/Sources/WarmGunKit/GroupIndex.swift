@@ -1,7 +1,7 @@
 import Foundation
 
-/// One clip's metadata sidecar, as the pipeline writes it: a `video` block
-/// (always), a `source_image` block (image-to-video clips), and — since
+/// One video's metadata sidecar, as the pipeline writes it: a `video` block
+/// (always), a `source_image` block (image-to-video videos), and — since
 /// Evolver's Watch Weights stage — a `watch` block and a `favorite` flag. The
 /// blocks are read as dictionaries of text, whatever JSON shape each field
 /// arrived in, because the desktop reads them through `str(value or "")` and
@@ -20,7 +20,7 @@ public struct Sidecar: Codable, Equatable, Sendable {
         }
 
         /// A weight that could not serve as a multiplier is no weight at all.
-        /// Zero would silence a clip for good and a negative one would sort it
+        /// Zero would silence a video for good and a negative one would sort it
         /// FIRST in the draw — the exact inverse of what the number means — so
         /// only a finite positive number counts as stamped.
         public init(from decoder: Decoder) throws {
@@ -33,7 +33,7 @@ public struct Sidecar: Codable, Equatable, Sendable {
     public let video: [String: String]?
     public let sourceImage: [String: String]?
     public let watch: Watch?
-    /// Whether the desktop's favorites hold this clip. Evolver writes the field
+    /// Whether the desktop's favorites hold this video. Evolver writes the field
     /// only when it is true, and the file it mirrors already carries the
     /// favorites made on the phone, so this is both sides' answer.
     public let favorite: Bool
@@ -117,15 +117,15 @@ public struct GroupIndex: Sendable, Equatable {
     private var seedKeyByPath: [String: String] = [:]
     private var actionByPath: [String: String] = [:]
     private var typeByPath: [String: String] = [:]
-    private var actionClipsByKey: [String: [String]] = [:]
-    private var seedClipsByKey: [String: [String]] = [:]
+    private var actionVideosByKey: [String: [String]] = [:]
+    private var seedVideosByKey: [String: [String]] = [:]
 
-    /// Every clip's normalized recorded action, for the build's action buttons.
+    /// Every video's normalized recorded action, for the build's action buttons.
     public var actionsByPath: [String: String] {
         actionByPath.filter { !$0.value.isEmpty }
     }
 
-    /// Every clip's recorded type — what the desktop wrote in `video.type`,
+    /// Every video's recorded type — what the desktop wrote in `video.type`,
     /// which is what the type buttons narrow by wherever it is there.
     public var typesByPath: [String: String] {
         typeByPath.filter { !$0.value.isEmpty }
@@ -141,40 +141,40 @@ public struct GroupIndex: Sendable, Equatable {
             typeByPath[path] = sidecar.video?["type"] ?? ""
             if let key = Self.actionGroupKey(sidecar) {
                 actionKeyByPath[path] = key
-                actionClipsByKey[key, default: []].append(path)
+                actionVideosByKey[key, default: []].append(path)
             }
             if let key = Self.seedGroupKey(sidecar) {
                 seedKeyByPath[path] = key
-                seedClipsByKey[key, default: []].append(path)
+                seedVideosByKey[key, default: []].append(path)
             }
         }
-        for key in actionClipsByKey.keys { actionClipsByKey[key]?.sort() }
-        for key in seedClipsByKey.keys { seedClipsByKey[key]?.sort() }
+        for key in actionVideosByKey.keys { actionVideosByKey[key]?.sort() }
+        for key in seedVideosByKey.keys { seedVideosByKey[key]?.sort() }
     }
 
-    /// The clip's subject doing its different things — always anchored first,
-    /// and never empty: a clip in no group is a group of itself.
-    public func actionClips(of path: String) -> [String] {
-        guard let key = actionKeyByPath[path], let clips = actionClipsByKey[key],
-              clips.count > 1 else { return [path] }
-        return anchored(clips, on: path)
+    /// The video's subject doing its different things — always anchored first,
+    /// and never empty: a video in no group is a group of itself.
+    public func actionVideos(of path: String) -> [String] {
+        guard let key = actionKeyByPath[path], let videos = actionVideosByKey[key],
+              videos.count > 1 else { return [path] }
+        return anchored(videos, on: path)
     }
 
-    /// The clip's action done by its different subjects: the family narrowed to
+    /// The video's action done by its different subjects: the family narrowed to
     /// the anchor's own action (normalized, so casing variants share a row) —
     /// the narrowing the desktop applies in `seed_family_items`.
-    public func seedClips(of path: String) -> [String] {
-        guard let key = seedKeyByPath[path], let clips = seedClipsByKey[key] else { return [path] }
+    public func seedVideos(of path: String) -> [String] {
+        guard let key = seedKeyByPath[path], let videos = seedVideosByKey[key] else { return [path] }
         let action = actionByPath[path] ?? ""
-        let sameAction = clips.filter { (actionByPath[$0] ?? "") == action }
+        let sameAction = videos.filter { (actionByPath[$0] ?? "") == action }
         guard sameAction.count > 1 else { return [path] }
         return anchored(sameAction, on: path)
     }
 
     public func group(_ mode: LoopMode, of path: String) -> [String]? {
         switch mode {
-        case .seed: return seedClips(of: path)
-        case .action: return actionClips(of: path)
+        case .seed: return seedVideos(of: path)
+        case .action: return actionVideos(of: path)
         case .all, .single: return nil
         }
     }
@@ -183,9 +183,9 @@ public struct GroupIndex: Sendable, Equatable {
         group(mode, of: path).map { $0.count > 1 } ?? true
     }
 
-    private func anchored(_ clips: [String], on path: String) -> [String] {
-        guard let at = clips.firstIndex(of: path) else { return clips }
-        return [path] + clips[..<at] + clips[(at + 1)...]
+    private func anchored(_ videos: [String], on path: String) -> [String] {
+        guard let at = videos.firstIndex(of: path) else { return videos }
+        return [path] + videos[..<at] + videos[(at + 1)...]
     }
 
     // MARK: - the keys, verbatim from the desktop

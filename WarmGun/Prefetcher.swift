@@ -1,11 +1,11 @@
 import Foundation
 import WarmGunKit
 
-/// Keeps the clips around the playhead on disk before they are needed.
+/// Keeps the videos around the playhead on disk before they are needed.
 ///
-/// Given a plan (nearest clips first, see `PrefetchPlanner`), it downloads
+/// Given a plan (nearest videos first, see `PrefetchPlanner`), it downloads
 /// what is missing a few at a time, drops downloads that fell out of the plan,
-/// and evicts the least recently used cached clips that the plan does not
+/// and evicts the least recently used cached videos that the plan does not
 /// protect once the cache is over its cap. The scenes too big to cache whole
 /// are not planned at all — they stream, and this hands out their links.
 actor Prefetcher {
@@ -25,9 +25,9 @@ actor Prefetcher {
     }
 
     private let client: PCloudClient
-    private let cache: ClipCache
+    private let cache: VideoCache
     private var links = LinkCache()
-    private var clips: [String: Clip] = [:]
+    private var videos: [String: Video] = [:]
     private var plan: [String] = []
     private var planGeneration = 0
     private var inFlight: [String: Flight] = [:]
@@ -38,7 +38,7 @@ actor Prefetcher {
     private let continuation: AsyncStream<Event>.Continuation
     let events: AsyncStream<Event>
 
-    init(client: PCloudClient, cache: ClipCache, capBytes: Int64) {
+    init(client: PCloudClient, cache: VideoCache, capBytes: Int64) {
         self.client = client
         self.cache = cache
         self.capBytes = capBytes
@@ -50,10 +50,10 @@ actor Prefetcher {
     /// Adopt a new window. Stale generations are dropped rather than applied —
     /// two `sync()`s in quick succession may land here out of order, and the
     /// older plan must not win.
-    func replan(_ order: [String], clips: [String: Clip], generation: Int) async {
+    func replan(_ order: [String], videos: [String: Video], generation: Int) async {
         guard generation >= planGeneration else { return }
         planGeneration = generation
-        self.clips.merge(clips) { _, new in new }
+        self.videos.merge(videos) { _, new in new }
         plan = order
         let wanted = Set(order)
         for (path, flight) in inFlight where !wanted.contains(path) {
@@ -63,10 +63,10 @@ actor Prefetcher {
         await pump()
     }
 
-    /// A short-lived direct URL for a clip that streams instead of caching —
+    /// A short-lived direct URL for a video that streams instead of caching —
     /// the same link cache and expiry rules the downloads use.
-    func streamURL(for clip: Clip) async throws -> URL {
-        try await link(for: clip)
+    func streamURL(for video: Video) async throws -> URL {
+        try await link(for: video)
     }
 
     private func pump() async {
@@ -75,7 +75,7 @@ actor Prefetcher {
         let now = Date()
         var cooling = false
         for path in plan where inFlight.count < parallelism {
-            guard !cached.contains(path), inFlight[path] == nil, let clip = clips[path] else { continue }
+            guard !cached.contains(path), inFlight[path] == nil, let video = videos[path] else { continue }
             // A path that just failed sits out a beat instead of hammering the
             // same broken link in a tight loop; the delayed pump below retries.
             if let failure = failures[path], now.timeIntervalSince(failure.last) < failureCooldown {
@@ -83,7 +83,7 @@ actor Prefetcher {
                 continue
             }
             let token = UUID()
-            let task = Task { [weak self] in _ = await self?.fetch(clip, token: token) }
+            let task = Task { [weak self] in _ = await self?.fetch(video, token: token) }
             inFlight[path] = Flight(task: task, token: token)
         }
         if cooling && inFlight.isEmpty {
@@ -94,16 +94,16 @@ actor Prefetcher {
         }
     }
 
-    private func fetch(_ clip: Clip, token: UUID) async {
+    private func fetch(_ video: Video, token: UUID) async {
         defer {
             // Only this flight's own registration — replan may have canceled
             // it and pump may already have a replacement in the slot.
-            if inFlight[clip.path]?.token == token { inFlight[clip.path] = nil }
+            if inFlight[video.path]?.token == token { inFlight[video.path] = nil }
         }
         do {
-            try await fetchOnce(clip, retryOnStaleLink: true)
-            failures[clip.path] = nil
-            continuation.yield(.ready(clip.path))
+            try await fetchOnce(video, retryOnStaleLink: true)
+            failures[video.path] = nil
+            continuation.yield(.ready(video.path))
             await evict()
         } catch is CancellationError {
             return
@@ -112,10 +112,10 @@ actor Prefetcher {
             // failure, and never something to alarm anyone with.
             return
         } catch {
-            let attempts = (failures[clip.path]?.attempts ?? 0) + 1
-            failures[clip.path] = (attempts, Date())
+            let attempts = (failures[video.path]?.attempts ?? 0) + 1
+            failures[video.path] = (attempts, Date())
             let loginRequired = (error as? PCloudError)?.isLoginRequired ?? false
-            continuation.yield(.failed(clip.path, error.localizedDescription,
+            continuation.yield(.failed(video.path, error.localizedDescription,
                                        attempts: attempts, loginRequired: loginRequired))
         }
         await pump()
@@ -126,38 +126,38 @@ actor Prefetcher {
         var errorDescription: String? {
             switch self {
             case .wrongSize(let got, let expected):
-                return "Downloaded \(got) bytes where the index says \(expected) — not the clip (a captive portal?)"
+                return "Downloaded \(got) bytes where the index says \(expected) — not the video (a captive portal?)"
             }
         }
     }
 
     /// A link that pCloud has let expire answers with a 4xx; that means
-    /// "re-link and try again", never "the clip is gone".
-    private func fetchOnce(_ clip: Clip, retryOnStaleLink: Bool) async throws {
-        let url = try await link(for: clip)
+    /// "re-link and try again", never "the video is gone".
+    private func fetchOnce(_ video: Video, retryOnStaleLink: Bool) async throws {
+        let url = try await link(for: video)
         do {
             let tmp = try await client.download(url)
             try Task.checkCancellation()
-            // The index knows the clip's exact size; a 200 whose body is any
-            // other length is not the clip — travel wifi answers with captive
+            // The index knows the video's exact size; a 200 whose body is any
+            // other length is not the video — travel wifi answers with captive
             // portals and proxy pages, and those must never reach the player.
             let got = (try? FileManager.default.attributesOfItem(atPath: tmp.path)[.size] as? Int64) ?? -1
-            guard got == clip.size else {
+            guard got == video.size else {
                 try? FileManager.default.removeItem(at: tmp)
-                throw FetchFailure.wrongSize(got: got, expected: clip.size)
+                throw FetchFailure.wrongSize(got: got, expected: video.size)
             }
-            try await cache.store(temporary: tmp, for: clip.path)
+            try await cache.store(temporary: tmp, for: video.path)
         } catch PCloudClient.Failure.http(let code) where retryOnStaleLink && (400..<500).contains(code) {
-            links.forget(clip.fileID)
-            try await fetchOnce(clip, retryOnStaleLink: false)
+            links.forget(video.fileID)
+            try await fetchOnce(video, retryOnStaleLink: false)
         }
     }
 
-    private func link(for clip: Clip) async throws -> URL {
-        if let url = links.url(for: clip.fileID, now: Date()) { return url }
-        let response = try await client.fileLink(fileID: clip.fileID)
+    private func link(for video: Video) async throws -> URL {
+        if let url = links.url(for: video.fileID, now: Date()) { return url }
+        let response = try await client.fileLink(fileID: video.fileID)
         guard let url = response.url else { throw PCloudClient.Failure.noLink }
-        links.store(url: url, for: clip.fileID, expires: response.expires)
+        links.store(url: url, for: video.fileID, expires: response.expires)
         return url
     }
 

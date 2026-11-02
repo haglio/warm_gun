@@ -243,7 +243,7 @@ private struct WholeScreenClaim: ViewModifier {
 }
 #endif
 
-/// AVPlayerLayer in a system view, aspect-fit so a landscape clip on a
+/// AVPlayerLayer in a system view, aspect-fit so a landscape video on a
 /// portrait phone (or the reverse, or either on a laptop) letterboxes rather
 /// than crops. `onReadyForDisplay` fires with the layer's own
 /// is-a-frame-on-the-glass fact — the only signal that does not lie during a

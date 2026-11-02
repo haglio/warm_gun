@@ -1,17 +1,17 @@
 import Foundation
 
-/// The types of clip the type buttons let the filters narrow to. Every clip
+/// The types of video the type buttons let the filters narrow to. Every video
 /// is exactly one, and the desktop settles which: it records the type on the
 /// video's metadata sidecar (`video.type`), for the whole library, so the same
-/// clip is the same type in every app that reads it. The raw values are that
+/// video is the same type in every app that reads it. The raw values are that
 /// field's own words.
 ///
-/// Everything after the record is a fallback for a clip the phone has no
+/// Everything after the record is a fallback for a video the phone has no
 /// sidecar for — the non-AI scenes and Genau's flicks, whose records the
 /// index does not carry: the overlay's lanes first, then the source folder,
 /// then a running time. They are how this app answered the question before the
 /// field existed, kept only for where the field cannot reach.
-public enum ClipType: String, Codable, CaseIterable, Sendable {
+public enum VideoType: String, Codable, CaseIterable, Sendable {
     case genauFlick = "genau_flick"
     /// A scene carved out of a longer one. Which folders hold them is library
     /// vocabulary, defined only by the overlay.
@@ -19,35 +19,35 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
     case short
     case fullLength = "full_length"
 
-    public static let clips: Set<ClipType> = [.short, .excerpt]
+    public static let clips: Set<VideoType> = [.short, .excerpt]
 
-    public static func classify(_ clip: Clip, shortsMaxSeconds: Double,
+    public static func classify(_ video: Video, shortsMaxSeconds: Double,
                                 recorded: String? = nil,
                                 measuredSeconds: Double? = nil,
-                                overlay: ContentOverlay = .empty) -> ClipType {
-        if let recorded, let type = ClipType(named: recorded) { return type }
-        if let lane = overlay.lane(for: clip.path) { return lane.type }
-        if clip.source.localizedCaseInsensitiveContains("genau") { return .genauFlick }
-        if clip.source == "non_AI" { return .fullLength }
-        if let seconds = measuredSeconds ?? clip.duration {
+                                overlay: ContentOverlay = .empty) -> VideoType {
+        if let recorded, let type = VideoType(named: recorded) { return type }
+        if let lane = overlay.lane(for: video.path) { return lane.type }
+        if video.source.localizedCaseInsensitiveContains("genau") { return .genauFlick }
+        if video.source == "non_AI" { return .fullLength }
+        if let seconds = measuredSeconds ?? video.duration {
             return seconds <= shortsMaxSeconds ? .short : .fullLength
         }
         // The real pCloud listing carries no durations at all, so until the
-        // phone has measured a clip its size stands in: the originals run
+        // phone has measured a video its size stands in: the originals run
         // near half a megabyte per second.
-        let estimated = Double(clip.size) / estimatedBytesPerSecond
+        let estimated = Double(video.size) / estimatedBytesPerSecond
         return estimated <= shortsMaxSeconds ? .short : .fullLength
     }
 
     /// What a type was called in a filters persisted before the desktop's
     /// vocabulary arrived, and in a sidecar recorded before Genau's clips were
     /// called flicks. An app update must never cost the saved controls.
-    static let retiredNames: [String: ClipType] = [
+    static let retiredNames: [String: VideoType] = [
         "genau": .genauFlick, "genau_clip": .genauFlick, "acts": .excerpt, "fullLength": .fullLength,
     ]
 
     init?(named name: String) {
-        guard let type = ClipType(rawValue: name) ?? Self.retiredNames[name] else { return nil }
+        guard let type = VideoType(rawValue: name) ?? Self.retiredNames[name] else { return nil }
         self = type
     }
 
@@ -62,7 +62,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
 public struct Filters: Codable, Equatable, Sendable {
     public var shape: VideoShape
     public var favoritesOnly: Bool
-    public var types: Set<ClipType>
+    public var types: Set<VideoType>
     public var shortsMaxSeconds: Double
     public var latest: Bool
     /// Action buttons the user switched OFF (overlay-defined labels); empty means
@@ -74,7 +74,7 @@ public struct Filters: Codable, Equatable, Sendable {
     public var maxBytes: Int64
 
     public init(shape: VideoShape = .portrait, favoritesOnly: Bool = false,
-                types: Set<ClipType> = Set(ClipType.allCases), shortsMaxSeconds: Double = 10,
+                types: Set<VideoType> = Set(VideoType.allCases), shortsMaxSeconds: Double = 10,
                 latest: Bool = false, disabledActions: Set<String> = [], maxBytes: Int64 = 25_000_000) {
         self.shape = shape
         self.favoritesOnly = favoritesOnly
@@ -100,7 +100,7 @@ public struct Filters: Codable, Equatable, Sendable {
         shape = try c.decodeIfPresent(VideoShape.self, forKey: .shape) ?? defaults.shape
         favoritesOnly = try c.decodeIfPresent(Bool.self, forKey: .favoritesOnly) ?? defaults.favoritesOnly
         if let saved = try c.decodeIfPresent([String].self, forKey: .types) {
-            types = Set(saved.compactMap(ClipType.init(named:)))
+            types = Set(saved.compactMap(VideoType.init(named:)))
         } else if try c.decodeIfPresent(Bool.self, forKey: .shortsOnly) == true {
             types = [.short]
         } else {
@@ -124,11 +124,11 @@ public struct Filters: Codable, Equatable, Sendable {
         try c.encode(maxBytes, forKey: .maxBytes)
     }
 
-    public func includes(_ wanted: Set<ClipType>) -> Bool {
+    public func includes(_ wanted: Set<VideoType>) -> Bool {
         types.isSuperset(of: wanted)
     }
 
-    public mutating func setIncluded(_ wanted: Set<ClipType>, _ included: Bool) {
+    public mutating func setIncluded(_ wanted: Set<VideoType>, _ included: Bool) {
         if included {
             types.formUnion(wanted)
         } else {
@@ -137,7 +137,7 @@ public struct Filters: Codable, Equatable, Sendable {
     }
 }
 
-/// Turns the index plus the filters switches into the run of clips to play,
+/// Turns the index plus the filters switches into the run of videos to play,
 /// as library-relative original paths in play order.
 public enum PlaylistBuilder {
     /// Narrow, then order — the desktop satellite's shape
@@ -145,7 +145,7 @@ public enum PlaylistBuilder {
     /// does off the metadata sidecars.
     ///
     /// The two orders are not two flavors of the same thing. Shuffle is the
-    /// watch-weighted draw: chronically skipped clips sit builds out and loved
+    /// watch-weighted draw: chronically skipped videos sit builds out and loved
     /// ones land early, on the weight Evolver stamped from BOTH apps' viewing.
     /// Latest is a review order and carries no weighting at all, deliberately —
     /// a new arrival must surface however often it has been skipped away from
@@ -153,7 +153,7 @@ public enum PlaylistBuilder {
     ///
     /// Every draw comes off *rng*, so one seed is one playlist: the run is
     /// knowable in advance, which is what lets the prefetcher work both
-    /// directions from the current clip.
+    /// directions from the current video.
     public static func build(catalog: Catalog, options: Filters, favoriteKeys: Set<String>,
                              trash: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
@@ -161,56 +161,56 @@ public enum PlaylistBuilder {
                              actions: [String: String] = [:],
                              recordedTypes: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
-        let clips = catalog.clips.filter {
+        let videos = catalog.videos.filter {
             survivesFilters($0, options, favoriteKeys, trash, recordedTypes[$0.path],
                             measuredSeconds[$0.path], overlay, actions[$0.path])
         }
         if options.latest {
             // Newest first; same-second arrivals fall back to their path, so the
             // order is total and a rebuild never reshuffles what did not change.
-            return clips
+            return videos
                 .sorted { $0.modified == $1.modified ? $0.path < $1.path : $0.modified > $1.modified }
                 .map(\.path)
         }
-        let survivors = clips.map(\.path).filter {
+        let survivors = videos.map(\.path).filter {
             Weighting.passesInclusion(weight: weights.weight(for: $0), rng: &rng)
         }
         return Weighting.weightedShuffle(survivors, weight: weights.weight(for:), rng: &rng)
     }
 
-    public static func playsInShape(_ clip: Clip, options: Filters, recorded: String? = nil,
+    public static func playsInShape(_ video: Video, options: Filters, recorded: String? = nil,
                                           measuredSeconds: Double? = nil,
                                           overlay: ContentOverlay = .empty) -> Bool {
-        let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
+        let type = VideoType.classify(video, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measuredSeconds, overlay: overlay)
-        return fitsShape(clip, type, options, overlay)
+        return fitsShape(video, type, options, overlay)
     }
 
-    private static func fitsShape(_ clip: Clip, _ type: ClipType, _ options: Filters,
+    private static func fitsShape(_ video: Video, _ type: VideoType, _ options: Filters,
                                         _ overlay: ContentOverlay) -> Bool {
-        type == .genauFlick || (overlay.lane(for: clip.path)?.shape ?? clip.shape) == options.shape
+        type == .genauFlick || (overlay.lane(for: video.path)?.shape ?? video.shape) == options.shape
     }
 
     /// The switches, all of which only ever narrow, so their order among
     /// themselves cannot matter. Favorites are matched by the key their lane is
     /// filed under (`LibraryPaths.favoriteKey`).
-    private static func survivesFilters(_ clip: Clip, _ options: Filters,
+    private static func survivesFilters(_ video: Video, _ options: Filters,
                                         _ favoriteKeys: Set<String>, _ trash: Set<String>,
                                         _ recorded: String?, _ measured: Double?,
                                         _ overlay: ContentOverlay, _ action: String?) -> Bool {
-        let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
+        let type = VideoType.classify(video, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measured, overlay: overlay)
         // The size ceiling exists to keep the legacy monsters out of the AI
         // originals; a real scene is big by nature and passes on principle.
-        let gated = clip.path.hasPrefix("1_sorted/")
-        // The combinable action buttons: a clip whose bucket is switched off hides.
+        let gated = video.path.hasPrefix("1_sorted/")
+        // The combinable action buttons: a video whose bucket is switched off hides.
         if let bucket = overlay.actionBucket(for: action), options.disabledActions.contains(bucket) {
             return false
         }
-        return fitsShape(clip, type, options, overlay)
-            && !trash.contains(clip.path)
-            && (!gated || clip.size <= options.maxBytes)
-            && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)
+        return fitsShape(video, type, options, overlay)
+            && !trash.contains(video.path)
+            && (!gated || video.size <= options.maxBytes)
+            && (!options.favoritesOnly || LibraryPaths.favoriteKey(forVideo: video.path).map(favoriteKeys.contains) == true)
             && options.types.contains(type)
     }
 }

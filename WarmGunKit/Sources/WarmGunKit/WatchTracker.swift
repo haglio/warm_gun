@@ -1,6 +1,6 @@
 import Foundation
 
-/// The three things playback can say about a clip. The raw values are the
+/// The three things playback can say about a video. The raw values are the
 /// vocabulary of the journal, which the desktop stage counts by name
 /// (`evolver/tasks/watch_weights.py`), so they are a contract, not labels.
 public enum WatchEvent: String, Sendable {
@@ -12,18 +12,18 @@ public enum WatchEvent: String, Sendable {
 /// Turns a run of playback samples into watch events.
 ///
 /// Player-agnostic, exactly as the desktop's is: fed periodic (path, fraction)
-/// samples plus word of user navigation and of discards, it says which clips
-/// were watched through and which were skipped. A held clip counts again on
+/// samples plus word of user navigation and of discards, it says which videos
+/// were watched through and which were skipped. A held video counts again on
 /// every repeat-one wrap. Anything else — the automatic advance on unlock, a
-/// clip that vanished — is deliberately neutral, because only what the viewer
-/// did should move a clip's weight.
+/// video that vanished — is deliberately neutral, because only what the viewer
+/// did should move a video's weight.
 ///
 /// Nothing is totted up here: each event is journalled and the desktop sums the
 /// two apps' journals into the weight both of them then read.
 public struct WatchTracker: Sendable {
-    /// At or past this fraction the clip counts as watched.
+    /// At or past this fraction the video counts as watched.
     public static let completeFraction = 0.85
-    /// At or below this fraction, leaving counts against the clip.
+    /// At or below this fraction, leaving counts against the video.
     public static let skipFraction = 0.60
     /// How recently a tap must have happened for a departure to be the viewer's doing.
     public static let navWindow: TimeInterval = 3.0
@@ -45,8 +45,8 @@ public struct WatchTracker: Sendable {
         suppressDeparted = true
     }
 
-    /// One position report. Two things can happen: the clip on screen looped,
-    /// or a different clip took its place — the tracker never sees an "ended".
+    /// One position report. Two things can happen: the video on screen looped,
+    /// or a different video took its place — the tracker never sees an "ended".
     public mutating func sample(path: String, fraction: Double, now: Date) -> [(event: WatchEvent, path: String)] {
         if path == self.path { return wrapped(to: fraction) }
         let departure = departureEvent(now: now)
@@ -56,9 +56,9 @@ public struct WatchTracker: Sendable {
         return departure.map { [$0] } ?? []
     }
 
-    /// The clip is still on screen, so the only news a sample can carry is a
+    /// The video is still on screen, so the only news a sample can carry is a
     /// jump back to the top: a satellite has no seek control, so a big backward
-    /// move from near the end can only be a repeat-one wrap, and a held clip
+    /// move from near the end can only be a repeat-one wrap, and a held video
     /// books one full watch for each of them.
     private mutating func wrapped(to fraction: Double) -> [(event: WatchEvent, path: String)] {
         guard !path.isEmpty, maxFraction >= Self.completeFraction,
@@ -70,10 +70,10 @@ public struct WatchTracker: Sendable {
         return [(.completion, path)]
     }
 
-    /// What the clip leaving the screen earned. Reaching the end is a watch
+    /// What the video leaving the screen earned. Reaching the end is a watch
     /// however the roll-on happened; leaving it barely started counts against it
     /// only when a tap just before says the viewer chose to leave. A discard —
-    /// the clip sent to Trash and pulled out of the playlist — is a harder
+    /// the video sent to Trash and pulled out of the playlist — is a harder
     /// judgement already made, so it swallows the departure entirely.
     private func departureEvent(now: Date) -> (event: WatchEvent, path: String)? {
         guard !path.isEmpty, !suppressDeparted else { return nil }

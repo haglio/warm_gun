@@ -3,17 +3,17 @@ import Testing
 
 @Suite struct LibraryPathsTests {
     @Test func parsesAnOriginalPathIntoSourceShapeAndStem() {
-        let parsed = LibraryPaths.parseOriginal("1_sorted/alpha/portrait/clip-one.mp4")
+        let parsed = LibraryPaths.parseOriginal("1_sorted/alpha/portrait/video-one.mp4")
         #expect(parsed?.source == "alpha")
         #expect(parsed?.shape == .portrait)
-        #expect(parsed?.stem == "clip-one")
+        #expect(parsed?.stem == "video-one")
     }
 }
 
 extension LibraryPathsTests {
     @Test func refusesPathsOutsideTheSortedTree() {
-        #expect(LibraryPaths.parseOriginal("2_outbox/upscaled_by_orientation/portrait/alpha/clip_topaz.mp4") == nil)
-        #expect(LibraryPaths.parseOriginal("1_sorted/alpha/sideways/clip.mp4") == nil)
+        #expect(LibraryPaths.parseOriginal("2_outbox/upscaled_by_orientation/portrait/alpha/video_topaz.mp4") == nil)
+        #expect(LibraryPaths.parseOriginal("1_sorted/alpha/sideways/video.mp4") == nil)
         #expect(LibraryPaths.parseOriginal("1_sorted/alpha/portrait/noext") == nil)
         #expect(LibraryPaths.parseOriginal("1_sorted/alpha/portrait") == nil)
     }
@@ -21,8 +21,8 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     @Test func namesTheUpscaleOfAnOriginalWithTheTreesNestedTheOtherWayRound() {
-        #expect(LibraryPaths.upscalePath(forOriginal: "1_sorted/alpha/portrait/clip-one.mp4")
-                == "2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4")
+        #expect(LibraryPaths.upscalePath(forOriginal: "1_sorted/alpha/portrait/video-one.mp4")
+                == "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4")
         #expect(LibraryPaths.upscalePath(forOriginal: "not/a/library/path.mp4") == nil)
     }
 }
@@ -33,9 +33,9 @@ extension LibraryPathsTests {
     /// upscale's own name, `_topaz` and all, so the suffix alone does not make
     /// a reference an upscale reference — the folder it sits in decides.
     @Test func readsTheStemOfAnUpscaleReferenceAndOfNothingElse() {
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\clip-one_topaz.mp4"#) == "clip-one")
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\video-one_topaz.mp4"#) == "video-one")
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\clips\2D\AI\loop-two_topaz.mp4"#) == nil)
+        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\videos\2D\AI\loop-two_topaz.mp4"#) == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
         #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/portrait/genau/a_b_c_topaz.mp4")
                 == "a_b_c")
@@ -119,7 +119,7 @@ extension LibraryPathsTests {
             ])
         }
 
-        #expect(LibraryPaths.genauFlicksFolder(in: genau(holdingFlicksIn: "clips")) == "clips")
+        #expect(LibraryPaths.genauFlicksFolder(in: genau(holdingFlicksIn: "videos")) == "videos")
         #expect(LibraryPaths.genauFlicksFolder(in: genau(holdingFlicksIn: "flicks")) == "flicks")
     }
 
@@ -143,11 +143,11 @@ extension LibraryPathsTests {
 
 extension LibraryPathsTests {
     @Test func readsTheFilenameOutOfACatalogPath() {
-        #expect(LibraryPaths.filename(ofClip: "1_sorted/alpha/portrait/clip-one.mp4") == "clip-one.mp4")
-        #expect(LibraryPaths.filename(ofClip: "non_AI/beta/a scene.mkv") == "a scene.mkv")
-        #expect(LibraryPaths.filename(ofClip: "bare.mp4") == "bare.mp4")
-        #expect(LibraryPaths.filename(ofClip: "genau/clips/") == nil)
-        #expect(LibraryPaths.filename(ofClip: "") == nil)
+        #expect(LibraryPaths.filename(ofVideo: "1_sorted/alpha/portrait/video-one.mp4") == "video-one.mp4")
+        #expect(LibraryPaths.filename(ofVideo: "non_AI/beta/a scene.mkv") == "a scene.mkv")
+        #expect(LibraryPaths.filename(ofVideo: "bare.mp4") == "bare.mp4")
+        #expect(LibraryPaths.filename(ofVideo: "genau/clips/") == nil)
+        #expect(LibraryPaths.filename(ofVideo: "") == nil)
     }
 }
 
@@ -162,35 +162,35 @@ extension LibraryPathsTests {
         let genau = LibraryPaths.MetadataBranch.genau
         let nonAI = LibraryPaths.MetadataBranch.nonAI
 
-        #expect(ai.sidecarPath(forClip: "1_sorted/alpha/portrait/clip-one.mp4")
-                == "2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz")
-        #expect(genau.sidecarPath(forClip: "genau/clips/2D/AI/loop-two.mp4") == "2D/AI/loop-two")
-        #expect(nonAI.sidecarPath(forClip: "non_AI/bucket/inner/scene-three.mkv")
+        #expect(ai.sidecarPath(forVideo: "1_sorted/alpha/portrait/video-one.mp4")
+                == "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz")
+        #expect(genau.sidecarPath(forVideo: "genau/clips/2D/AI/loop-two.mp4") == "2D/AI/loop-two")
+        #expect(nonAI.sidecarPath(forVideo: "non_AI/bucket/inner/scene-three.mkv")
                 == "bucket/inner/scene-three")
 
         // A branch answers for its own lane and no other.
-        #expect(ai.sidecarPath(forClip: "genau/clips/2D/AI/loop-two.mp4") == nil)
-        #expect(genau.sidecarPath(forClip: "non_AI/bucket/scene.mp4") == nil)
-        #expect(nonAI.sidecarPath(forClip: "1_sorted/alpha/portrait/clip-one.mp4") == nil)
-        #expect(nonAI.sidecarPath(forClip: "non_AI/scene.mp4") == "scene")
+        #expect(ai.sidecarPath(forVideo: "genau/clips/2D/AI/loop-two.mp4") == nil)
+        #expect(genau.sidecarPath(forVideo: "non_AI/bucket/scene.mp4") == nil)
+        #expect(nonAI.sidecarPath(forVideo: "1_sorted/alpha/portrait/video-one.mp4") == nil)
+        #expect(nonAI.sidecarPath(forVideo: "non_AI/scene.mp4") == "scene")
     }
 }
 
 extension LibraryPathsTests {
-    /// What the phone remembers by name -- the clips sent to Trash, the
+    /// What the phone remembers by name -- the videos sent to Trash, the
     /// favorites -- outlives the split of Genau's flicks folder into 2D and VR:
     /// a name from before it is carried to the one flick with that file name.
-    @Test func aNameFromBeforeGenausFolderSplitIsCarriedToWhereTheClipIsNow() {
+    @Test func aNameFromBeforeGenausFolderSplitIsCarriedToWhereTheVideoIsNow() {
         let now: Set<String> = ["genau/clips/2D/AI/loop-one.mp4", "genau/clips/2D/AI/twin.mp4",
                                 "genau/clips/2D/non_AI/twin.mp4"]
 
         let carried = LibraryPaths.rekeyedFlatGenau(
             ["genau/clips/loop-one.mp4", "genau/clips/twin.mp4", "genau/clips/gone.mp4",
-             "1_sorted/alpha/portrait/clip-one.mp4"],
+             "1_sorted/alpha/portrait/video-one.mp4"],
             against: now)
 
         #expect(carried == ["genau/clips/2D/AI/loop-one.mp4", "genau/clips/twin.mp4",
-                            "genau/clips/gone.mp4", "1_sorted/alpha/portrait/clip-one.mp4"])
+                            "genau/clips/gone.mp4", "1_sorted/alpha/portrait/video-one.mp4"])
     }
 }
 
@@ -221,23 +221,23 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    /// What a favorite is filed under. A generated clip's stem is unique
+    /// What a favorite is filed under. A generated video's stem is unique
     /// library-wide because `1_sorted` and `2_outbox` are in total
     /// correspondence, and it has to stay the key because the desktop's
     /// favorites file knows that name and nothing else. Nothing makes the same
     /// promise for the other two lanes — the non-AI tree is walked recursively
-    /// on both sides and the genau folder holds clips carved by hand as well as
+    /// on both sides and the genau folder holds videos carved by hand as well as
     /// generated ones — so those are filed under their whole path, where the
     /// library itself already guarantees uniqueness.
     @Test func aFavoriteIsFiledUnderAStemInTheAILaneAndAWholePathInTheOthers() {
-        #expect(LibraryPaths.favoriteKey(forClip: "1_sorted/alpha/portrait/clip-one.mp4") == "clip-one")
-        #expect(LibraryPaths.favoriteKey(forClip: "genau/clips/2D/AI/loop-two_topaz.mp4") == "genau/clips/2D/AI/loop-two_topaz")
-        #expect(LibraryPaths.favoriteKey(forClip: "non_AI/bucket/inner/scene-three.mkv")
+        #expect(LibraryPaths.favoriteKey(forVideo: "1_sorted/alpha/portrait/video-one.mp4") == "video-one")
+        #expect(LibraryPaths.favoriteKey(forVideo: "genau/clips/2D/AI/loop-two_topaz.mp4") == "genau/clips/2D/AI/loop-two_topaz")
+        #expect(LibraryPaths.favoriteKey(forVideo: "non_AI/bucket/inner/scene-three.mkv")
                 == "non_AI/bucket/inner/scene-three")
-        // Two same-named scenes in different folders are two clips, not one.
-        #expect(LibraryPaths.favoriteKey(forClip: "non_AI/one/scene.mp4")
-                != LibraryPaths.favoriteKey(forClip: "non_AI/two/scene.mp4"))
-        #expect(LibraryPaths.favoriteKey(forClip: "genau/clips/") == nil)
-        #expect(LibraryPaths.favoriteKey(forClip: "somewhere/else/thing.mp4") == nil)
+        // Two same-named scenes in different folders are two videos, not one.
+        #expect(LibraryPaths.favoriteKey(forVideo: "non_AI/one/scene.mp4")
+                != LibraryPaths.favoriteKey(forVideo: "non_AI/two/scene.mp4"))
+        #expect(LibraryPaths.favoriteKey(forVideo: "genau/clips/") == nil)
+        #expect(LibraryPaths.favoriteKey(forVideo: "somewhere/else/thing.mp4") == nil)
     }
 }

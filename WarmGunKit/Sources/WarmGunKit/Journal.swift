@@ -1,6 +1,6 @@
 import Foundation
 
-/// One thing that happened to one clip. The phone keeps its own stores because
+/// One thing that happened to one video. The phone keeps its own stores because
 /// the desktop's `favs.csv` and `watch_stats.json` live outside pCloud and prune
 /// paths that are not on the writing machine; this is the record that lets a
 /// later, desktop-side step fold a trip's worth of taps back into them.
@@ -11,7 +11,7 @@ public struct JournalEvent: Codable, Equatable, Sendable {
     /// `favorite`, `unfavorite`, `trash`, `lock`, `completion` or `skip`.
     public let event: String
     /// The library-relative path of the *original*, which is how Warm Gun names a
-    /// clip everywhere.
+    /// video everywhere.
     public let path: String
 
     public init(t: Int, event: String, path: String) {

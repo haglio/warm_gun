@@ -20,11 +20,24 @@
       "id": "video",
       "thing": "what plays on the phone's screen, whichever library it came from",
       "code_today": [
-        "clip",
         "video"
       ],
       "status": "ruled",
-      "ruled": "2026-11-02, his rulings on Fun Time's list; carried over"
+      "ruled": "2026-11-02, his rulings on Fun Time's list; carried over",
+      "retired": [
+        "clip"
+      ],
+      "keep": [
+        "\"genau_clip\"",
+        "genau/clips",
+        "\"Clips\"",
+        "\"clips\"",
+        "\"loopClip\"",
+        "public static let clips",
+        ".clips",
+        "ClipsOff",
+        "Genau's clips"
+      ]
     },
     {
       "screen": [

@@ -1,7 +1,7 @@
 # Warm Gun — the phone satellite
 
 Warm Gun does what one of Fun Time's Satellite Funestras does — an endless,
-silent, auto-advancing run of the library's clips with four gestures — on an
+silent, auto-advancing run of the library's videos with four gestures — on an
 iPhone away from home, and on the owner's Mac. No OSR2, no voice, no
 dashboard. Kickoff was 2026-08-23; this file holds the decisions in force,
 cut to them on 2026-10-30, and the code's history holds the rest. Change a
@@ -27,12 +27,12 @@ decision with the owner, not alone.
   in memory, with no network on a tap. A refresh never reshuffles the run in
   progress: what left the library is pruned, new arrivals join at the next
   rebuild he asks for.
-- **What type a clip is comes from the desktop.** Evolver records one of
+- **What type a video is comes from the desktop.** Evolver records one of
   `genau_flick` / `excerpt` / `short` / `full_length` on every video's
-  metadata sidecar (`video.type`), and `ClipType` is that field's
-  vocabulary, so a clip is the same type here as in Fun Time. For a clip
+  metadata sidecar (`video.type`), and `VideoType` is that field's
+  vocabulary, so a video is the same type here as in Fun Time. For a video
   whose sidecar has not arrived, the overlay's lanes, the source folder and
-  a running time stand in, in that order. The action a clip records
+  a running time stand in, in that order. The action a video records
   (`video.action`) is a different axis, the action buttons'; it never decides
   a type.
 - **What the repo cannot name lives in a git-ignored overlay.** The non-AI
@@ -45,7 +45,7 @@ decision with the owner, not alone.
 
 ## Playback
 
-- **Small clips are fetched whole, big ones stream.** A clip of 25 MB or
+- **Small videos are fetched whole, big ones stream.** A video of 25 MB or
   less is downloaded into the on-device cache before it plays: most of the
   originals put `moov` after `mdat`, which would cost a tail round-trip
   before the first frame, and a whole 2 MB file is a second or two. A real
@@ -56,24 +56,24 @@ decision with the owner, not alone.
   Support, which iOS does not empty under pressure, excluded from backups
   because the library is the backup, under a 2 GB least-recently-used cap.
 - **A deep, two-sided prefetch window.** The playlist is known in advance,
-  so the past is as fetchable as the future: twelve clips ahead and three
+  so the past is as fetchable as the future: twelve videos ahead and three
   back stay resident, fetched nearest first, two forward for every one
   back, three at a time, re-planned on every change and canceling what
   fell out of the window. A size that does not match the listing is not the
-  clip (travel wifi answers with captive portals) and never reaches the
+  video (travel wifi answers with captive portals) and never reaches the
   player.
 - **Links are kept until they die.** `getfilelink` URLs expire; they are
   cached by file id (the trash gesture renames paths) until a minute before
   expiry, and a fetch refused on a link the cache believed in means
-  "re-link and retry", never "the clip is gone".
-- **The player holds two clips**, the one on screen and the one staged
+  "re-link and retry", never "the video is gone".
+- **The player holds two videos**, the one on screen and the one staged
   after it, the same two-entry window the desktop satellite keeps in mpv,
-  so auto-advance is a roll-on. Navigating to a clip not yet on disk keeps
+  so auto-advance is a roll-on. Navigating to a video not yet on disk keeps
   the old picture looping under a spinner; a change of filters clears it,
   so the switch is seen to land.
-- **A clip that will not come is stepped past only on its third refusal**,
+- **A video that will not come is stepped past only on its third refusal**,
   and after five such skips in a row the run holds and keeps retrying: a
-  dead network must not sprint it silently through the playlist. A clip the
+  dead network must not sprint it silently through the playlist. A video the
   player refuses outright leaves the disk and is skipped.
 - **The video is muted and mixes with other audio**, so it never pauses
   what else the phone is playing.
@@ -86,11 +86,11 @@ decision with the owner, not alone.
   center pause and play.
 - **The controls appear over the picture** at a center tap, or when a
   pointer moves, and go six seconds after the last touch. The type buttons
-  Genau, Clips and Full sit top left (Clips takes the shorts and the carved
+  Genau, Videos and Full sit top left (Videos takes the shorts and the carved
   scenes in and out together); Shuffle, Latest and Favs top right; the Loop
   control lower left; the action buttons lower right; the four gestures as
   buttons at the edges where their zones are; pause in the center, with the
-  clip's file name under it. The login screen appears by itself when a
+  video's file name under it. The login screen appears by itself when a
   login is needed, so the controls have no settings door.
 - **The shape follows the screen.** The phone's library turns with
   the phone; a laptop's screen never turns, so there the P and L keys pick
@@ -104,7 +104,7 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 
 - **Next and previous** step the playlist and wrap; previous is the list
   neighbor, not a history stack. Any navigation releases a lock.
-- **Lock** toggles. Locking repeats the clip, makes it a favorite and counts
+- **Lock** toggles. Locking repeats the video, makes it a favorite and counts
   a `lock` event; unlocking moves on and never unfavorites.
 - **Trash** is the two-step demotion. A favorite only loses its star and
   the run moves on ("Unfavorited"). Anything else leaves the run, and its
@@ -113,16 +113,16 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   reviewed, so a trash on the phone is a trash everywhere. It never deletes
   anything. One accepted divergence: `renamefile` replaces a same-named
   file where the desktop's `move_to_trash` walks `__dup1`, `__dup2`…,
-  harmless because stems are unique library-wide. The last clip marked
-  trash leaves an empty run, which says so, rather than looping a clip just
+  harmless because stems are unique library-wide. The last video marked
+  trash leaves an empty run, which says so, rather than looping a video just
   rejected.
-- **Auto-advance** plays a clip once and rolls on; a lock holds it.
-- **The Loop control** has four stops: All, the whole run; 1, every clip
+- **Auto-advance** plays a video once and rolls on; a lock holds it.
+- **The Loop control** has four stops: All, the whole run; 1, every video
   repeating until tapped (Warm Gun's own); and the desktop's group loops,
-  Seed (the clip's action done by its other subjects) and Action (its subject
+  Seed (the video's action done by its other subjects) and Action (its subject
   doing other actions), grouped over the metadata sidecars exactly as
   `fun_time/media_metadata.py` groups them. A group loop re-seats the
-  playlist with the clip on screen first, which never restarts; a group of
+  playlist with the video on screen first, which never restarts; a group of
   one is no loop, so its stop is grayed out, and on the Mac E steps the four
   clockwise round the control, passing a group stop with nothing to loop.
   Fun Time's E walks three stops with no 1; the owner ruled on 2026-10-16
@@ -134,7 +134,7 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   (`evolver/util/watch.py`), so one formula serves both apps. No weight
   weighs 1. Latest is newest first and carries no weighting, so a new
   arrival surfaces whatever its weight. A filter change keeps the
-  clip on screen when it survives (`session.replace_playlist`); a filter
+  video on screen when it survives (`session.replace_playlist`); a filter
   that matches nothing says so on a blank screen.
 
 ## Shared state with the desktop
@@ -199,9 +199,9 @@ the App Sandbox with a container of its own.
 
 - `WarmGunKit/` — pure Foundation, and every decision that needs no device,
   each tested headlessly: `LibraryPaths` (the lanes, the upscale mapping,
-  library discovery), `Catalog` + `Clip`, `PCloudAPI` (requests, responses,
+  library discovery), `Catalog` + `Video`, `PCloudAPI` (requests, responses,
   errors), `LoginState` (the login's next step and its refusals),
-  `Playlist` (`ClipType`, the filters, the build), `Session` (the run, and
+  `Playlist` (`VideoType`, the filters, the build), `Session` (the run, and
   what a resumed one keeps), `FetchFailures`, `PrefetchPlanner` (the window
   and eviction), `LinkCache`, `WatchWeights` + `WatchTracker`, `Sidecar` +
   `GroupIndex` + `SidecarIndex` + `MirrorSurvey` (whether the mirror moved,
@@ -209,7 +209,7 @@ the App Sandbox with a container of its own.
   `Favorites` (+ `favs.csv`), `ContentOverlay`, `ZipArchive`, `TapZones`,
   `Journal`.
 - `WarmGun/` — the app: the SwiftUI views, `PlayerEngine` (AVFoundation),
-  `Prefetcher`, `ClipCache`, `PCloudClient`, `MetadataFetcher`, `Keychain`,
+  `Prefetcher`, `VideoCache`, `PCloudClient`, `MetadataFetcher`, `Keychain`,
   `Settings`, `AppModel` (the one `ObservableObject`: it owns the state,
   asks the Kit, and wires the rest), and `Platform`. Views hold no domain
   state; they read the model and post intents.

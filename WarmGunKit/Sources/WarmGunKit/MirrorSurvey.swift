@@ -1,7 +1,7 @@
 import Foundation
 
 /// One branch of the metadata mirror as a launch's survey listed it: where it
-/// is, what it holds, and which of that speaks for a clip the app can play.
+/// is, what it holds, and which of that speaks for a video the app can play.
 public struct SurveyedBranch: Sendable {
     public let path: String
     public let files: [LibraryFile]
@@ -27,7 +27,7 @@ public struct MirrorSurvey: Sendable {
     public var fingerprint: String {
         branches.map { branch in
             let newest = branch.files.map(\.modified.timeIntervalSince1970).max() ?? 0
-            return "\(branch.index.clipsByListedSidecar.count)|\(Int(newest))"
+            return "\(branch.index.videosByListedSidecar.count)|\(Int(newest))"
         }.joined(separator: ";")
     }
 
@@ -35,7 +35,7 @@ public struct MirrorSurvey: Sendable {
     /// the corpus on the device speak for the mirror as the survey found it.
     public func isComplete(_ fetched: [String: Sidecar]) -> Bool {
         branches.allSatisfy { branch in
-            branch.index.clipsByListedSidecar.values.allSatisfy { fetched[$0] != nil }
+            branch.index.videosByListedSidecar.values.allSatisfy { fetched[$0] != nil }
         }
     }
 }
