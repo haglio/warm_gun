@@ -2,32 +2,32 @@ import Foundation
 
 /// Which way a clip is filed — by folder, never by its pixels: 21 clips in the
 /// library are square and live wherever the sorter put them.
-public enum Orientation: String, Codable, CaseIterable, Sendable {
+public enum VideoShape: String, Codable, CaseIterable, Sendable {
     case portrait
     case landscape
 }
 
 /// The shape of the AI library, relative to its root (`.../videos/videos/2D/AI`).
 ///
-/// Every clip exists twice: the original under `1_sorted/<source>/<orientation>/`
-/// and the Topaz upscale under `2_outbox/upscaled_by_orientation/<orientation>/<source>/`
-/// with `_topaz` on the stem — note the two trees nest source and orientation
+/// Every clip exists twice: the original under `1_sorted/<source>/<shape>/`
+/// and the Topaz upscale under `2_outbox/upscaled_by_orientation/<shape>/<source>/`
+/// with `_topaz` on the stem — note the two trees nest source and shape
 /// the opposite way round. Warm Gun plays the originals and names the upscales
 /// only to talk to the desktop (favorites, trash), which knows clips by those.
 public enum LibraryPaths {
     public struct Original: Equatable, Sendable {
         public let source: String
-        public let orientation: Orientation
+        public let shape: VideoShape
         public let stem: String
     }
 
     public static func parseOriginal(_ path: String) -> Original? {
         let parts = path.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
         guard parts.count == 4, parts[0] == "1_sorted",
-              let orientation = Orientation(rawValue: parts[2]) else { return nil }
+              let shape = VideoShape(rawValue: parts[2]) else { return nil }
         let file = parts[3]
         guard let dot = file.lastIndex(of: "."), dot != file.startIndex else { return nil }
-        return Original(source: parts[1], orientation: orientation, stem: String(file[..<dot]))
+        return Original(source: parts[1], shape: shape, stem: String(file[..<dot]))
     }
 
     /// What the desktop satellite builder accepts (`fun_time/modes.py:27`).
@@ -46,7 +46,7 @@ public enum LibraryPaths {
     /// trash gesture moves.
     public static func upscalePath(forOriginal path: String) -> String? {
         guard let o = parseOriginal(path) else { return nil }
-        return "\(upscaledRoot)/\(o.orientation.rawValue)/\(o.source)/\(o.stem)\(upscaleSuffix).mp4"
+        return "\(upscaledRoot)/\(o.shape.rawValue)/\(o.source)/\(o.stem)\(upscaleSuffix).mp4"
     }
 
     /// The pCloud path of the library, found by its skeleton: the one folder
@@ -153,8 +153,8 @@ public enum LibraryPaths {
     /// swapped for `.json` (`evolver/util/sidecar.py`), which makes two of the
     /// three lanes a straight translation. The AI lane is the exception: Fun
     /// Time plays the UPSCALE, so that is where the sidecar is keyed, and the
-    /// upscale tree nests orientation above source where `1_sorted` nests
-    /// source above orientation. There is no `metadata/2D/AI/1_sorted` tree at
+    /// upscale tree nests shape above source where `1_sorted` nests
+    /// source above shape. There is no `metadata/2D/AI/1_sorted` tree at
     /// all — a generated clip's own path names no sidecar.
     public enum MetadataBranch: String, CaseIterable, Sendable {
         case ai
@@ -179,7 +179,7 @@ public enum LibraryPaths {
             switch self {
             case .ai:
                 guard let original = LibraryPaths.parseOriginal(clipPath) else { return nil }
-                return "\(LibraryPaths.upscaledRoot)/\(original.orientation.rawValue)"
+                return "\(LibraryPaths.upscaledRoot)/\(original.shape.rawValue)"
                     + "/\(original.source)/\(original.stem)\(LibraryPaths.upscaleSuffix)"
             case .genau:
                 guard clipPath.hasPrefix(LibraryPaths.genauPrefix) else { return nil }

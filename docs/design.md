@@ -10,7 +10,7 @@ decision with the owner, not alone.
 ## What it plays
 
 - **Three lanes, one catalog.** The AI library's *originals* —
-  `1_sorted/<source>/<orientation>/<stem>.mp4`, about 2 MB of H.264 each —
+  `1_sorted/<source>/<shape>/<stem>.mp4`, about 2 MB of H.264 each —
   not the Topaz upscales the desktop satellites play: the owner asked for
   "the non-upscaled ones", and every original has exactly one upscale, so
   nothing is lost. Beside them, Genau's 2D flicks and the real scenes of
@@ -92,7 +92,7 @@ decision with the owner, not alone.
   buttons at the edges where their zones are; pause in the center, with the
   clip's file name under it. The login screen appears by itself when a
   login is needed, so the controls have no settings door.
-- **The orientation follows the screen.** The phone's library turns with
+- **The shape follows the screen.** The phone's library turns with
   the phone; a laptop's screen never turns, so there the P and L keys pick
   the portrait or the landscape library. A pair of buttons on the controls
   came first and read as one more filter, so it went. A Genau flick plays

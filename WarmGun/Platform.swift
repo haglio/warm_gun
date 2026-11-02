@@ -13,7 +13,7 @@ import AppKit
 /// questions in one vocabulary and never knows which machine answers.
 enum Platform {
     /// The phone's screen turns with the phone and the filters follows it. A
-    /// laptop's does not, so there the P and L keys pick the orientation.
+    /// laptop's does not, so there the P and L keys pick the shape.
     #if os(iOS)
     static let screenTurns = true
     #else
@@ -65,9 +65,9 @@ enum Platform {
     /// Which library a fresh install opens on: the phone is held upright,
     /// the laptop's screen is wide.
     #if os(iOS)
-    static let defaultOrientation = Orientation.portrait
+    static let defaultShape = VideoShape.portrait
     #else
-    static let defaultOrientation = Orientation.landscape
+    static let defaultShape = VideoShape.landscape
     #endif
 
     /// Posted as the process is about to end — the last chance to write.

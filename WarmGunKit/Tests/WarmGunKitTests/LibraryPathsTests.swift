@@ -2,10 +2,10 @@ import Testing
 @testable import WarmGunKit
 
 @Suite struct LibraryPathsTests {
-    @Test func parsesAnOriginalPathIntoSourceOrientationAndStem() {
+    @Test func parsesAnOriginalPathIntoSourceShapeAndStem() {
         let parsed = LibraryPaths.parseOriginal("1_sorted/alpha/portrait/clip-one.mp4")
         #expect(parsed?.source == "alpha")
-        #expect(parsed?.orientation == .portrait)
+        #expect(parsed?.shape == .portrait)
         #expect(parsed?.stem == "clip-one")
     }
 }
@@ -154,7 +154,7 @@ extension LibraryPathsTests {
 extension LibraryPathsTests {
     /// Every lane the phone plays from has a sidecar, and the three of them are
     /// filed differently: an AI original is spoken for by its UPSCALE's sidecar
-    /// (source and orientation the other way round), while a Genau flick and a
+    /// (source and shape the other way round), while a Genau flick and a
     /// real scene mirror straight across. The extension is dropped either way,
     /// so a scene that is not an .mp4 still finds its file.
     @Test func eachLaneKnowsWhichBranchHoldsItsSidecarAndWhereInIt() {

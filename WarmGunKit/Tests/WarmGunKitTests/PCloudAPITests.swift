@@ -147,7 +147,7 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     /// One recursive `listfolder` body, shaped the way the library is: sources
-    /// under the root, orientations under each source, clips under those, with
+    /// under the root, shapes under each source, clips under those, with
     /// a stray non-video sitting where the sorter left it.
     static let listing = Data("""
     {"result": 0, "metadata": {"name": "AI", "isfolder": true, "folderid": 10100, "contents": [

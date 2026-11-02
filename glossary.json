@@ -134,10 +134,20 @@
       "id": "shape",
       "thing": "portrait or landscape",
       "code_today": [
-        "orientation"
+        "shape"
       ],
       "status": "ruled",
-      "ruled": "2026-10-30, his words on Origenerator's list"
+      "ruled": "2026-10-30, his words on Origenerator's list",
+      "retired": [
+        "orientation"
+      ],
+      "keep": [
+        "upscaled_by_orientation",
+        "beginGeneratingDeviceOrientationNotifications",
+        "orientationDidChangeNotification",
+        "UIDevice.current.orientation",
+        "\"orientation\""
+      ]
     },
     {
       "screen": null,

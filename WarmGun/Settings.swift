@@ -8,7 +8,7 @@ struct Settings: Codable, Equatable {
     var username = ""
     var libraryPath = ""
     var syncFolder = "/WarmGun"
-    var filters = Filters(orientation: Platform.defaultOrientation)
+    var filters = Filters(shape: Platform.defaultShape)
     var loopClip = false
     var cacheCapMB = 2048
     var prefetchAhead = 12

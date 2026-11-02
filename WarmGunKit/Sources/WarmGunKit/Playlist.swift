@@ -60,7 +60,7 @@ public enum ClipType: String, Codable, CaseIterable, Sendable {
 /// it straight back on the next launch — and so a rebuild is a pure function of
 /// this plus the index, with no network in it and nothing to invalidate.
 public struct Filters: Codable, Equatable, Sendable {
-    public var orientation: Orientation
+    public var shape: VideoShape
     public var favoritesOnly: Bool
     public var types: Set<ClipType>
     public var shortsMaxSeconds: Double
@@ -73,10 +73,10 @@ public struct Filters: Codable, Equatable, Sendable {
     /// originals tree.
     public var maxBytes: Int64
 
-    public init(orientation: Orientation = .portrait, favoritesOnly: Bool = false,
+    public init(shape: VideoShape = .portrait, favoritesOnly: Bool = false,
                 types: Set<ClipType> = Set(ClipType.allCases), shortsMaxSeconds: Double = 10,
                 latest: Bool = false, disabledActions: Set<String> = [], maxBytes: Int64 = 25_000_000) {
-        self.orientation = orientation
+        self.shape = shape
         self.favoritesOnly = favoritesOnly
         self.types = types
         self.shortsMaxSeconds = shortsMaxSeconds
@@ -86,7 +86,8 @@ public struct Filters: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case orientation, favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, maxBytes
+        case shape = "orientation"
+        case favoritesOnly, types, shortsOnly, shortsMaxSeconds, latest, maxBytes
         case disabledActions = "disabledActs"
     }
 
@@ -96,7 +97,7 @@ public struct Filters: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = Filters()
-        orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? defaults.orientation
+        shape = try c.decodeIfPresent(VideoShape.self, forKey: .shape) ?? defaults.shape
         favoritesOnly = try c.decodeIfPresent(Bool.self, forKey: .favoritesOnly) ?? defaults.favoritesOnly
         if let saved = try c.decodeIfPresent([String].self, forKey: .types) {
             types = Set(saved.compactMap(ClipType.init(named:)))
@@ -114,7 +115,7 @@ public struct Filters: Codable, Equatable, Sendable {
     /// The retired key never rides out again.
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(orientation, forKey: .orientation)
+        try c.encode(shape, forKey: .shape)
         try c.encode(favoritesOnly, forKey: .favoritesOnly)
         try c.encode(types, forKey: .types)
         try c.encode(shortsMaxSeconds, forKey: .shortsMaxSeconds)
@@ -177,17 +178,17 @@ public enum PlaylistBuilder {
         return Weighting.weightedShuffle(survivors, weight: weights.weight(for:), rng: &rng)
     }
 
-    public static func playsInOrientation(_ clip: Clip, options: Filters, recorded: String? = nil,
+    public static func playsInShape(_ clip: Clip, options: Filters, recorded: String? = nil,
                                           measuredSeconds: Double? = nil,
                                           overlay: ContentOverlay = .empty) -> Bool {
         let type = ClipType.classify(clip, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measuredSeconds, overlay: overlay)
-        return fitsOrientation(clip, type, options, overlay)
+        return fitsShape(clip, type, options, overlay)
     }
 
-    private static func fitsOrientation(_ clip: Clip, _ type: ClipType, _ options: Filters,
+    private static func fitsShape(_ clip: Clip, _ type: ClipType, _ options: Filters,
                                         _ overlay: ContentOverlay) -> Bool {
-        type == .genauFlick || (overlay.lane(for: clip.path)?.orientation ?? clip.orientation) == options.orientation
+        type == .genauFlick || (overlay.lane(for: clip.path)?.shape ?? clip.shape) == options.shape
     }
 
     /// The switches, all of which only ever narrow, so their order among
@@ -206,7 +207,7 @@ public enum PlaylistBuilder {
         if let bucket = overlay.actionBucket(for: action), options.disabledActions.contains(bucket) {
             return false
         }
-        return fitsOrientation(clip, type, options, overlay)
+        return fitsShape(clip, type, options, overlay)
             && !trash.contains(clip.path)
             && (!gated || clip.size <= options.maxBytes)
             && (!options.favoritesOnly || LibraryPaths.favoriteKey(forClip: clip.path).map(favoriteKeys.contains) == true)

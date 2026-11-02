@@ -2,7 +2,7 @@ import Foundation
 
 /// What the repo cannot say, said by a git-ignored file instead: the non-AI
 /// buckets' folder names are library content, so which bucket is which TYPE —
-/// and which folder forces an orientation — ships as data beside the app
+/// and which folder forces an shape — ships as data beside the app
 /// (`content.local.json`, with a committed example documenting the shape),
 /// never as source. Without an overlay every non-AI scene is simply a
 /// full-length landscape scene.
@@ -17,12 +17,17 @@ public struct ContentOverlay: Codable, Equatable, Sendable {
         public let type: ClipType
         /// Set when the folder dictates one (a portrait-cuts folder); nil
         /// leaves the clip's own pixels in charge.
-        public let orientation: Orientation?
+        public let shape: VideoShape?
 
-        public init(prefix: String, type: ClipType, orientation: Orientation?) {
+        private enum CodingKeys: String, CodingKey {
+            case prefix, type
+            case shape = "orientation"
+        }
+
+        public init(prefix: String, type: ClipType, shape: VideoShape?) {
             self.prefix = prefix
             self.type = type
-            self.orientation = orientation
+            self.shape = shape
         }
     }
 
