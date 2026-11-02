@@ -7,7 +7,7 @@ import Foundation
 /// never as source. Without an overlay every non-AI scene is simply a
 /// full-length landscape scene.
 ///
-/// The lanes are a *fallback*: the desktop records every video's kind on its
+/// The lanes are a *fallback*: the desktop records every video's type on its
 /// sidecar, and a lane answers only for a clip whose sidecar the phone has not
 /// read.
 public struct ContentOverlay: Codable, Equatable, Sendable {
