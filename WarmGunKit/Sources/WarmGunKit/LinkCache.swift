@@ -14,7 +14,7 @@ public struct LinkCache: Equatable, Sendable {
 
     public init() {}
 
-    /// Keyed by file id rather than by path, because the weird gesture renames
+    /// Keyed by file id rather than by path, because the trash gesture renames
     /// clips out from under any path a link was fetched for.
     public mutating func store(url: URL, for fileID: Int64, expires: Date) {
         links[fileID] = Link(url: url, expires: expires)

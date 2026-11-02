@@ -20,7 +20,7 @@ import Testing
             "2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.json",
             "2_outbox/upscaled_by_orientation/landscape/beta/clip-two_topaz.json",
             "2_outbox/upscaled_by_orientation/portrait/alpha/clip-gone_topaz.json",
-            "2_outbox/kinda_weird/clip-one_topaz.json",
+            "2_outbox/trash/clip-one_topaz.json",
             "not-a-sidecar.txt",
         ])
 

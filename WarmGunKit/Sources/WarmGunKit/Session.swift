@@ -45,7 +45,7 @@ public struct Session: Equatable, Sendable {
     }
 
     /// Drop the current entry and play what follows it — the trash gesture the
-    /// weird tap is built on. The next entry shifts into the same index, so the
+    /// trash tap is built on. The next entry shifts into the same index, so the
     /// index itself does not move; off the end it wraps to the top. A satellite
     /// must always have something to play, so the last remaining entry cannot be
     /// discarded: that is a no-op, never an empty playlist.

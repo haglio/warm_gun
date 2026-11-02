@@ -120,7 +120,7 @@ extension FavoritesTests {
 extension FavoritesTests {
     /// The gap a plain union leaves: the desktop's snapshot is read again on
     /// every launch, so an unfavorite made away from home would be undone by
-    /// the next one — and the weird gesture's two-step demotion could never
+    /// the next one — and the trash gesture's two-step demotion could never
     /// reach its second step, because the first step keeps being re-taken.
     @Test func aStemLetGoOnThePhoneIsNotHandedBackByAStaleSnapshot() {
         var favorites = Favorites(held: ["clip-one", "clip-two"])

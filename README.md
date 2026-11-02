@@ -7,12 +7,12 @@ picture. The name and the magenta 5x5 lettermark follow Fun Time's. The
 same app builds for the Mac, where it takes the whole screen, taps are
 clicks, and the P and L keys stand in for turning the phone.
 
-- **Taps**: left third = previous, right third = next, top-middle = weird,
+- **Taps**: left third = previous, right third = next, top-middle = trash,
   lower-middle = lock (favorite + repeat-one). Tap the middle for the
   controls — the type buttons (Genau, Clips, Full), Shuffle/Latest and Favs,
   the Loop control, the act buttons, the four gestures as buttons and pause
   in the center — and double-tap it to pause. On the Mac the keyboard does
-  the same: the arrows and WASD are previous, next, weird and lock (left,
+  the same: the arrows and WASD are previous, next, trash and lock (left,
   right, up, down), E steps the Loop control clockwise round its grid (All,
   1, Seed, Action), space and Esc pause and play, and P and L pick the
   portrait or the landscape library.
@@ -21,14 +21,14 @@ clicks, and the P and L keys stand in for turning the phone.
   clips are fetched whole and played from an on-device cache, with a deep
   two-sided prefetch window keeping the neighbors resident; a real scene
   streams. The Topaz upscales stay home.
-- **Shared state**: favorites and weird marks live on the phone, and every
+- **Shared state**: favorites and trash marks live on the phone, and every
   event goes out as a journal to a pCloud folder. Evolver reads that
   journal, sums it with Fun Time's own viewing, and stamps the playback weight
   and a favorites flag back onto each video's metadata sidecar — which is where
   the phone reads both, so neither app keeps a copy of the formula and what the
   PC watched moves the phone's shuffle. A `favs.csv` dropped in the sync folder
-  is still imported. The weird gesture parks the clip's upscale in
-  `2_outbox/kinda_weird/`, where it waits to be reviewed — same as the desktop.
+  is still imported. The trash gesture parks the clip's upscale in
+  `2_outbox/trash/`, where it waits to be reviewed — same as the desktop.
 
 ## Layout
 

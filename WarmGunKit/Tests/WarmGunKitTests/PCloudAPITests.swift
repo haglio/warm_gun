@@ -63,7 +63,7 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func asksForADownloadLinkByFileIDRatherThanByPath() {
-        // File ids survive a rename; paths do not, and the weird gesture renames.
+        // File ids survive a rename; paths do not, and the trash gesture renames.
         let request = PCloudAPI.fileLink(fileID: 90_210, auth: "token-abc")
         #expect(request.method == "getfilelink")
         #expect(request.query == [
@@ -299,7 +299,7 @@ extension PCloudAPITests {
         // not just the ones whose responses carry dates today.
         let requests = [
             PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4",
-                                 toPath: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4", auth: "t"),
+                                 toPath: "/lib/2_outbox/trash/clip-one_topaz.mp4", auth: "t"),
             PCloudAPI.createFolderIfNotExists(path: "/Sync", auth: "t"),
             PCloudAPI.uploadFile(folderPath: "/Sync", filename: "journal.jsonl", auth: "t"),
         ]
@@ -338,16 +338,16 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func movesAnUpscaleByGivingRenamefileItsPathAndAWholeDestination() {
-        // The weird gesture on the wire: the index keeps no id for an upscale,
+        // The trash gesture on the wire: the index keeps no id for an upscale,
         // so it is named by path, and `topath` carries the filename, so the
         // move and the rename are one call.
         let request = PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4",
-                                           toPath: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4",
+                                           toPath: "/lib/2_outbox/trash/clip-one_topaz.mp4",
                                            auth: "token-abc")
         #expect(request.method == "renamefile")
         #expect(request.query == [
             URLQueryItem(name: "path", value: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/clip-one_topaz.mp4"),
-            URLQueryItem(name: "topath", value: "/lib/2_outbox/kinda_weird/clip-one_topaz.mp4"),
+            URLQueryItem(name: "topath", value: "/lib/2_outbox/trash/clip-one_topaz.mp4"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])

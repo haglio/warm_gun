@@ -29,7 +29,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var catalog: Catalog?
     @Published private(set) var session = Session(playlist: [])
     @Published private(set) var favorites = Favorites()
-    @Published private(set) var weird: Set<String> = []
+    @Published private(set) var trash: Set<String> = []
     /// Which loop the run is in: the whole browse, one clip, or the current
     /// clip's seed family / action group — the desktop satellite's axes.
     @Published private(set) var loopMode: LoopMode = .all
@@ -370,10 +370,10 @@ final class AppModel: ObservableObject {
     /// What this phone remembers of a Genau flick by its name from before
     /// Genau's flicks folder split into 2D and VR, carried to where the flick is.
     private func carryFlatGenauNames(to paths: Set<String>) {
-        let before = (weird, favorites)
-        weird = LibraryPaths.rekeyedFlatGenau(weird, against: paths)
+        let before = (trash, favorites)
+        trash = LibraryPaths.rekeyedFlatGenau(trash, against: paths)
         favorites.rekeyFlatGenau(against: Set(paths.compactMap(LibraryPaths.favoriteKey(forClip:))))
-        if before != (weird, favorites) { persistState() }
+        if before != (trash, favorites) { persistState() }
     }
 
     /// The sidecar corpus — every branch of the metadata mirror, fetched as one
@@ -468,7 +468,7 @@ final class AppModel: ObservableObject {
     private func rebuild(startAtTop: Bool) {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.browse,
-                                             favoriteKeys: favorites.held, weird: weird,
+                                             favoriteKeys: favorites.held, trash: trash,
                                              weights: weights, measuredSeconds: measuredSeconds,
                                              overlay: overlay, acts: groupIndex.actsByPath,
                                              kinds: groupIndex.kindsByPath, rng: &rng)
@@ -503,7 +503,7 @@ final class AppModel: ObservableObject {
         switch action {
         case .previous: previous()
         case .next: next()
-        case .weird: markWeird()
+        case .trash: sendToTrash()
         case .lock: toggleLock()
         case .center: break
         }
@@ -571,7 +571,7 @@ final class AppModel: ObservableObject {
     }
 
     /// Lock = repeat this clip, and it is a favorite from now on. Unlock moves
-    /// on rather than replaying, and never unfavorites (that is the weird
+    /// on rather than replaying, and never unfavorites (that is the trash
     /// gesture's job).
     func toggleLock() {
         guard let path = session.current else { return }
@@ -589,9 +589,9 @@ final class AppModel: ObservableObject {
     }
 
     /// The two-step demotion: a favorite only loses its star; anything else
-    /// leaves the rotation and its upscale goes to `kinda_weird`, exactly as
+    /// leaves the rotation and its upscale goes to `trash`, exactly as
     /// the desktop's up-arrow does.
-    func markWeird() {
+    func sendToTrash() {
         guard let path = session.current else { return }
         // Either half of the demotion swallows the departure event, as the
         // desktop arms note_discard before it knows which half the press is.
@@ -602,34 +602,34 @@ final class AppModel: ObservableObject {
             session.step(1)
             flash("Unfavorited", favorite: true)
         } else {
-            weird.insert(path)
-            journal("weird", path)
+            trash.insert(path)
+            journal("trash", path)
             if session.playlist.count <= 1 {
                 // The desktop refuses to trash the last clip; here the honest
-                // outcome is an empty run — the clip is weird now, and looping
+                // outcome is an empty run — the clip is trash now, and looping
                 // it forever would contradict the gesture just made.
                 session = Session(playlist: [])
             } else {
                 _ = session.discard()
             }
-            flash("Marked weird", favorite: false)
+            flash("Sent to Trash", favorite: false)
             dropFromCache(path)
-            if settings.moveWeirdInCloud { Task { await moveUpscaleToWeird(path) } }
+            if settings.moveToTrashInCloud { Task { await moveUpscaleToTrash(path) } }
         }
         persistState()
         sync()
     }
 
-    private func moveUpscaleToWeird(_ path: String) async {
+    private func moveUpscaleToTrash(_ path: String) async {
         guard let client, let upscale = LibraryPaths.upscalePath(forOriginal: path) else { return }
         let root = settings.libraryPath
-        let weirdDir = root + "/" + LibraryPaths.weirdDir
+        let trashDir = root + "/" + LibraryPaths.trashDir
         do {
-            try await client.createFolderIfNotExists(path: weirdDir)
+            try await client.createFolderIfNotExists(path: trashDir)
             try await client.renameFile(path: root + "/" + upscale,
-                                         toPath: weirdDir + "/" + (upscale as NSString).lastPathComponent)
+                                         toPath: trashDir + "/" + (upscale as NSString).lastPathComponent)
         } catch {
-            lastProblem = "Could not move the upscale to kinda_weird: \(error.localizedDescription)"
+            lastProblem = "Could not move the upscale to trash: \(error.localizedDescription)"
         }
     }
 
@@ -934,11 +934,47 @@ final class AppModel: ObservableObject {
 
     private struct PersistedState: Codable {
         var favorites: Favorites
-        var weird: Set<String>
+        var trash: Set<String>
         var playlist: [String]
         var index: Int
         var locked: Bool?  // optional so older blobs still decode
         var measuredSeconds: [String: Double]?
+
+        private enum CodingKeys: String, CodingKey {
+            case favorites, trash, playlist, index, locked, measuredSeconds
+            case keptUnderTheOldWord = "weird"
+        }
+
+        init(favorites: Favorites, trash: Set<String>, playlist: [String], index: Int,
+             locked: Bool?, measuredSeconds: [String: Double]?) {
+            self.favorites = favorites
+            self.trash = trash
+            self.playlist = playlist
+            self.index = index
+            self.locked = locked
+            self.measuredSeconds = measuredSeconds
+        }
+
+        init(from decoder: Decoder) throws {
+            let saved = try decoder.container(keyedBy: CodingKeys.self)
+            favorites = try saved.decode(Favorites.self, forKey: .favorites)
+            trash = try saved.decodeIfPresent(Set<String>.self, forKey: .trash)
+                ?? saved.decode(Set<String>.self, forKey: .keptUnderTheOldWord)
+            playlist = try saved.decode([String].self, forKey: .playlist)
+            index = try saved.decode(Int.self, forKey: .index)
+            locked = try saved.decodeIfPresent(Bool.self, forKey: .locked)
+            measuredSeconds = try saved.decodeIfPresent([String: Double].self, forKey: .measuredSeconds)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var saved = encoder.container(keyedBy: CodingKeys.self)
+            try saved.encode(favorites, forKey: .favorites)
+            try saved.encode(trash, forKey: .trash)
+            try saved.encode(playlist, forKey: .playlist)
+            try saved.encode(index, forKey: .index)
+            try saved.encodeIfPresent(locked, forKey: .locked)
+            try saved.encodeIfPresent(measuredSeconds, forKey: .measuredSeconds)
+        }
     }
 
     private var catalogURL: URL { stateDirectory.appendingPathComponent("catalog.json") }
@@ -953,7 +989,7 @@ final class AppModel: ObservableObject {
 
     private func persistState() {
         guard stateLoaded else { return }
-        let state = PersistedState(favorites: favorites, weird: weird,
+        let state = PersistedState(favorites: favorites, trash: trash,
                                    playlist: session.playlist, index: session.index,
                                    locked: session.locked, measuredSeconds: measuredSeconds)
         if let data = try? JSONEncoder().encode(state) {
@@ -982,7 +1018,7 @@ final class AppModel: ObservableObject {
         guard let data = try? Data(contentsOf: stateURL),
               let state = try? JSONDecoder().decode(PersistedState.self, from: data) else { return }
         favorites = state.favorites
-        weird = state.weird
+        trash = state.trash
         measuredSeconds = state.measuredSeconds ?? [:]
         session = Session(restoring: state.playlist, at: state.index, locked: state.locked ?? false,
                           keeping: Set(clipsByPath.keys))

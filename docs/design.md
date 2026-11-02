@@ -63,7 +63,7 @@ decision with the owner, not alone.
   clip (travel wifi answers with captive portals) and never reaches the
   player.
 - **Links are kept until they die.** `getfilelink` URLs expire; they are
-  cached by file id (the weird gesture renames paths) until a minute before
+  cached by file id (the trash gesture renames paths) until a minute before
   expiry, and a fetch refused on a link the cache believed in means
   "re-link and retry", never "the clip is gone".
 - **The player holds two clips**, the one on screen and the one staged
@@ -82,7 +82,7 @@ decision with the owner, not alone.
 
 - **Taps** fire at once, in a three-by-three reading of the screen: the
   left third is previous, the right third next, and the middle column is
-  weird above, lock below, and the controls in the center. Two taps in the
+  trash above, lock below, and the controls in the center. Two taps in the
   center pause and play.
 - **The controls appear over the picture** at a center tap, or when a
   pointer moves, and go six seconds after the last touch. The type buttons
@@ -106,15 +106,15 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   neighbor, not a history stack. Any navigation releases a lock.
 - **Lock** toggles. Locking repeats the clip, makes it a favorite and counts
   a `lock` event; unlocking moves on and never unfavorites.
-- **Weird** is the two-step demotion. A favorite only loses its star and
+- **Trash** is the two-step demotion. A favorite only loses its star and
   the run moves on ("Unfavorited"). Anything else leaves the run, and its
-  upscale moves into `2_outbox/kinda_weird/` through the API's `renamefile`
-  ("Marked weird"), to wait there with the original and its sidecar to be
-  reviewed, so a weird on the phone is a weird everywhere. It never deletes
+  upscale moves into `2_outbox/trash/` through the API's `renamefile`
+  ("Sent to Trash"), to wait there with the original and its sidecar to be
+  reviewed, so a trash on the phone is a trash everywhere. It never deletes
   anything. One accepted divergence: `renamefile` replaces a same-named
-  file where the desktop's `move_to_weird` walks `__dup1`, `__dup2`…,
+  file where the desktop's `move_to_trash` walks `__dup1`, `__dup2`…,
   harmless because stems are unique library-wide. The last clip marked
-  weird leaves an empty run, which says so, rather than looping a clip just
+  trash leaves an empty run, which says so, rather than looping a clip just
   rejected.
 - **Auto-advance** plays a clip once and rolls on; a lock holds it.
 - **The Loop control** has four stops: All, the whole run; 1, every clip
@@ -142,9 +142,9 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 The desktop's `favs.csv` and `watch_stats.json` live in the fun_time
 checkout on the PC, outside pCloud, and `watch_stats.json` prunes any path
 not on the writing machine, so Warm Gun writes neither. It keeps its own
-favorites and weird marks and appends every event to a journal, one JSON
+favorites and trash marks and appends every event to a journal, one JSON
 object per line: `{"t": unix seconds, "event":
-"favorite|unfavorite|weird|lock|completion|skip", "path": "<catalog
+"favorite|unfavorite|trash|lock|completion|skip", "path": "<catalog
 path>"}`. The journal goes to `/WarmGun` in pCloud, outside the library,
 whenever the app steps aside, and at a launch with lines still waiting;
 uploads run one at a time, so the size recorded as uploaded is the size the
@@ -177,7 +177,7 @@ the App Sandbox with a container of its own.
   screen turn, hold the display awake, which journal file is mine, is the
   picture in front — and never knows which machine answers.
 - **The keyboard is the desktop's.** The arrows mean what they mean on the
-  desktop satellite — left previous, right next, up weird, down lock — and
+  desktop satellite — left previous, right next, up trash, down lock — and
   WASD is the same four for the other hand; E steps the Loop control; space
   and Esc pause and play; P and L pick the library.
 - **Full screen on arrival.** The one window (a `Window` scene: no New
