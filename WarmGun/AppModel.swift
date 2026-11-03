@@ -613,7 +613,7 @@ final class AppModel: ObservableObject {
             }
             flash("Sent to Trash", favorite: false)
             dropFromCache(path)
-            if settings.moveToTrashInCloud { Task { await moveUpscaleToTrash(path) } }
+            Task { await moveUpscaleToTrash(path) }
         }
         persistState()
         sync()
@@ -919,47 +919,11 @@ final class AppModel: ObservableObject {
 
     private struct PersistedState: Codable {
         var favorites: Favorites
-        var trash: Set<String>
+        var trash: Set<String>?  // optional so older blobs still decode
         var playlist: [String]
         var index: Int
         var locked: Bool?  // optional so older blobs still decode
         var measuredSeconds: [String: Double]?
-
-        private enum CodingKeys: String, CodingKey {
-            case favorites, trash, playlist, index, locked, measuredSeconds
-            case keptUnderTheOldWord = "weird"
-        }
-
-        init(favorites: Favorites, trash: Set<String>, playlist: [String], index: Int,
-             locked: Bool?, measuredSeconds: [String: Double]?) {
-            self.favorites = favorites
-            self.trash = trash
-            self.playlist = playlist
-            self.index = index
-            self.locked = locked
-            self.measuredSeconds = measuredSeconds
-        }
-
-        init(from decoder: Decoder) throws {
-            let saved = try decoder.container(keyedBy: CodingKeys.self)
-            favorites = try saved.decode(Favorites.self, forKey: .favorites)
-            trash = try saved.decodeIfPresent(Set<String>.self, forKey: .trash)
-                ?? saved.decode(Set<String>.self, forKey: .keptUnderTheOldWord)
-            playlist = try saved.decode([String].self, forKey: .playlist)
-            index = try saved.decode(Int.self, forKey: .index)
-            locked = try saved.decodeIfPresent(Bool.self, forKey: .locked)
-            measuredSeconds = try saved.decodeIfPresent([String: Double].self, forKey: .measuredSeconds)
-        }
-
-        func encode(to encoder: Encoder) throws {
-            var saved = encoder.container(keyedBy: CodingKeys.self)
-            try saved.encode(favorites, forKey: .favorites)
-            try saved.encode(trash, forKey: .trash)
-            try saved.encode(playlist, forKey: .playlist)
-            try saved.encode(index, forKey: .index)
-            try saved.encodeIfPresent(locked, forKey: .locked)
-            try saved.encodeIfPresent(measuredSeconds, forKey: .measuredSeconds)
-        }
     }
 
     private var catalogURL: URL { stateDirectory.appendingPathComponent("catalog.json") }
@@ -1003,7 +967,7 @@ final class AppModel: ObservableObject {
         guard let data = try? Data(contentsOf: stateURL),
               let state = try? JSONDecoder().decode(PersistedState.self, from: data) else { return }
         favorites = state.favorites
-        trash = state.trash
+        trash = state.trash ?? []
         measuredSeconds = state.measuredSeconds ?? [:]
         session = Session(restoring: state.playlist, at: state.index, locked: state.locked ?? false,
                           keeping: Set(videosByPath.keys))
