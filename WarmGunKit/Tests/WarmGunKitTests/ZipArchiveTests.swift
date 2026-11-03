@@ -39,3 +39,39 @@ import Testing
         }
     }
 }
+
+extension ZipArchiveTests {
+    static let archiveWithAFolderRow = Data(base64Encoded:
+        "UEsDBBQAAAAAAAAAIVwAAAAAAAAAAAAAAAAHAAAAZm9sZGVyL1BLAwQUAAAAAAAAACFcr6wbVgcAAAAHAAAAEQAAAGZvbGRlci9wbGFpbi5qc29ueyJhIjoxfVBLAQIUABQAAAAAAAAAIVwAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAACAAQAAAABmb2xkZXIvUEsBAhQAFAAAAAAAAAAhXK+sG1YHAAAABwAAABEAAAAAAAAAAAAAAIABJQAAAGZvbGRlci9wbGFpbi5qc29uUEsFBgAAAAACAAIAdAAAAFsAAAAAAA==")!
+
+    @Test func aFolderRowYieldsNoEntry() throws {
+        let entries = try ZipArchive.entries(in: Self.archiveWithAFolderRow) { _, _ in nil }
+        #expect(entries.map(\.name) == ["folder/plain.json"])
+    }
+
+    @Test func anArchiveCommentDoesNotHideTheDirectory() throws {
+        var commented = Self.fixture
+        commented[commented.count - 2] = 5
+        commented.append(Data("hello".utf8))
+        let entries = try ZipArchive.entries(in: commented) { _, _ in Self.knownPlain }
+        #expect(entries.count == 2)
+    }
+
+    @Test func aSliceOfABodyReadsTheSameAsTheWholeOfIt() throws {
+        let padded = Data([0, 0, 0]) + Self.fixture
+        let entries = try ZipArchive.entries(in: padded[3...]) { _, _ in Self.knownPlain }
+        #expect(entries.map(\.name) == ["plain.json", "nested/deflated.json"])
+    }
+
+    @Test func anInflaterThatGivesUpFailsTheWholeArchive() {
+        #expect(throws: ZipArchive.Failure.self) {
+            try ZipArchive.entries(in: Self.fixture) { _, _ in nil }
+        }
+    }
+
+    @Test func anInflatedEntryOfTheWrongSizeFailsTheWholeArchive() {
+        #expect(throws: ZipArchive.Failure.self) {
+            try ZipArchive.entries(in: Self.fixture) { _, _ in Data("short".utf8) }
+        }
+    }
+}

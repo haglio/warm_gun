@@ -606,3 +606,34 @@ extension PlaylistTests {
         #expect(PlaylistBuilder.playsInShape(flick, options: landscape, overlay: overlay))
     }
 }
+
+extension PlaylistTests {
+    @Test func aPathUnderTwoLanesFollowsTheLongerPrefixWhicheverIsListedFirst() {
+        let wide = ContentOverlay.Lane(prefix: "non_AI/alpha", type: .fullLength, shape: nil)
+        let narrow = ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, shape: nil)
+        let path = "non_AI/alpha/special/scene-one.mp4"
+        #expect(ContentOverlay(lanes: [wide, narrow]).lane(for: path)?.type == .excerpt)
+        #expect(ContentOverlay(lanes: [narrow, wide]).lane(for: path)?.type == .excerpt)
+    }
+
+    @Test func anActionTwoButtonsCouldClaimGoesToTheFirstOfThem() {
+        let overlay = ContentOverlay(actionFilters: [
+            ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
+            ContentOverlay.ActionFilter(label: "BE", queries: ["alpha", "beta"], isOther: false),
+        ])
+        #expect(overlay.actionBucket(for: "alpha") == "AL")
+    }
+
+    @Test func anUnclaimedActionHasNoButtonWhereNoneIsTheCatchAll() {
+        let overlay = ContentOverlay(actionFilters: [
+            ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
+        ])
+        #expect(overlay.actionBucket(for: "gamma") == nil)
+    }
+
+    @Test func theRetiredShortsOnlySwitchIsNeverWrittenBack() throws {
+        let old = Data(#"{"shape":"portrait","shortsOnly":true}"#.utf8)
+        let saved = try JSONEncoder().encode(JSONDecoder().decode(Filters.self, from: old))
+        #expect(!String(decoding: saved, as: UTF8.self).contains("shortsOnly"))
+    }
+}
