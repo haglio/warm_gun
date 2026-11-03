@@ -98,3 +98,12 @@ extension WatchTrackerTests {
         #expect(WatchEvent.lock.rawValue == "lock")
     }
 }
+
+extension WatchTrackerTests {
+    @Test func aTapLongBeforeADepartureDoesNotMakeItASkip() {
+        var tracker = WatchTracker()
+        _ = tracker.sample(path: Self.one, fraction: 0.2, now: Self.start)
+        tracker.noteUserNav(now: Self.start)
+        #expect(tracker.sample(path: Self.two, fraction: 0.0, now: Self.start + 60).isEmpty)
+    }
+}
