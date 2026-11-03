@@ -56,3 +56,12 @@ extension SidecarIndexTests {
         #expect(index.video(forZipEntry: "2_outbox/upscaled_by_orientation/portrait/alpha/video-gone_topaz.json") == nil)
     }
 }
+
+extension SidecarIndexTests {
+    @Test func aZipEntryMatchesOnlyWhereItsTailStartsOnASeparator() {
+        let index = SidecarIndex(branch: .ai, videoPaths: Self.videos, listing: [
+            "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json",
+        ])
+        #expect(index.video(forZipEntry: "x2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json") == nil)
+    }
+}
