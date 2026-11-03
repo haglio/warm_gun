@@ -26,8 +26,7 @@ clicks, and the P and L keys stand in for turning the phone.
   journal, sums it with Fun Time's own viewing, and stamps the playback weight
   and a favorites flag back onto each video's metadata sidecar — which is where
   the phone reads both, so neither app keeps a copy of the formula and what the
-  PC watched moves the phone's shuffle. A `favs.csv` dropped in the sync folder
-  is still imported. The trash gesture parks the video's upscale in
+  PC watched moves the phone's shuffle. The trash gesture parks the video's upscale in
   `2_outbox/trash/`, where it waits to be reviewed — same as the desktop.
 
 ## Layout

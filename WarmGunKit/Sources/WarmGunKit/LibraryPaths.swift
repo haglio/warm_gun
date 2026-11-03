@@ -42,8 +42,7 @@ public enum LibraryPaths {
     public static let upscaledRoot = "2_outbox/upscaled_by_orientation"
     public static let trashDir = "2_outbox/trash"
 
-    /// The desktop's name for the same video: what `favs.csv` stores and what the
-    /// trash gesture moves.
+    /// The desktop's name for the same video: what the trash gesture moves.
     public static func upscalePath(forOriginal path: String) -> String? {
         guard let o = parseOriginal(path) else { return nil }
         return "\(upscaledRoot)/\(o.shape.rawValue)/\(o.source)/\(o.stem)\(upscaleSuffix).mp4"
@@ -215,9 +214,8 @@ public enum LibraryPaths {
 
     /// What a favorite is filed under.
     ///
-    /// A generated video is filed under its STEM, because that is the only name
-    /// the desktop's `favs.csv` — which lists Windows paths to upscales — and
-    /// this store can both say, and because `1_sorted` and `2_outbox` are in
+    /// A generated video is filed under its STEM, because its original and its
+    /// upscale share it, and because `1_sorted` and `2_outbox` are in
     /// total correspondence the stem is unique across that lane. Nothing makes
     /// the same promise for the other two: the non-AI tree is walked
     /// recursively on both sides, and Genau's folder holds flicks carved by
@@ -228,26 +226,5 @@ public enum LibraryPaths {
         if let original = parseOriginal(path) { return original.stem }
         guard path.hasPrefix(genauPrefix) || path.hasPrefix(nonAIPrefix) else { return nil }
         return dropExtension(path)
-    }
-
-    /// The stem of a GENERATED video named the desktop's way — a path (Windows
-    /// or POSIX, any prefix) to `<stem>_topaz.<ext>` — or nil when the
-    /// reference is not one.
-    ///
-    /// The suffix alone does not settle it: a Genau flick is delivered into
-    /// Genau's folder under the upscale's own name, `_topaz` and all
-    /// (`evolver/tasks/genau_deliver.py`), and its stem IS that whole name. So
-    /// a reference inside Genau's folder is not an upscale reference, whatever
-    /// it is called.
-    public static func stem(ofUpscaleReference reference: String) -> String? {
-        let components = reference.replacingOccurrences(of: "\\", with: "/").split(separator: "/")
-        guard !isInsideGenausFolder(components),
-              let file = components.last.map(String.init),
-              let stem = dropExtension(file), stem.hasSuffix(upscaleSuffix) else { return nil }
-        return String(stem.dropLast(upscaleSuffix.count))
-    }
-
-    private static func isInsideGenausFolder(_ components: [Substring]) -> Bool {
-        zip(components, components.dropFirst()).contains { $0 == "videos" && $1 == "genau" }
     }
 }

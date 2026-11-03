@@ -139,11 +139,10 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
 
 ## Shared state with the desktop
 
-The desktop's `favs.csv` and `watch_stats.json` live in the fun_time
-checkout on the PC, outside pCloud, and `watch_stats.json` prunes any path
-not on the writing machine, so Warm Gun writes neither. It keeps its own
-favorites and trash marks and appends every event to a journal, one JSON
-object per line: `{"t": unix seconds, "event":
+The desktop's `watch_stats.json` lives in the fun_time checkout on the PC,
+outside pCloud, and prunes any path not on the writing machine, so Warm Gun
+does not write it. It keeps its own favorites and trash marks and appends
+every event to a journal, one JSON object per line: `{"t": unix seconds, "event":
 "favorite|unfavorite|trash|lock|completion|skip", "path": "<catalog
 path>"}`. The journal goes to `/WarmGun` in pCloud, outside the library,
 whenever the app steps aside, and at a launch with lines still waiting;
@@ -152,15 +151,14 @@ cloud holds. The phone writes `warm-gun-journal.jsonl` and the Mac
 `warm-gun-journal-mac.jsonl`, since Evolver reads every `.jsonl` there.
 
 The return leg arrives on the sidecars. Evolver applies the journals'
-favorites and unfavorites to `favs.csv`, through a cursor kept per journal
-file, and stamps every video's sidecar with a `watch` block and, for a
-favorite, `favorite: true`. Warm Gun reads both: the weight is all its
-shuffle draws on, and the flag joins its favorites, only ever adding, since
+favorites and unfavorites to the sidecars, through a cursor kept per journal
+file: a favorite is only the `favorite: true` mark there. It also stamps
+every video's sidecar with a `watch` block. Warm Gun reads both: the weight is
+all its shuffle draws on, and the flag joins its favorites, only ever adding, since
 the flag is a snapshot from the last time the stage ran and would otherwise
 undo a favorite made away from home; an unfavorite made here is held until
-the desktop agrees. A `favs.csv` dropped into `/WarmGun` is imported the
-same way. The sidecars arrive as one `getzip` per branch of the metadata
-mirror, falling back to one file at a time; a launch whose survey finds the
+the desktop agrees. The sidecars arrive as one `getzip` per branch of the
+metadata mirror, falling back to one file at a time; a launch whose survey finds the
 mirror unchanged fetches nothing.
 
 ## The Mac (2026-10-12)
@@ -206,7 +204,7 @@ the App Sandbox with a container of its own.
   and eviction), `LinkCache`, `WatchWeights` + `WatchTracker`, `Sidecar` +
   `GroupIndex` + `SidecarIndex` + `MirrorSurvey` (whether the mirror moved,
   and whether a fetch caught all of it), `LoopMode` + `LoopCycle`,
-  `Favorites` (+ `favs.csv`), `ContentOverlay`, `ZipArchive`, `TapZones`,
+  `Favorites`, `ContentOverlay`, `ZipArchive`, `TapZones`,
   `Journal`.
 - `WarmGun/` — the app: the SwiftUI views, `PlayerEngine` (AVFoundation),
   `Prefetcher`, `VideoCache`, `PCloudClient`, `MetadataFetcher`, `Keychain`,

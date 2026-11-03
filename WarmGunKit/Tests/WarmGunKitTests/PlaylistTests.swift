@@ -85,9 +85,8 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// F-mode shows the favorites alone. Favorites are held by stem, not by
-    /// path, because that is all the desktop's `favs.csv` carries — and stems
-    /// are unique library-wide, so the stem names the video exactly.
+    /// F-mode shows the favorites alone. A generated video is held by stem, not
+    /// by path: stems are unique library-wide, so the stem names the video exactly.
     @Test func fModeShowsOnlyTheFavoritesAndKnowsThemByStem() {
         var rng = PlaylistSeededRNG(seed: 4)
         let catalog = Catalog(files: [

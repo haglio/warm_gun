@@ -442,8 +442,7 @@ final class AppModel: ObservableObject {
     /// buttons walk, the weights the shuffle draws on, and which videos the
     /// desktop is holding.
     ///
-    /// The favorites only ever gain here, exactly as a `favs.csv` import does,
-    /// and never gain back a stem this phone has let go of: the flag is a
+    /// The favorites only ever gain here, and never gain back a stem this phone has let go of: the flag is a
     /// snapshot from the last time the stage ran, so taking it as the whole
     /// truth would undo every favorite made on the phone since, and taking it
     /// blindly would undo every unfavorite (`Favorites.adopt`).
@@ -879,8 +878,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Pushes the journal to the sync folder and pulls a `favs.csv` from it if
-    /// one is there. Called when the app steps aside and at a launch with
+    /// Pushes the journal to the sync folder. Called when the app steps aside and at a launch with
     /// lines waiting; never in the way of playback.
     ///
     /// One at a time: two whole-file uploads in flight can land in either
@@ -911,19 +909,6 @@ final class AppModel: ObservableObject {
             if journalDirty, let data = try? Data(contentsOf: journalURL) {
                 try await client.upload(data: data, folderPath: settings.syncFolder, filename: Platform.journalFileName)
                 UserDefaults.standard.set(data.count, forKey: Self.journalUploadedKey)
-            }
-            let files = try await client.listLibrary(path: settings.syncFolder)
-            if let favs = files.first(where: { $0.path.lowercased() == "favs.csv" }) {
-                let link = try await client.fileLink(fileID: favs.fileID)
-                guard let url = link.url else { return }
-                let tmp = try await client.download(url)
-                defer { try? FileManager.default.removeItem(at: tmp) }
-                let text = try String(contentsOf: tmp, encoding: .utf8)
-                let before = favorites
-                // Complete by construction — the whole file, so every refusal
-                // it does not name is one the desktop has settled.
-                favorites.adopt(flagged: FavsCSV.keys(in: text))
-                if favorites != before { persistState() }
             }
         } catch {
             lastProblem = "Cloud sync: \(error.localizedDescription)"
