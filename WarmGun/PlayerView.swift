@@ -1,10 +1,6 @@
 import SwiftUI
 import WarmGunKit
 
-/// The whole screen: the video, the invisible tap zones over it, and — one
-/// center tap away — the control overlay: corner clusters for types, order,
-/// loop and the action buttons, edge buttons for the four gestures, pause in the
-/// middle. There is no menu screen; everything is laid over the picture.
 struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showingControls = false
@@ -80,8 +76,6 @@ struct PlayerView: View {
             .onChange(of: geometry.size) { _, size in
                 model.deviceRotated(landscape: size.width > size.height)
             }
-            // A pointer, where there is one: moving it wakes the controls and
-            // keeps them awake, the way a touch does. A finger never hovers.
             .onContinuousHover { phase in
                 guard case .active = phase else { return }
                 showingControls ? keepControlsAlive() : revealControls()
@@ -105,8 +99,6 @@ struct PlayerView: View {
         showingControls = false
     }
 
-    /// The overlay outlives its last touch by a few seconds, then gets out of
-    /// the picture's way.
     private func keepControlsAlive() {
         hideTask?.cancel()
         hideTask = Task {
@@ -127,7 +119,6 @@ struct PlayerView: View {
     }
 }
 
-/// The four corners and four edges, over the playing picture.
 private struct ControlsOverlay: View {
     @EnvironmentObject private var model: AppModel
     let landscape: Bool
@@ -149,9 +140,6 @@ private struct ControlsOverlay: View {
                     wordButton("Favs", on: favoritesBinding())
                 }
             }
-            // The Loop control, laid so that E's cycle (all, 1, seed, action)
-            // runs clockwise round the landscape grid: All and 1 on top,
-            // Seed under 1 and Action under All.
             pinned(.bottomLeading) {
                 cluster {
                     loopButton("All", .all)
@@ -160,9 +148,6 @@ private struct ControlsOverlay: View {
                     loopButton("Seed", .seed, enabled: model.canLoop(.seed))
                 }
             }
-            // The combinable action buttons, overlay-defined: 2 wide and 4 tall in
-            // portrait, 4 wide and 2 tall in landscape. Settings has no door
-            // here — the login screen appears by itself when a login is needed.
             pinned(.bottomTrailing) {
                 if !model.overlay.actionFilters.isEmpty {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5),
@@ -175,21 +160,16 @@ private struct ControlsOverlay: View {
                     .frame(width: landscape ? 200 : 104)
                 }
             }
-            // Edges: the four gestures, drawn where their tap zones live.
             pinned(.leading) { iconButton("backward.frame.fill") { perform(.previous) } }
             pinned(.trailing) { iconButton("forward.frame.fill") { perform(.next) } }
             pinned(.top) { iconButton("hand.thumbsdown.fill") { perform(.trash) } }
             lowEdge {
                 iconButton(model.session.locked ? "lock.fill" : "lock.open") { perform(.lock) }
             }
-            // Dead center: pause, the one control with no zone of its own.
             iconButton(model.paused ? "play.fill" : "pause.fill", large: true) {
                 onAnyInteraction()
                 model.togglePause()
             }
-            // The name of what is on the glass, under the pause button: the
-            // only band clear of the corner clusters and the edge buttons,
-            // which sit at the centers of the sides.
             if let name = model.showing.flatMap(LibraryPaths.filename(ofVideo:)) {
                 Text(name)
                     .font(.caption.weight(.medium))
@@ -212,8 +192,6 @@ private struct ControlsOverlay: View {
         model.tap(action)
     }
 
-    /// Portrait stacks a cluster tall; landscape folds it into a 2x2 grid so
-    /// a four-button row cannot reach the edge buttons at top and lower center.
     @ViewBuilder
     private func cluster(@ViewBuilder _ content: () -> some View) -> some View {
         if landscape {
@@ -229,9 +207,7 @@ private struct ControlsOverlay: View {
         content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     }
 
-    /// The low edge, stacked rather than aligned.  SwiftUI's name for that
-    /// alignment is a word this project no longer writes, and a spacer above
-    /// the content leaves it in the same place.
+    /// SwiftUI's name for this alignment is a word the glossary retired.
     private func lowEdge(@ViewBuilder _ content: () -> some View) -> some View {
         VStack(spacing: 0) {
             Spacer()
@@ -293,8 +269,6 @@ private struct ControlsOverlay: View {
         .buttonStyle(.plain)
     }
 
-    /// Whether every type a button covers is in the filters. Unchecking everything is allowed
-    /// — the screen just says nothing matches until a type comes back.
     private func typesBinding(_ types: Set<VideoType>) -> Binding<Bool> {
         Binding(get: { model.settings.filters.includes(types) },
                 set: { value in
@@ -304,7 +278,6 @@ private struct ControlsOverlay: View {
                 })
     }
 
-    /// The desktop's F-mode.
     private func favoritesBinding() -> Binding<Bool> {
         Binding(get: { model.settings.filters.favoritesOnly },
                 set: { value in
@@ -324,14 +297,7 @@ private struct ControlsOverlay: View {
     }
 }
 
-/// The keyboard, where there is one. The arrows are the desktop satellite's
-/// — left previous, right next, up trash, down lock — and WASD is the same
-/// hand on the same four; E steps the Loop control clockwise, all, 1, seed,
-/// action; space and Esc pause and play; P and L pick the portrait or the
-/// landscape library, since a laptop's screen never turns.
-/// Buttons SwiftUI never draws, so each key equivalent has somewhere to land
-/// whatever is on screen; the login form is a different screen and never
-/// sees them.
+/// Buttons SwiftUI never draws, so each key equivalent has somewhere to land whatever is on screen.
 private struct KeyboardShortcuts: View {
     @EnvironmentObject private var model: AppModel
 
@@ -367,9 +333,6 @@ private struct KeyboardShortcuts: View {
     }
 }
 
-/// A single tap on an edge zone fires at once — next and previous must feel
-/// like the arrow keys they replace. The middle summons the controls with one
-/// tap and pauses with two.
 private struct TapLayer: View {
     let onAction: (TapAction) -> Void
     let onCenterTap: () -> Void

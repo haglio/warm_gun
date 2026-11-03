@@ -224,13 +224,9 @@
       "his_word": null,
       "code_word": null,
       "id": "other_words",
-      "thing": "words the code uses for things no screen shows or names: a prefetch slot, a band of the screen between buttons, a system banner, a setting called a dial, a map in code",
+      "thing": "words the code uses for things no screen shows or names: a prefetch slot, a system banner, a map in code",
       "code_today": [
-        "slot",
-        "band",
-        "banner",
-        "dial",
-        "map"
+        "slot", "banner", "map"
       ],
       "status": "kept"
     }

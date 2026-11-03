@@ -13,9 +13,6 @@ struct WarmGunApp: App {
                 .preferredColorScheme(.dark)
                 .task { await model.launch() }
                 .onAppear {
-                    // The screen stays lit only while the picture is on it;
-                    // the picture pauses and the journal leaves for the cloud
-                    // whenever the app steps aside.
                     presence.observe { present in
                         displayLock.hold(present)
                         if present { model.becameActive() } else { model.steppedAside() }

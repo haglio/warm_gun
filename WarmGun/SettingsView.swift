@@ -1,9 +1,6 @@
 import SwiftUI
 import WarmGunKit
 
-/// The pCloud login, and nothing else: the library is found automatically,
-/// the sync folder and cache run on their defaults, and every dial that used
-/// to live here confused more than it configured.
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var username = ""
@@ -38,8 +35,6 @@ struct SettingsView: View {
                         Button(loggingIn ? "Logging in…" : "Log in") {
                             loggingIn = true
                             Task {
-                                // The password survives a failure for another
-                                // try; only success clears it.
                                 if await model.login(username: username, password: password, code: verificationCode) {
                                     password = ""
                                     verificationCode = ""
@@ -69,7 +64,6 @@ struct SettingsView: View {
     }
 }
 
-/// Shown until there is a token; the same form, under a line saying why.
 struct SetupView: View {
     @EnvironmentObject private var model: AppModel
 

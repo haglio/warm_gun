@@ -1,8 +1,6 @@
 import Foundation
 import WarmGunKit
 
-/// What the app keeps between launches, in UserDefaults; the pCloud token is
-/// a secret and lives in the Keychain instead.
 struct Settings: Codable, Equatable {
     var apiHost = "api.pcloud.com"
     var username = ""
@@ -12,10 +10,8 @@ struct Settings: Codable, Equatable {
     var loopVideo = false
     var cacheCapMB = 2048
     var prefetchAhead = 12
-    // Named for the direction it looks, in the spelling already written into
-    // UserDefaults: this is the stored JSON key, and the synthesized decoder
-    // throws on a key it cannot find, which would drop every other setting
-    // back to its default. Renaming it needs a migration, not an edit.
+    // The JSON key stored in UserDefaults: the synthesized decoder throws on a key it cannot find, so
+    // renaming this needs a migration.
     var prefetchBehind = 3
 
     private enum CodingKeys: String, CodingKey {
