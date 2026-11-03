@@ -1,14 +1,9 @@
 import Foundation
 import Security
 
-/// The pCloud auth token, and the password only while a login is under way.
 enum Keychain {
     private static let service = "com.cmloegcmluin.warmgun"
     private static let account = "pcloud-auth"
-    /// The password he is midway through logging in with, kept only between a
-    /// failed attempt and the one that succeeds — retyping it on every round of
-    /// a multi-step challenge is what wore the owner out — and deleted the
-    /// moment a token is earned.
     private static let pendingAccount = "pcloud-password-pending"
 
     private static var query: [String: Any] {
@@ -48,8 +43,6 @@ enum Keychain {
     }
 
     static func token() -> String? {
-        // A development run against tools/fake_pcloud.py takes its token from
-        // the launch environment instead (see `Platform.developmentToken`).
         if let injected = Platform.developmentToken { return injected }
         var q = query
         q[kSecReturnData as String] = true

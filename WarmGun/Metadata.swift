@@ -3,22 +3,11 @@ import Foundation
 import WarmGunKit
 import os
 
-/// Fetches the sidecar corpus — one getzip per branch of the metadata mirror,
-/// with a one-file-at-a-time road when the server will not zip — and turns it
-/// into the video-keyed dictionary the group index, the weights and the
-/// favorites are all read off. The zip walking lives in the Kit; only the raw
-/// DEFLATE step is here, because it needs Apple's Compression framework.
 enum MetadataFetcher {
-    /// The corpus arrives in the background and nothing on the glass says how
-    /// it went, so the unified log is where "why are there no groups" is
-    /// answered: `log show --predicate 'subsystem == "com.cmloegcmluin.warmgun"'`.
-    /// Notices, not info: info lines are not kept once the process is gone,
-    /// and this is read after the fact.
+    /// Read with `log show --predicate 'subsystem == "com.cmloegcmluin.warmgun"'`: the unified log
+    /// keeps notices, never info lines, once the process is gone.
     static let log = Logger(subsystem: "com.cmloegcmluin.warmgun", category: "metadata")
 
-    /// One cheap listing per branch. A branch that is absent or refuses to list
-    /// simply contributes nothing — the corpus is still worth having without
-    /// it, and the alternative is one missing folder costing every weight.
     static func survey(client: PCloudClient, libraryPath: String, genauFlicksFolder: String?,
                        videoPaths: [String]) async -> MirrorSurvey {
         var branches: [SurveyedBranch] = []
@@ -43,9 +32,6 @@ enum MetadataFetcher {
         return MirrorSurvey(branches: branches)
     }
 
-    /// Every sidecar the surveyed branches hold, keyed by the catalog path of
-    /// the video it speaks for. A branch that fails outright is skipped rather
-    /// than failing the whole corpus.
     static func fetchSidecars(client: PCloudClient, branches: [SurveyedBranch]) async -> [String: Sidecar] {
         var sidecars: [String: Sidecar] = [:]
         for branch in branches {
@@ -54,9 +40,6 @@ enum MetadataFetcher {
                 fetched = try await fetchViaZip(client: client, branch: branch)
                 log.notice("\(branch.path, privacy: .private): \(fetched.count) sidecars by zip")
             } catch {
-                // getzip has already failed against the real server once (it
-                // takes a folderid, not a path) — never trust it as the only
-                // road.
                 log.error("\(branch.path, privacy: .private): zip failed (\(error.localizedDescription)), fetching singly")
                 fetched = await fetchSingly(client: client, branch: branch)
                 log.notice("\(branch.path, privacy: .private): \(fetched.count) of \(branch.index.videosByListedSidecar.count) sidecars singly")
@@ -85,7 +68,6 @@ enum MetadataFetcher {
         return sidecars
     }
 
-    /// The slow road: only the sidecars that speak for a video, six at a time.
     private static func fetchSingly(client: PCloudClient, branch: SurveyedBranch) async -> [String: Sidecar] {
         let wanted = branch.index.videosByListedSidecar
         let files = branch.files.filter { wanted[$0.path] != nil }
@@ -121,8 +103,7 @@ enum MetadataFetcher {
 
     struct EmptyPayload: Decodable {}
 
-    /// Raw DEFLATE (zip method 8). Apple's ZLIB variant is exactly that — the
-    /// headerless RFC 1951 stream zip entries carry.
+    /// Apple's ZLIB variant is the headerless RFC 1951 stream that zip entries carry (method 8).
     static func inflate(_ compressed: Data, _ uncompressedSize: Int) -> Data? {
         guard uncompressedSize > 0 else { return Data() }
         var out = Data(count: uncompressedSize)

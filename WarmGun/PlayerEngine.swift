@@ -1,33 +1,14 @@
 import AVFoundation
 import Foundation
 
-/// The screen's player: an AVQueuePlayer holding exactly the video on screen
-/// and the one staged to follow it, the same two-entry window the desktop
-/// satellite keeps in mpv. Both come from local files, so a swap is a swap.
-///
-/// It reports three things up, each named by the FILE it concerns, because the
-/// queue is not the session: the video that rolled on (so the model can check
-/// the roll matches what it staged), the fraction played, and a video that
-/// failed to play at all. It decides nothing about what plays next.
 @MainActor
 final class PlayerEngine {
     let player = AVQueuePlayer()
 
-    /// Called when the queue rolled from one video onto the next by itself,
-    /// with the URL it rolled onto — the model advances only when that is the
-    /// video it staged, so a stale roll can never move the session.
     var onAdvanced: ((URL) -> Void)?
-    /// Called with the fraction played, a few times a second.
     var onProgress: ((Double) -> Void)?
-    /// Called when the video played out with nothing staged after it and no
-    /// loop holding it — the session's cue to move on.
     var onFinished: (() -> Void)?
-    /// Called as the player enters and leaves its buffering stall — the only
-    /// sign a streaming scene gives before its first frame.
     var onBuffering: ((Bool) -> Void)?
-    /// Called when a video cannot be played at all — a truncated download, a
-    /// container AVFoundation refuses. Without this an unplayable file would
-    /// freeze the endless run silently and forever.
     var onItemFailed: ((URL) -> Void)?
 
     private(set) var currentURL: URL?
@@ -69,8 +50,6 @@ final class PlayerEngine {
         }
     }
 
-    /// Shows `current`, with `next` ready after it. Re-showing the video already
-    /// on screen only refreshes what is staged — it never restarts the picture.
     func show(current: URL, next: URL?, loop: Bool, autoplay: Bool = true) {
         self.loop = loop
         if currentURL != current {
@@ -88,14 +67,11 @@ final class PlayerEngine {
         player.pause()
     }
 
-    /// The session has moved somewhere the cache cannot serve yet: keep the
-    /// last picture looping under the spinner, but empty the queue after it so
-    /// nothing stale can roll on and nothing half-relevant is reported up.
     func holdCurrent() {
         stage(nil)
     }
 
-    /// The scene came back to the foreground; AVPlayer does not resume itself.
+    /// AVPlayer does not resume by itself.
     func resume() {
         player.play()
     }
@@ -109,8 +85,7 @@ final class PlayerEngine {
 
     private func insert(url: URL) {
         let item = AVPlayerItem(url: url)
-        // An item that fails to LOAD emits no end-of-play notification at all;
-        // its status flipping to .failed is the only word it ever says.
+        // An AVPlayerItem that fails to load posts no end-of-play notification; its status is its only word.
         statusObservations.append(item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
             Task { @MainActor in self?.itemFailed(item) }
@@ -120,9 +95,7 @@ final class PlayerEngine {
 
     private func stage(_ next: URL?) {
         let wanted = loop ? nil : next
-        // With nothing staged the queue must not advance off its only item into
-        // an empty (black) queue; it holds the last frame until the end handler
-        // replays it.
+        // With nothing staged, AVQueuePlayer would advance off its only item into a black empty queue.
         player.actionAtItemEnd = wanted == nil ? .none : .advance
         guard stagedURL != wanted else { return }
         for item in player.items().dropFirst() { player.remove(item) }
@@ -132,9 +105,7 @@ final class PlayerEngine {
         }
     }
 
-    /// Looping, or nothing staged yet: replay rather than let the queue empty.
-    /// A late notification for an item the queue already advanced past seeks a
-    /// detached item, which is harmless.
+    /// A late AVPlayerItem notification seeks a detached item, which is harmless.
     private func itemEnded(_ item: AVPlayerItem) {
         guard loop || stagedURL == nil else { return }
         if !loop { onFinished?() }

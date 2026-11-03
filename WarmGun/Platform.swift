@@ -7,23 +7,14 @@ import UIKit
 import AppKit
 #endif
 
-/// Where the phone and the Mac part ways, and nowhere else. The gate in
-/// `tools/gates.py` holds every `#if os(...)` and every UIKit or AppKit import
-/// to this file, so the rest of the app is one program that asks these
-/// questions in one vocabulary and never knows which machine answers.
 enum Platform {
-    /// The phone's screen turns with the phone and the filters follows it. A
-    /// laptop's does not, so there the P and L keys pick the shape.
     #if os(iOS)
     static let screenTurns = true
     #else
     static let screenTurns = false
     #endif
 
-    /// Reports each turn of the device as "landscape?". The view's geometry
-    /// hook also reports this, but the device notification arrives even when
-    /// a layout pass does not, so both roads lead to the model. A Mac has no
-    /// such notification and never calls back.
+    /// UIDevice's notification arrives even when a layout pass does not.
     static func observeRotation(_ onTurn: @escaping @MainActor (Bool) -> Void) {
         #if os(iOS)
         UIDevice.current.beginGeneratingDeviceOrientationNotifications()
@@ -33,26 +24,21 @@ enum Platform {
                 switch UIDevice.current.orientation {
                 case .portrait, .portraitUpsideDown: onTurn(false)
                 case .landscapeLeft, .landscapeRight: onTurn(true)
-                default: break  // face up/down says nothing about the screen
+                default: break
                 }
             }
         }
         #endif
     }
 
-    /// Ambient, mixed: this player is muted video — it must never barge in
-    /// on whatever the phone is already playing (the default solo-ambient
-    /// session pauses other audio the moment playback starts). A Mac has no
-    /// audio session to claim.
+    /// AVAudioSession's default solo-ambient category pauses other audio the moment playback starts.
     static func configureSilentPlayback() {
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
         #endif
     }
 
-    /// Holds the process alive through work that outlives the foreground —
-    /// without an assertion iOS suspends the app mid-upload and the journal
-    /// never leaves. Returns the release. A Mac never suspends the app.
+    /// Without an assertion iOS suspends the app mid-upload.
     static func holdForBackgroundWork() -> () -> Void {
         #if os(iOS)
         let assertion = UIApplication.shared.beginBackgroundTask()
@@ -62,39 +48,26 @@ enum Platform {
         #endif
     }
 
-    /// Which library a fresh install opens on: the phone is held upright,
-    /// the laptop's screen is wide.
     #if os(iOS)
     static let defaultShape = VideoShape.portrait
     #else
     static let defaultShape = VideoShape.landscape
     #endif
 
-    /// Posted as the process is about to end — the last chance to write.
     #if os(iOS)
     static let willTerminate = UIApplication.willTerminateNotification
     #else
     static let willTerminate = NSApplication.willTerminateNotification
     #endif
 
-    /// The file each machine uploads. The phone and the Mac share one sync
-    /// folder and Evolver reads every `.jsonl` in it, so each needs a name
-    /// of its own or the two would overwrite each other's.
     #if os(iOS)
     static let journalFileName = "warm-gun-journal.jsonl"
     #else
     static let journalFileName = "warm-gun-journal-mac.jsonl"
     #endif
 
-    /// The Keychain stand-in for development: the Simulator and a Mac debug
-    /// build run against `tools/fake_pcloud.py`, which accepts any token, and
-    /// letting the launch environment supply it is what makes the whole app
-    /// drivable headlessly with no credentials. Device builds and a Mac
-    /// Release build compile this out.
     static var developmentToken: String? { developmentOverride("WARMGUN_TOKEN") }
 
-    /// The API origin for the same runs — `http://localhost:8765` for the
-    /// stand-in server — since the login form no longer has a host field.
     static var developmentAPIHost: String? { developmentOverride("WARMGUN_API_HOST") }
 
     private static func developmentOverride(_ name: String) -> String? {
@@ -106,14 +79,8 @@ enum Platform {
     }
 }
 
-/// Whether the picture is on screen and in front — the one fact that decides
-/// whether the run plays, the display stays lit, and the journal leaves.
-///
-/// On the phone that is "not in the background": iOS suspends a backgrounded
-/// app anyway, and a passing banner must not stop the run. A Mac app is never
-/// suspended, so there it is the app being active AND a window being visible:
-/// minimized, closed, covered or on another Space, the run would otherwise
-/// play on and book completions nobody watched.
+/// iOS suspends a backgrounded app anyway, and a passing banner must not stop the run; a macOS app
+/// is never suspended, so there this takes the app active and a window visible.
 @MainActor
 final class Presence {
     private var observers: [NSObjectProtocol] = []
@@ -148,7 +115,6 @@ final class Presence {
     }
 }
 
-/// Keeps the display lit while the picture is on it.
 @MainActor
 final class DisplayLock {
     #if os(macOS)
@@ -171,8 +137,6 @@ final class DisplayLock {
 }
 
 extension Platform {
-    /// The app's one window. On the Mac it is exactly one — no New Window,
-    /// no second run on the one model — with no title bar over the picture.
     static func window<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some Scene {
         #if os(macOS)
         Window("Warm Gun", id: "player") { content() }
@@ -184,9 +148,6 @@ extension Platform {
 }
 
 extension View {
-    /// Nothing of the system over the picture: no status bar and no home
-    /// indicator on the phone; on the Mac the window takes the whole screen
-    /// the moment the player appears.
     func claimingTheWholeScreen() -> some View {
         #if os(iOS)
         statusBarHidden(true)
@@ -196,8 +157,6 @@ extension View {
         #endif
     }
 
-    /// An email address is being typed: the phone offers the keyboard for
-    /// one and keeps its hands off the capitalization.
     func emailEntry() -> some View {
         #if os(iOS)
         keyboardType(.emailAddress)
@@ -207,7 +166,6 @@ extension View {
         #endif
     }
 
-    /// The small title in the bar, where the phone has a large one to decline.
     func inlineTitle() -> some View {
         #if os(iOS)
         navigationBarTitleDisplayMode(.inline)
@@ -218,9 +176,7 @@ extension View {
 }
 
 #if os(macOS)
-/// Takes the window full screen once: the first time it is the key window
-/// after the player appears. Once, because leaving full screen by hand must
-/// stick, and the window becomes key again on the way out.
+/// macOS makes the window key again on the way out of full screen, so the claim happens once.
 private struct WholeScreenClaim: ViewModifier {
     @State private var claimed = false
 
@@ -235,7 +191,7 @@ private struct WholeScreenClaim: ViewModifier {
     private func claim(_ window: NSWindow?) {
         guard !claimed, let window else { return }
         claimed = true
-        // The window may be mid-setup on the appearance that found it key.
+        // AppKit may still be setting up the window on the appearance that found it key.
         DispatchQueue.main.async {
             if !window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
         }
@@ -243,11 +199,8 @@ private struct WholeScreenClaim: ViewModifier {
 }
 #endif
 
-/// AVPlayerLayer in a system view, aspect-fit so a landscape video on a
-/// portrait phone (or the reverse, or either on a laptop) letterboxes rather
-/// than crops. `onReadyForDisplay` fires with the layer's own
-/// is-a-frame-on-the-glass fact — the only signal that does not lie during a
-/// big file's black opening seconds.
+/// AVPlayerLayer's isReadyForDisplay is the only signal that does not lie during a big file's
+/// black opening seconds.
 #if os(iOS)
 struct VideoSurface: UIViewRepresentable {
     let player: AVPlayer

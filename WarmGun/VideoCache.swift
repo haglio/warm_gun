@@ -1,12 +1,7 @@
 import Foundation
 import WarmGunKit
 
-/// The on-device copy of every video Warm Gun has fetched, keyed by library path.
-///
-/// Lives in Application Support rather than Caches, which iOS empties under
-/// pressure, and is excluded from backups because the library is the backup.
-/// The index is held in memory and written beside the files, so a relaunch
-/// knows what it has without stat-ing a few thousand files.
+/// In Application Support because iOS empties Caches under pressure.
 actor VideoCache {
     private let directory: URL
     private var entries: [String: PrefetchPlanner.CachedFile] = [:]
@@ -60,8 +55,6 @@ actor VideoCache {
         if !paths.isEmpty { saveIndex() }
     }
 
-    // MARK: - index
-
     private var indexURL: URL { directory.appendingPathComponent("index.json") }
 
     private struct Row: Codable {
@@ -77,8 +70,6 @@ actor VideoCache {
         }
     }
 
-    /// Trusts the index only for files that are actually present — a file the
-    /// system removed without our knowing must not be promised to the player.
     private static func loadIndex(at directory: URL) -> [String: PrefetchPlanner.CachedFile] {
         let url = directory.appendingPathComponent("index.json")
         guard let data = try? Data(contentsOf: url),
@@ -90,9 +81,7 @@ actor VideoCache {
         return entries
     }
 
-    /// A stable on-disk name for a library path: FNV-1a over the path (Swift's
-    /// own hasher is randomized per launch) plus the real extension so
-    /// AVFoundation sniffs the container the way it would on the desktop.
+    /// Swift's own hasher is randomized per launch, and AVFoundation sniffs the container by extension.
     static func fileName(for path: String) -> String {
         var hash: UInt64 = 0xcbf29ce484222325
         for byte in path.utf8 {

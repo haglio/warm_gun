@@ -1,21 +1,10 @@
 import Foundation
 import WarmGunKit
 
-/// Keeps the videos around the playhead on disk before they are needed.
-///
-/// Given a plan (nearest videos first, see `PrefetchPlanner`), it downloads
-/// what is missing a few at a time, drops downloads that fell out of the plan,
-/// and evicts the least recently used cached videos that the plan does not
-/// protect once the cache is over its cap. The scenes too big to cache whole
-/// are not planned at all — they stream, and this hands out their links.
 actor Prefetcher {
     enum Event: Sendable {
-        /// `path` is on disk and playable-sized.
         case ready(String)
-        /// One attempt on `path` failed; `attempts` is the consecutive count,
-        /// and `loginRequired` says the token itself was refused.
         case failed(String, String, attempts: Int, loginRequired: Bool)
-        /// The cap was enforced; these paths left the disk.
         case evicted([String])
     }
 
@@ -47,9 +36,6 @@ actor Prefetcher {
         self.continuation = continuation
     }
 
-    /// Adopt a new window. Stale generations are dropped rather than applied —
-    /// two `sync()`s in quick succession may land here out of order, and the
-    /// older plan must not win.
     func replan(_ order: [String], videos: [String: Video], generation: Int) async {
         guard generation >= planGeneration else { return }
         planGeneration = generation
@@ -63,8 +49,6 @@ actor Prefetcher {
         await pump()
     }
 
-    /// A short-lived direct URL for a video that streams instead of caching —
-    /// the same link cache and expiry rules the downloads use.
     func streamURL(for video: Video) async throws -> URL {
         try await link(for: video)
     }
@@ -76,8 +60,6 @@ actor Prefetcher {
         var cooling = false
         for path in plan where inFlight.count < parallelism {
             guard !cached.contains(path), inFlight[path] == nil, let video = videos[path] else { continue }
-            // A path that just failed sits out a beat instead of hammering the
-            // same broken link in a tight loop; the delayed pump below retries.
             if let failure = failures[path], now.timeIntervalSince(failure.last) < failureCooldown {
                 cooling = true
                 continue
@@ -96,8 +78,6 @@ actor Prefetcher {
 
     private func fetch(_ video: Video, token: UUID) async {
         defer {
-            // Only this flight's own registration — replan may have canceled
-            // it and pump may already have a replacement in the slot.
             if inFlight[video.path]?.token == token { inFlight[video.path] = nil }
         }
         do {
@@ -108,8 +88,7 @@ actor Prefetcher {
         } catch is CancellationError {
             return
         } catch let error as URLError where error.code == .cancelled {
-            // URLSession's spelling of the same thing — a window shift, not a
-            // failure, and never something to alarm anyone with.
+            // URLSession's spelling of cancellation.
             return
         } catch {
             let attempts = (failures[video.path]?.attempts ?? 0) + 1
@@ -131,16 +110,13 @@ actor Prefetcher {
         }
     }
 
-    /// A link that pCloud has let expire answers with a 4xx; that means
-    /// "re-link and try again", never "the video is gone".
+    /// An expired pCloud link answers 4xx.
     private func fetchOnce(_ video: Video, retryOnStaleLink: Bool) async throws {
         let url = try await link(for: video)
         do {
             let tmp = try await client.download(url)
             try Task.checkCancellation()
-            // The index knows the video's exact size; a 200 whose body is any
-            // other length is not the video — travel wifi answers with captive
-            // portals and proxy pages, and those must never reach the player.
+            // A 200 of any other length is a captive portal or a proxy page off travel wifi.
             let got = (try? FileManager.default.attributesOfItem(atPath: tmp.path)[.size] as? Int64) ?? -1
             guard got == video.size else {
                 try? FileManager.default.removeItem(at: tmp)

@@ -2,10 +2,6 @@ import AVFoundation
 import Foundation
 import WarmGunKit
 
-/// The one owner of the app's state. Views read it and post intents; the
-/// Kit decides; the actors (client, cache, prefetcher) do the I/O. Every
-/// change to what is playing funnels through `sync()`, which is also where
-/// the prefetch window is re-planned.
 @MainActor
 final class AppModel: ObservableObject {
     enum Phase: Equatable {
@@ -30,37 +26,20 @@ final class AppModel: ObservableObject {
     @Published private(set) var session = Session(playlist: [])
     @Published private(set) var favorites = Favorites()
     @Published private(set) var trash: Set<String> = []
-    /// Which loop the run is in: everything the filters let through, one video, or the current
-    /// video's seed family / action group — the desktop satellite's axes.
     @Published private(set) var loopMode: LoopMode = .all
 
-    /// Video lengths measured off the cached files, path-keyed — the real
-    /// pCloud listing carries no durations, so the phone learns them itself.
+    /// pCloud's listing carries no durations, so the phone measures them off the cached files.
     private var measuredSeconds: [String: Double] = [:]
-    /// The seed/action grouping over the metadata sidecars, refreshed once per
-    /// launch in the background; empty until the first fetch lands.
     @Published private var groupIndex = GroupIndex(sidecars: [:])
-    /// The playback weights off those same sidecars — what BOTH apps did with
-    /// each video, summed and stamped by Evolver. Neutral until they land.
     private var weights = WatchWeights()
-    /// The corpus both are built from, kept so a refresh can fold into it. A
-    /// branch of the mirror that fails to list contributes nothing that run,
-    /// and replacing rather than folding would make its silence erase the lane.
     private var sidecars: [String: Sidecar] = [:]
     private var refreshedMetadata = false
-    /// A fetch that failed is tried again, a minute later, a few times: a
-    /// launch into a bad moment on the network used to cost the whole run its
-    /// groups, since nothing asked again until the next launch.
     private var metadataAttempts = 0
     private var genauFlicksFolder: String?
     @Published private(set) var message: Message?
     @Published private(set) var paused = false
-    /// The video layer has a frame on the glass. False is the truthful "you
-    /// are looking at black" signal — rate alone lies during the first seconds
-    /// of a big file.
+    /// AVPlayer's rate reads as playing through a big file's black first seconds; the layer does not.
     @Published private(set) var layerReady = false
-    /// The player is stalled mid-buffer for long enough to say so — debounced,
-    /// so a loop wrap's momentary hiccup does not flash a loading screen.
     @Published private(set) var buffering = false
     private var bufferingTask: Task<Void, Never>?
     @Published private(set) var waitingFor: String?
@@ -69,49 +48,28 @@ final class AppModel: ObservableObject {
     @Published private(set) var loginForm = LoginState()
 
     private let engine = PlayerEngine()
-    /// The one AVFoundation object the view layer needs — the player the video
-    /// surface renders. Handing it out directly (rather than the engine) keeps
-    /// the engine's queue bookkeeping out of everyone else's reach.
     var player: AVPlayer { engine.player }
     private let cache: VideoCache
     private let stateDirectory: URL
-    /// The lanes the repo cannot name (see ContentOverlay): bundled from the
-    /// git-ignored content.local.json, empty when the bundle carries none.
     let overlay: ContentOverlay
     private var client: PCloudClient?
     private var prefetcher: Prefetcher?
     private var eventPump: Task<Void, Never>?
     private var tracker = WatchTracker()
-    /// The video actually on the glass — not `session.current`, which runs
-    /// ahead of the screen whenever a download is still in flight. Every watch
-    /// sample and journal line is labeled with this, never with the session.
     @Published private(set) var showing: String?
     private var planGeneration = 0
     private var fetchFailures = FetchFailures()
     private var persistTask: Task<Void, Never>?
     private var videosByPath: [String: Video] = [:]
     private var rng = SystemRandomNumberGenerator()
-    /// A filters/filter change whose new video is not on disk yet must VISIBLY
-    /// take effect: the old picture clears to the spinner instead of looping
-    /// on as if the switch did nothing. Nav stalls keep the old picture — a
-    /// fast tap run reads better over motion than over black.
     private var clearOnNextWait = false
     private var messageTask: Task<Void, Never>?
     private var launched = false
-    /// Nothing is written over the state files until they have been read:
-    /// a step-aside in the first instant of a launch must not save an empty
-    /// run over the one on disk.
     private var stateLoaded = false
     private var syncInFlight: Task<Void, Never>?
     private var syncWanted = false
 
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: VideoCache? = nil) {
-        // A bundle with no overlay is ordinary — the app is meant to run without
-        // one. A bundle WITH an overlay it cannot read is not: it falls back to
-        // the same empty value, so the lanes and every action button vanish and
-        // nothing says why. That happened, on a phone, because the file spoke a
-        // vocabulary this build did not have; it is reported now rather than
-        // swallowed.
         var overlayProblem: String?
         if let url = Bundle.main.url(forResource: "content.local", withExtension: "json") {
             do {
@@ -131,7 +89,6 @@ final class AppModel: ObservableObject {
         engine.onAdvanced = { [weak self] url in self?.advanced(to: url) }
         engine.onFinished = { [weak self] in self?.finished() }
         engine.onBuffering = { [weak self] stalled in self?.buffering(stalled) }
-        // The library follows the physical rotation, where there is one.
         Platform.observeRotation { [weak self] landscape in self?.deviceRotated(landscape: landscape) }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
@@ -143,10 +100,6 @@ final class AppModel: ObservableObject {
             .appendingPathComponent("State", isDirectory: true)
     }
 
-    // MARK: - lifecycle
-
-    /// The window's first appearance. A Mac window can be closed and opened
-    /// again, which places the view again; the run must not start twice.
     func launch() async {
         guard !launched else { return }
         launched = true
@@ -163,8 +116,6 @@ final class AppModel: ObservableObject {
             phase = .failed(error.localizedDescription)
             return
         }
-        // Lines the last run never got to upload — a Mac is quit from the
-        // front as often as not, with no step-aside to upload on.
         if journalDirty { Task { await syncWithCloud() } }
         if settings.libraryPath.isEmpty {
             phase = .indexing
@@ -189,8 +140,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// True on success, so the form knows whether to clear the password or
-    /// keep it for another try.
     func login(username: String, password: String, code: String) async -> Bool {
         settings.username = username
         Keychain.storePending(password: password)
@@ -223,8 +172,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Ask pCloud to deliver a code: by SMS, or pushed as a notification to
-    /// every OTHER logged-in pCloud app (the drive on the Mac or PC).
     func sendTFACode(viaSMS: Bool) async {
         guard let token = loginForm.challengeToken else { return }
         do {
@@ -245,10 +192,8 @@ final class AppModel: ObservableObject {
         phase = .needsLogin
     }
 
-    /// Hunt for the library by its skeleton. pCloud refuses a recursive
-    /// listing of the ROOT with 1101 (a 2025-era server change), so the walk
-    /// starts shallow there and recurses per top-level folder, descending
-    /// again wherever the refusal repeats.
+    /// pCloud refuses a recursive listing of the root (error 1101), so the walk starts shallow there
+    /// and recurses per top-level folder.
     private static func discoverLibrary(client: PCloudClient) async throws -> String? {
         var queue = ["/"]
         var visited = 0
@@ -270,8 +215,6 @@ final class AppModel: ObservableObject {
         return nil
     }
 
-    /// A development run against the stand-in server is pointed at it from
-    /// the launch environment; everything else goes where the settings say.
     private var apiHost: String { Platform.developmentAPIHost ?? settings.apiHost }
 
     private func connect(token: String) throws {
@@ -299,8 +242,6 @@ final class AppModel: ObservableObject {
         case .failed(let path, let message, let attempts, let loginRequired):
             lastProblem = "\(message) — \((path as NSString).lastPathComponent)"
             if loginRequired {
-                // 1000/2000 means the token itself is refused; keeping it would
-                // just show a "logged in" screen over an account that is not.
                 Keychain.forget()
                 phase = .needsLogin
                 return
@@ -321,15 +262,11 @@ final class AppModel: ObservableObject {
         }
     }
 
-    // MARK: - the index
-
     func index() async {
         guard let client else { return }
         if catalog == nil { phase = .indexing }
         do {
             var files = try await client.listLibrary(path: settings.libraryPath)
-            // A missing Genau folder is fine; the source simply contributes
-            // nothing.
             if let genauPath = LibraryPaths.genauPath(forLibrary: settings.libraryPath),
                let genau = try? await client.folderSkeleton(path: genauPath),
                let folder = LibraryPaths.genauFlicksFolder(in: genau),
@@ -337,7 +274,6 @@ final class AppModel: ObservableObject {
                 genauFlicksFolder = folder
                 files += flicks.map { $0.prefixed(LibraryPaths.genauPrefix) }
             }
-            // The real scenes: the non-AI library, the AI folder's sibling.
             if let nonAIPath = LibraryPaths.nonAIPath(forLibrary: settings.libraryPath),
                let scenes = try? await client.listLibrary(path: nonAIPath) {
                 files += scenes.map { $0.prefixed(LibraryPaths.nonAIPrefix) }
@@ -351,10 +287,6 @@ final class AppModel: ObservableObject {
             phase = .ready
             refreshMetadata()
             if !rebuildIfStale(), changed {
-                // A background refresh must not reshuffle the run in progress —
-                // that is exactly the video-jumping the desktop's session resume
-                // exists to prevent. Prune what the library no longer has; new
-                // arrivals join on the next rebuild the user asks for.
                 let known = Set(fresh.videos.map(\.path))
                 let surviving = session.playlist.filter(known.contains)
                 if surviving.count != session.playlist.count {
@@ -367,8 +299,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// What this phone remembers of a Genau flick by its name from before
-    /// Genau's flicks folder split into 2D and VR, carried to where the flick is.
     private func carryFlatGenauNames(to paths: Set<String>) {
         let before = (trash, favorites)
         trash = LibraryPaths.rekeyedFlatGenau(trash, against: paths)
@@ -376,9 +306,6 @@ final class AppModel: ObservableObject {
         if before != (trash, favorites) { persistState() }
     }
 
-    /// The sidecar corpus — every branch of the metadata mirror, fetched as one
-    /// zip apiece and kept beside the state files; the launch's copy serves
-    /// until the fetch lands.
     private func refreshMetadata() {
         guard !refreshedMetadata, let client, let catalog else { return }
         refreshedMetadata = true
@@ -408,13 +335,7 @@ final class AppModel: ObservableObject {
                 return
             }
             MetadataFetcher.log.notice("adopting \(fetched.count) sidecars")
-            // Folded in, never substituted: a branch that did not answer this
-            // run keeps whatever it contributed to the last one.
             adopt(sidecars: sidecars.merging(fetched) { _, new in new })
-            // A run that matched nothing is a dead end this corpus can end —
-            // the favorites switch before any favorite had arrived is exactly
-            // that screen. A run in progress is left alone: a background
-            // refresh must never reshuffle what is playing.
             if session.playlist.isEmpty { rebuild(startAtTop: true) }
             guard let data = try? JSONEncoder().encode(sidecars),
                   (try? data.write(to: sidecarsURL, options: .atomic)) != nil else { return }
@@ -438,32 +359,17 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Everything the corpus decides, decided in one place: the groups the loop
-    /// buttons walk, the weights the shuffle draws on, and which videos the
-    /// desktop is holding.
-    ///
-    /// The favorites only ever gain here, and never gain back a stem this phone has let go of: the flag is a
-    /// snapshot from the last time the stage ran, so taking it as the whole
-    /// truth would undo every favorite made on the phone since, and taking it
-    /// blindly would undo every unfavorite (`Favorites.adopt`).
     private func adopt(sidecars corpus: [String: Sidecar]) {
         sidecars = corpus
         groupIndex = GroupIndex(sidecars: corpus)
         weights = WatchWeights(sidecars: corpus)
         let flagged = Set(corpus.filter(\.value.favorite).keys.compactMap(LibraryPaths.favoriteKey(forVideo:)))
         let before = favorites
-        // The corpus is only ever as complete as the branches that answered, so
-        // it says nothing about a video it does not hold: `covering` is what it
-        // could have spoken for, and a refusal outside that is kept.
         favorites.adopt(flagged: flagged,
                         covering: Set(corpus.keys.compactMap(LibraryPaths.favoriteKey(forVideo:))))
         if favorites != before { persistState() }
     }
 
-    /// Builds the filters from the index and hands it to the session. A change
-    /// of filter keeps the video on screen when it survives (the desktop's
-    /// `replace_playlist`); a new order starts from the top. A filter that
-    /// matches nothing empties the run, and the screen says so.
     private func rebuild(startAtTop: Bool) {
         guard let catalog else { return }
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.filters,
@@ -472,18 +378,12 @@ final class AppModel: ObservableObject {
                                              overlay: overlay, actions: groupIndex.actionsByPath,
                                              recordedTypes: groupIndex.typesByPath, rng: &rng)
         if playlist.isEmpty {
-            // Nothing fits these switches: say exactly that on a blank screen
-            // (the view reads the empty playlist) rather than playing on as if
-            // the switch had not landed.
             session = Session(playlist: [])
             sync()
             return
         }
         let before = session.current
         if startAtTop {
-            // The top means the top: Latest must open on the newest video, and
-            // a fresh shuffle on its own first draw — never on whatever
-            // happened to be cached nearby.
             session = Session(playlist: playlist)
         } else {
             session.replacePlaylist(playlist)
@@ -495,8 +395,6 @@ final class AppModel: ObservableObject {
         clearOnNextWait = session.current != before
         sync()
     }
-
-    // MARK: - gestures
 
     func tap(_ action: TapAction) {
         switch action {
@@ -551,17 +449,11 @@ final class AppModel: ObservableObject {
                                                   measuredSeconds: measuredSeconds[current], overlay: overlay)
     }
 
-    /// The phone was turned: the filters follows the screen, portrait videos
-    /// upright and landscape videos wide, with no switch to remember. A
-    /// laptop's screen never turns, and its window's shape says nothing about
-    /// which library is wanted — there the keys decide, through the road below.
     func deviceRotated(landscape: Bool) {
         guard Platform.screenTurns else { return }
         setShape(landscape ? .landscape : .portrait)
     }
 
-    /// Which library plays: the P and L keys' road on a Mac, the rotation's
-    /// on a phone.
     func setShape(_ shape: VideoShape) {
         guard settings.filters.shape != shape else { return }
         var filters = settings.filters
@@ -569,9 +461,6 @@ final class AppModel: ObservableObject {
         update(filters: filters)
     }
 
-    /// Lock = repeat this video, and it is a favorite from now on. Unlock moves
-    /// on rather than replaying, and never unfavorites (that is the trash
-    /// gesture's job).
     func toggleLock() {
         guard let path = session.current else { return }
         if session.locked {
@@ -587,13 +476,8 @@ final class AppModel: ObservableObject {
         sync()
     }
 
-    /// The two-step demotion: a favorite only loses its star; anything else
-    /// leaves the rotation and its upscale goes to `trash`, exactly as
-    /// the desktop's up-arrow does.
     func sendToTrash() {
         guard let path = session.current else { return }
-        // Either half of the demotion swallows the departure event, as the
-        // desktop arms note_discard before it knows which half the press is.
         tracker.noteDiscard()
         if favorites.contains(path: path) {
             _ = favorites.remove(path: path)
@@ -604,9 +488,6 @@ final class AppModel: ObservableObject {
             trash.insert(path)
             journal("trash", path)
             if session.playlist.count <= 1 {
-                // The desktop refuses to trash the last video; here the honest
-                // outcome is an empty run — the video is trash now, and looping
-                // it forever would contradict the gesture just made.
                 session = Session(playlist: [])
             } else {
                 _ = session.discard()
@@ -639,11 +520,6 @@ final class AppModel: ObservableObject {
         rebuild(startAtTop: orderChanged)
     }
 
-    /// The Loop control. All and 1 are playback modes; Seed and Action are the
-    /// desktop's group loops: the playlist is re-seated with the current
-    /// video's group (anchor first) and cycles it by ordinary auto-advance —
-    /// the video on screen never restarts. A group of one turns the press into
-    /// a lock rather than a dead end, exactly as the desktop does.
     func setLoop(_ mode: LoopMode) {
         switch mode {
         case .all, .single:
@@ -673,23 +549,15 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Whether the Loop control's *mode* has anything to loop from the video on
-    /// screen.
     func canLoop(_ mode: LoopMode) -> Bool {
         session.current.map { groupIndex.canLoop(mode, from: $0) } ?? false
     }
 
-    /// The E key: one step clockwise around the Loop control (the Kit's
-    /// `LoopCycle`), each stop meaning what the control's segment means.
     func cycleLoop() {
         guard let current = session.current else { return }
         setLoop(LoopCycle.next(after: loopMode) { groupIndex.canLoop($0, from: current) })
     }
 
-    // MARK: - playback plumbing
-
-    /// The single place the screen and the prefetch window are brought in line
-    /// with the session.
     private func sync() {
         guard let prefetcher else { return }
         planGeneration += 1
@@ -707,9 +575,6 @@ final class AppModel: ObservableObject {
         }
         let loop = session.locked || settings.loopVideo
         if let video = videosByPath[current], video.streams, !cached.contains(current) {
-            // Stream a scene straight off its link: playback starts on the
-            // first ranges, nothing lands in the cache, nothing is staged
-            // after it (the next video syncs when this one finishes).
             waitingFor = nil
             showing = current
             Task {
@@ -726,13 +591,9 @@ final class AppModel: ObservableObject {
         }
         guard cached.contains(current) else {
             if clearOnNextWait {
-                // The filters just changed: the switch must be seen to land.
                 engine.clear()
                 showing = nil
             } else {
-                // A nav stall: the last picture keeps looping under the pill,
-                // but nothing may stay queued after it — a stale roll-on
-                // would advance a session that has already moved elsewhere.
                 engine.holdCurrent()
             }
             waitingFor = current
@@ -752,9 +613,6 @@ final class AppModel: ObservableObject {
         persistSoon()
     }
 
-    /// The queue rolled on. Advance the session only when what it rolled onto
-    /// is the video the session staged — the engine's queue is not the session,
-    /// and a roll that predates a gesture must not move it.
     private func advanced(to url: URL) {
         if let staged = session.staged, url.lastPathComponent == VideoCache.fileName(for: staged) {
             session.advance()
@@ -772,17 +630,11 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The video played out with nothing staged after it — a streamed scene,
-    /// or a cached video whose neighbor has not landed yet. The session moves
-    /// on; the picture replays or holds until the next video is ready.
     private func finished() {
         session.advance()
         sync()
     }
 
-    /// A video the player refuses — a truncated body, a container AVFoundation
-    /// cannot read. The cached copy is poison, so it leaves the disk; if it is
-    /// the video on screen the run steps past it rather than freezing.
     private func itemFailed(_ url: URL) {
         guard let path = session.playlist.first(where: { url.lastPathComponent == VideoCache.fileName(for: $0) })
         else { return }
@@ -801,33 +653,22 @@ final class AppModel: ObservableObject {
     }
 
     private func progressed(_ fraction: Double) {
-        // While a download is in flight the engine is replaying the PREVIOUS
-        // video under a spinner; those frames speak for nothing the session
-        // points at, so they are not sampled at all.
         guard waitingFor == nil, let path = showing else { return }
         for (event, eventPath) in tracker.sample(path: path, fraction: fraction, now: Date()) {
             journal(event.rawValue, eventPath)
         }
     }
 
-    /// The app is back in front; AVPlayer does not resume by itself. A video
-    /// he paused stays paused — a return to the app is not a tap.
     func becameActive() {
         if !paused { engine.resume() }
     }
 
-    /// The app has stepped aside: the picture stops — a run nobody is
-    /// watching must not book completions — what is pending is written, and
-    /// the journal leaves for the cloud.
     func steppedAside() {
         engine.pause()
         flushState()
         Task { await syncWithCloud() }
     }
 
-    /// The listing never times the videos, so each one is measured the moment
-    /// its file lands — from then on its type is judged by its length rather
-    /// than by the size stand-in.
     private func measureDuration(of path: String) {
         guard measuredSeconds[path] == nil else { return }
         Task {
@@ -850,13 +691,8 @@ final class AppModel: ObservableObject {
         }
     }
 
-    // MARK: - the journal and the favorites file
-
     private var journalURL: URL { stateDirectory.appendingPathComponent("warm-gun-journal.jsonl") }
 
-    /// How much of the journal has reached the cloud, kept across launches so
-    /// a run can tell whether lines are still waiting: the file only ever
-    /// grows, so its size against the size last uploaded is the whole answer.
     private static let journalUploadedKey = "warm-gun.journal-uploaded-bytes"
 
     private var journalBytes: Int {
@@ -878,12 +714,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Pushes the journal to the sync folder. Called when the app steps aside and at a launch with
-    /// lines waiting; never in the way of playback.
-    ///
-    /// One at a time: two whole-file uploads in flight can land in either
-    /// order, and the size recorded last would then overstate what the cloud
-    /// holds. A call during a sync asks for one more after it.
     func syncWithCloud() async {
         if syncInFlight != nil {
             syncWanted = true
@@ -900,8 +730,6 @@ final class AppModel: ObservableObject {
 
     private func performCloudSync() async {
         guard let client, !settings.syncFolder.isEmpty else { return }
-        // The caller is usually the step-aside transition, which on the phone
-        // would suspend the app mid-upload.
         let release = Platform.holdForBackgroundWork()
         defer { release() }
         do {
@@ -915,14 +743,12 @@ final class AppModel: ObservableObject {
         }
     }
 
-    // MARK: - persistence
-
     private struct PersistedState: Codable {
         var favorites: Favorites
-        var trash: Set<String>?  // optional so older blobs still decode
+        var trash: Set<String>?
         var playlist: [String]
         var index: Int
-        var locked: Bool?  // optional so older blobs still decode
+        var locked: Bool?
         var measuredSeconds: [String: Double]?
     }
 
@@ -946,21 +772,21 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// A relaunch picks up where it left off: same order, same video, minus
-    /// anything the index no longer has (the desktop's `resume_playlists`).
     private func loadPersistedState() {
         if let data = try? Data(contentsOf: catalogURL), let saved = try? JSONDecoder().decode(Catalog.self, from: data) {
             catalog = saved
             videosByPath = Dictionary(uniqueKeysWithValues: saved.videos.map { ($0.path, $0) })
         }
         restoreSession()
-        // Last of the three, so the corpus folds INTO the favorites just
-        // restored rather than being overwritten by them.
+        foldSavedCorpusIntoRestoredFavorites()
+        stateLoaded = true
+    }
+
+    private func foldSavedCorpusIntoRestoredFavorites() {
         if let data = try? Data(contentsOf: sidecarsURL),
            let sidecars = try? JSONDecoder().decode([String: Sidecar].self, from: data) {
             adopt(sidecars: sidecars)
         }
-        stateLoaded = true
     }
 
     private func restoreSession() {
@@ -973,11 +799,6 @@ final class AppModel: ObservableObject {
                           keeping: Set(videosByPath.keys))
     }
 
-    /// Auto-advance persists through here: at most one write per fifteen
-    /// seconds, on the tail edge, because every write is the whole playlist
-    /// and the favorites JSON-encoded on the main actor. Gestures persist
-    /// immediately (they call `persistState` directly), and going to the
-    /// background flushes whatever is pending.
     private func persistSoon() {
         guard persistTask == nil else { return }
         persistTask = Task { [weak self] in
