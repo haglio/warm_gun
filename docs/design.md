@@ -3,9 +3,8 @@
 Warm Gun does what one of Fun Time's Satellite Funestras does — an endless,
 silent, auto-advancing run of the library's videos with four gestures — on an
 iPhone away from home, and on the owner's Mac. No OSR2, no voice, no
-dashboard. Kickoff was 2026-08-23; this file holds the decisions in force,
-cut to them on 2026-10-30, and the code's history holds the rest. Change a
-decision with the owner, not alone.
+dashboard. This file holds the decisions in force; change one with the owner,
+not alone.
 
 ## What it plays
 
@@ -100,7 +99,7 @@ decision with the owner, not alone.
 
 ## Fidelity to the desktop satellite
 
-From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
+From Fun Time's `fun_time/command_dispatch.py` and `fun_time/lock.py`:
 
 - **Next and previous** step the playlist and wrap; previous is the list
   neighbor, not a history stack. Any navigation releases a lock.
@@ -134,7 +133,7 @@ From `fun_time/command_dispatch.py`, `fun_time/lock.py`, `satellite/session.py`:
   (`evolver/util/watch.py`), so one formula serves both apps. No weight
   weighs 1. Latest is newest first and carries no weighting, so a new
   arrival surfaces whatever its weight. A filter change keeps the
-  video on screen when it survives (`session.replace_playlist`); a filter
+  video on screen when it survives; a filter
   that matches nothing says so on a blank screen.
 
 ## Shared state with the desktop
@@ -161,7 +160,7 @@ the desktop agrees. The sidecars arrive as one `getzip` per branch of the
 metadata mirror, falling back to one file at a time; a launch whose survey finds the
 mirror unchanged fetches nothing.
 
-## The Mac (2026-10-12)
+## The Mac
 
 The same target builds against the macOS SDK. Not Mac Catalyst and not
 "Designed for iPhone": the first is a translation layer with its own
@@ -193,45 +192,10 @@ the App Sandbox with a container of its own.
   so a run against the stand-in server has a container, cache, settings and
   journal of its own and a fixture line can never reach the real account.
 
-## Module boundaries (the gates enforce these)
+## Module boundaries
 
-- `WarmGunKit/` — pure Foundation, and every decision that needs no device,
-  each tested headlessly: `LibraryPaths` (the lanes, the upscale mapping,
-  library discovery), `Catalog` + `Video`, `PCloudAPI` (requests, responses,
-  errors), `LoginState` (the login's next step and its refusals),
-  `Playlist` (`VideoType`, the filters, the build), `Session` (the run, and
-  what a resumed one keeps), `FetchFailures`, `PrefetchPlanner` (the window
-  and eviction), `LinkCache`, `WatchWeights` + `WatchTracker`, `Sidecar` +
-  `GroupIndex` + `SidecarIndex` + `MirrorSurvey` (whether the mirror moved,
-  and whether a fetch caught all of it), `LoopMode` + `LoopCycle`,
-  `Favorites`, `ContentOverlay`, `ZipArchive`, `TapZones`,
-  `Journal`.
-- `WarmGun/` — the app: the SwiftUI views, `PlayerEngine` (AVFoundation),
-  `Prefetcher`, `VideoCache`, `PCloudClient`, `MetadataFetcher`, `Keychain`,
-  `Settings`, `AppModel` (the one `ObservableObject`: it owns the state,
-  asks the Kit, and wires the rest), and `Platform`. Views hold no domain
-  state; they read the model and post intents.
-- `tools/gates.py` counts, with a target of 0, a non-Foundation import in
-  the Kit, `@Published` outside `AppModel`, a stored `static var`, a view
-  reaching through the model into its actors, and a platform fork outside
-  `Platform.swift`; and it holds the repo's comment lines to a ceiling that
-  only comes down. `tools/test_gates.py` pins every one of its patterns.
-
-## Verification
-
-- `cd WarmGunKit && swift test` — the Kit, headless, on the Mac.
-- `sh tools/check.sh` — the Kit, the gates and their tests, and
-  `tools/sanitize_tree.py`, the family's content guard over every file in
-  the tree, tracked and untracked; the git hooks run the same guard over
-  what each commit stages and over its message.
-- The merge gate runs the Kit, the gate tests and the gates, then compiles
-  the app for the Mac and for the phone, signing off.
-- `tools/fake_pcloud.py` stands in for the pCloud API off a local folder
-  (`listfolder`, `getfilelink`, `getzip`, `renamefile` recorded and never
-  performed, `uploadfile` into a scratch folder), so the Simulator or a
-  Mac debug build runs end to end with no credentials and no writes:
-  `WARMGUN_TOKEN` stands in for the Keychain and `WARMGUN_API_HOST` for the
-  host, in those builds only.
-- `./install_mac.sh` builds Release into `~/Applications/Warm Gun.app`;
-  `./install.sh` builds for the iPhone, plugged in and unlocked. Until it
-  has run, nothing is on the phone.
+`WarmGunKit/` is pure Foundation and holds every decision that needs no device,
+so each is tested headlessly. `AppModel` is the one `ObservableObject`: it owns
+the state, asks the Kit and wires the rest; views hold no domain state, read the
+model, post intents and never reach through it into its actors. No module shares
+mutable state with another. `tools/gates.py` holds each of these at zero.

@@ -9,7 +9,7 @@ per rule. If editing this file, remove or consolidate — never just append.
 ## What this is
 
 The iPhone satellite player for the Fun Time library — see `docs/design.md`
-for every decision and the module map. SwiftUI app in `WarmGun/`, pure-logic
+for every decision. SwiftUI app in `WarmGun/`, pure-logic
 SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 
 ## Verification
