@@ -70,7 +70,6 @@
         "browse options"
       ],
       "keep": [
-        "random_favs_browser",
         "\"browse\""
       ]
     },
@@ -225,9 +224,8 @@
       "his_word": null,
       "code_word": null,
       "id": "other_words",
-      "thing": "words the code uses for things no screen shows or names: a CSV cell, a prefetch slot, a band of the screen between buttons, a system banner, a setting called a dial, a map in code",
+      "thing": "words the code uses for things no screen shows or names: a prefetch slot, a band of the screen between buttons, a system banner, a setting called a dial, a map in code",
       "code_today": [
-        "cell",
         "slot",
         "band",
         "banner",

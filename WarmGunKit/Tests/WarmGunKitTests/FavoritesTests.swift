@@ -15,8 +15,7 @@ import Testing
     }
 
     @Test func keepsAVideoByItsStemSoEitherRenditionAsksTheSameQuestion() {
-        // Stems are unique library-wide, which is what lets the phone's store and
-        // the desktop's favs.csv — which knows only upscale names — mean one video.
+        // Stems are unique library-wide, so the original and the upscale mean one video.
         var favorites = Favorites()
         let added = favorites.insert(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(added)
@@ -53,66 +52,13 @@ extension FavoritesTests {
     }
 }
 
-/// The desktop writes `favs.csv` for Excel: CRLF rows of two quoted cells, each
-/// an `=HYPERLINK` formula whose inner quotes are doubled. Every fixture path
-/// below is invented; the shape is what matters.
-@Suite struct FavsCSVTests {
-    static let header = "local_file,web_url"
-    static let firstRow = #""=HYPERLINK(""file:///C:/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4"";""C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\video-one_topaz.mp4"")","=HYPERLINK(""https://example.test/gallery/video-one"";""https://example.test/gallery/video-one"")""#
-    static let secondRow = #""=HYPERLINK(""file:///C:/lib/2_outbox/upscaled_by_orientation/landscape/beta/video-two_topaz.mp4"";""C:\lib\2_outbox\upscaled_by_orientation\landscape\beta\video-two_topaz.mp4"")",""""#
-
-    @Test func readsTheStemOutOfTheDisplayArgumentOfEveryHyperlinkRow() {
-        // The second argument is the plain Windows path, which round-trips
-        // exactly; the first is percent-encoded as a file:// URI.
-        let text = [Self.header, Self.firstRow, Self.secondRow].joined(separator: "\r\n") + "\r\n"
-        #expect(FavsCSV.keys(in: text) == ["video-one", "video-two"])
-    }
-}
-
-extension FavsCSVTests {
-    @Test func survivesTheByteOrderMarkAndTheLineEndingsAnEditorAdds() {
-        // The file reaches the phone through pCloud and whatever touched it on
-        // the way; a BOM in front of the first row must not eat that row.
-        let text = "\u{FEFF}" + [Self.firstRow, Self.secondRow].joined(separator: "\n")
-        #expect(FavsCSV.keys(in: text) == ["video-one", "video-two"])
-    }
-}
-
-extension FavsCSVTests {
-    /// The file names whichever video Fun Time plays, so it holds rows for all
-    /// three lanes — but only the upscale rows can be turned into a key here,
-    /// because the other two lanes are filed under a library-relative path a
-    /// Windows absolute path cannot be reduced to. The trap is that a delivered
-    /// Genau flick keeps the upscale's own name, `_topaz` and all
-    /// (`evolver/tasks/genau_deliver.py`), so stripping the suffix on the
-    /// strength of the name alone would file it under a video that is not it.
-    @Test func readsOnlyTheUpscaleRowsAndNotAGenauFlickThatMerelyLooksLikeOne() {
-        let flick = #""=HYPERLINK(""file:///D:/lib/videos/videos/genau/clips/2D/AI/loop-two_topaz.mp4"";""D:\lib\videos\videos\genau\videos\2D\AI\loop-two_topaz.mp4"")",""""#
-        let scene = #""=HYPERLINK(""file:///D:/lib/videos/2D/non_AI/bucket/scene-three.mkv"";""D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"")",""""#
-
-        let keys = FavsCSV.keys(in: [Self.header, Self.firstRow, flick, scene].joined(separator: "\r\n"))
-
-        #expect(keys == ["video-one"])
-    }
-}
-
-extension FavsCSVTests {
-    @Test func namesNothingFromAFileWithNoRowsThatParse() {
-        #expect(FavsCSV.keys(in: "").isEmpty)
-        #expect(FavsCSV.keys(in: Self.header + "\r\n").isEmpty)
-        // A row whose formula is truncated names nothing.
-        let torn = #""=HYPERLINK(""file:///C:/lib/video-three_topaz.mp4"";""C:\lib\video-three_topaz.mp4"#
-        #expect(FavsCSV.keys(in: [Self.header, torn].joined(separator: "\r\n")).isEmpty)
-    }
-}
-
 extension FavoritesTests {
     @Test func adoptingTheDesktopsRecordAddsToTheStoreRatherThanReplacingIt() {
-        // The desktop's record — a favs.csv dropped in, or the flag on the
-        // sidecars — is a snapshot from before the trip, not the truth: what was
-        // favorited on the phone since must survive it.
+        // The desktop's record — the flag on the sidecars — is a snapshot from
+        // before the trip, not the truth: what was favorited on the phone since
+        // must survive it.
         var favorites = Favorites(held: ["video-one"])
-        favorites.adopt(flagged: ["video-one", "video-two"])
+        favorites.adopt(flagged: ["video-one", "video-two"], covering: ["video-one", "video-two"])
         #expect(favorites.held == ["video-one", "video-two"])
     }
 }
@@ -127,11 +73,11 @@ extension FavoritesTests {
 
         let dropped = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(dropped)
-        favorites.adopt(flagged: ["video-one", "video-two"])
+        favorites.adopt(flagged: ["video-one", "video-two"], covering: ["video-one", "video-two"])
         #expect(favorites.held == ["video-two"])
 
         // Two launches, three, a hundred: the answer does not drift.
-        favorites.adopt(flagged: ["video-one", "video-two"])
+        favorites.adopt(flagged: ["video-one", "video-two"], covering: ["video-one", "video-two"])
         #expect(favorites.held == ["video-two"])
     }
 }
@@ -145,16 +91,16 @@ extension FavoritesTests {
         var favorites = Favorites(held: ["video-one"])
         _ = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
 
-        favorites.adopt(flagged: ["video-two"])          // the desktop caught up
+        favorites.adopt(flagged: ["video-two"], covering: ["video-one", "video-two"])  // the desktop caught up
         #expect(favorites.held == ["video-two"])
-        favorites.adopt(flagged: ["video-one", "video-two"])  // and later re-favorited it
+        favorites.adopt(flagged: ["video-one", "video-two"], covering: ["video-one", "video-two"])  // and later re-favorited it
         #expect(favorites.held == ["video-one", "video-two"])
 
         var again = Favorites(held: ["video-one"])
         _ = again.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         let heldAgain = again.insert(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(heldAgain)
-        again.adopt(flagged: ["video-one"])
+        again.adopt(flagged: ["video-one"], covering: ["video-one"])
         #expect(again.held == ["video-one"])
     }
 }
@@ -168,7 +114,7 @@ extension FavoritesTests {
 
         let data = try JSONEncoder().encode(favorites)
         var read = try JSONDecoder().decode(Favorites.self, from: data)
-        read.adopt(flagged: ["video-one", "video-two"])
+        read.adopt(flagged: ["video-one", "video-two"], covering: ["video-one", "video-two"])
         #expect(read.held == ["video-two"])
 
         // Written before the refusals existed, and under the old field name.
@@ -190,21 +136,6 @@ extension FavoritesTests {
         #expect(favorites.held.isEmpty)
         let removedTwice = favorites.remove(path: "1_sorted/alpha/portrait/video-one.mp4")
         #expect(!removedTwice)
-    }
-}
-
-extension FavsCSVTests {
-    @Test func anEmptyLeadingCellNeverReadsAStemOutOfTheWrongColumn() {
-        // Splitting away empty subsequences would hand the second column to the
-        // first-cell parser — a stem must come from local_file or not at all.
-        #expect(FavsCSV.keys(in: ",=HYPERLINK(\"x\";\"C:\\\\l\\\\k_topaz.mp4\")") == [])
-    }
-
-    @Test func aLeadingSpaceBeforeTheFormulaStillParses() {
-        // The desktop reads rows through csv.DictReader, which strips nothing —
-        // but hand-edited rows arrive with stray spaces, and the stem is the same.
-        let row = " =HYPERLINK(\"file:///C:/lib/x_topaz.mp4\";\"C:\\\\lib\\\\x_topaz.mp4\")"
-        #expect(FavsCSV.keys(in: row) == ["x"])
     }
 }
 

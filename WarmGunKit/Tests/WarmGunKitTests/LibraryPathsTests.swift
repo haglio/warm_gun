@@ -28,28 +28,6 @@ extension LibraryPathsTests {
 }
 
 extension LibraryPathsTests {
-    /// The desktop names whichever file IT plays, and only one of the three
-    /// lanes can be read back from that name. A delivered Genau flick keeps the
-    /// upscale's own name, `_topaz` and all, so the suffix alone does not make
-    /// a reference an upscale reference — the folder it sits in decides.
-    @Test func readsTheStemOfAnUpscaleReferenceAndOfNothingElse() {
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"C:\lib\2_outbox\upscaled_by_orientation\portrait\alpha\video-one_topaz.mp4"#) == "video-one")
-        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/landscape/beta/a_b_c_topaz.mp4") == "a_b_c")
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\videos\2D\AI\loop-two_topaz.mp4"#) == nil)
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
-        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/2_outbox/upscaled_by_orientation/portrait/genau/a_b_c_topaz.mp4")
-                == "a_b_c")
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\2D\non_AI\bucket\scene-three.mkv"#) == nil)
-        #expect(LibraryPaths.stem(ofUpscaleReference: "/lib/1_sorted/beta/landscape/a_b_c.mp4") == nil)
-        #expect(LibraryPaths.stem(ofUpscaleReference: "no-extension") == nil)
-    }
-
-    @Test func aGenauReferenceFiledBeforeItsFolderMovedIsStillNoUpscaleReference() {
-        #expect(LibraryPaths.stem(ofUpscaleReference: #"D:\lib\videos\genau\flicks\2D\AI\loop-two_topaz.mp4"#) == nil)
-    }
-}
-
-extension LibraryPathsTests {
     @Test func namesTheFolderTheTrashGestureMovesAnUpscaleInto() {
         #expect(LibraryPaths.trashDir == "2_outbox/trash")
     }

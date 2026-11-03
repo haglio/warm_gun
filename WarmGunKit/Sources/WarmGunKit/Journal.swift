@@ -1,9 +1,9 @@
 import Foundation
 
 /// One thing that happened to one video. The phone keeps its own stores because
-/// the desktop's `favs.csv` and `watch_stats.json` live outside pCloud and prune
-/// paths that are not on the writing machine; this is the record that lets a
-/// later, desktop-side step fold a trip's worth of taps back into them.
+/// the desktop's `watch_stats.json` lives outside pCloud and prunes paths that
+/// are not on the writing machine; this is the record that lets a later,
+/// desktop-side step fold a trip's worth of taps back into the desktop's records.
 public struct JournalEvent: Codable, Equatable, Sendable {
     /// Unix seconds — the merge is chronological, and a phone away from home has
     /// no other clock the desktop trusts.
