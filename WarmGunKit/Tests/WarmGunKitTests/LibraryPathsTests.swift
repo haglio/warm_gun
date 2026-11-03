@@ -219,3 +219,12 @@ extension LibraryPathsTests {
         #expect(LibraryPaths.favoriteKey(forVideo: "somewhere/else/thing.mp4") == nil)
     }
 }
+
+extension LibraryPathsTests {
+    @Test func droppingAnExtensionLeavesTheStemAndNeedsAStemAndAnExtension() {
+        #expect(LibraryPaths.dropExtension("non_AI/beta/scene.mkv") == "non_AI/beta/scene")
+        #expect(LibraryPaths.dropExtension("non_AI/beta/scene") == nil)
+        #expect(LibraryPaths.dropExtension("non_AI/be.ta/scene") == nil)
+        #expect(LibraryPaths.dropExtension("non_AI/beta/.mkv") == nil)
+    }
+}

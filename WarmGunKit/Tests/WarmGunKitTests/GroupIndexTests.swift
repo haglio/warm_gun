@@ -138,3 +138,21 @@ extension GroupIndexTests {
         #expect(!GroupIndex(sidecars: [:]).canLoop(.action, from: one))
     }
 }
+
+extension GroupIndexTests {
+    @Test func aFieldOutsideTheKeysDoesNotSplitAGroup() {
+        var later = Self.sidecar(action: "beta").video ?? [:]
+        later["created"] = "2026-01-02"
+        let index = GroupIndex(sidecars: [
+            "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "alpha"),
+            "1_sorted/a/portrait/two.mp4": Sidecar(video: later, sourceImage: nil),
+        ])
+        #expect(index.actionVideos(of: "1_sorted/a/portrait/one.mp4")
+                == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
+    }
+
+    @Test func normalizedTextCollapsesWhitespaceLowersCaseAndReadsNilAsEmpty() {
+        #expect(GroupIndex.normText("  Big\t ALPHA\n") == "big alpha")
+        #expect(GroupIndex.normText(nil) == "")
+    }
+}
