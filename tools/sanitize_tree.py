@@ -1,21 +1,3 @@
-"""The content guard over the whole tree, not just what has changed.
-
-    python3 tools/sanitize_tree.py
-
-The git hooks catch a term while it is still staged, which is the only point at
-which the fix is free. They cannot catch one that landed before the guard did,
-because `app_support.sanitize --staged` reads `git diff --cached`, a DIFF: a
-file whose blob already matches HEAD is not in it, so on a clean tree that scan
-reads nothing at all. Every sibling repo gets the whole-tree half from
-`app_support.sanitize.pytest_plugin`, which appends a tracked-tree check to its
-suite. This repo's suite is Swift, so the same check lives here instead, calling
-the same guard -- the terms, the matching and the redaction all still come from
-`app_support.sanitize` and nothing about them is repeated here.
-
-Scans every tracked file plus every untracked one git would let you add, since
-both are a commit away. Exits 1 on a hit, 2 when there is no blocklist to
-enforce -- silence about an unscanned tree is how a guard becomes theater.
-"""
 from __future__ import annotations
 
 import subprocess
@@ -35,9 +17,6 @@ def _files(repo: Path) -> list[str]:
 
 
 def main() -> int:
-    # Resolved from this file, not from the working directory: run from anywhere
-    # and it still means THIS checkout — including from a worktree, where the
-    # answer is the worktree and not the primary.
     here = Path(__file__).resolve().parent
     found = subprocess.run(["git", "-C", str(here), "rev-parse", "--show-toplevel"],
                            capture_output=True, text=True)
@@ -60,7 +39,6 @@ def main() -> int:
     violations = scan_files((repo / name for name in files), terms, root=repo)
     print(f"tracked-tree scan: {len(files)} files, {len(violations)} blocked terms")
     for hit in violations[:20]:
-        # The excerpt is redacted by the guard; the term itself never prints.
         print(f"  {hit.path}:{hit.line}  {hit.excerpt}")
     return 1 if violations else 0
 

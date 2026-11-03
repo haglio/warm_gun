@@ -1,13 +1,5 @@
 #!/bin/zsh
-# Build WarmGun and install it onto the iPhone — the only way a change reaches the
-# phone (it cannot pull from git). Same flow as Highdeas' ios/resign.sh: the
-# paid Developer Program's wildcard team profile already covers this bundle id
-# and the phone, so there is no Apple-side setup beyond being signed into Xcode.
-#
-#   ./install.sh                 # iPhone plugged in and UNLOCKED (the build is
-#                                # long enough for it to auto-lock; unlock again
-#                                # for the install step)
-#   DEVICE=<udid> ./install.sh   # pick a device explicitly
+# Xcode's build outlasts the iPhone's auto-lock, so unlock it again for the install step.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -20,10 +12,8 @@ xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
 
 APP="build/Build/Products/Debug-iphoneos/Warm Gun.app"
 
-# devicectl lists the Simulator's devices beside the real ones, so the phone is
-# picked by what it is rather than by the shape of its identifier: a simulated
-# iPhone's identifier looks just like a plugged-in one's. The table prints a
-# sentence where no device matches, so the identifier is read out of the JSON.
+# devicectl lists the Simulator's devices beside the real ones, and its table prints a sentence
+# where none matches, so the phone is picked by what it is and read out of the JSON.
 if [[ -z "${DEVICE:-}" ]]; then
   DEVICE=$(xcrun devicectl list devices --quiet --json-output - \
     --filter "properties.hardware.platform == 'iOS' AND properties.hardware.reality != 'simulated'" 2>/dev/null \

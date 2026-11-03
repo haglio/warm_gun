@@ -1,13 +1,4 @@
 #!/bin/sh
-# The whole local verification, one command: the Kit suite headless on the Mac,
-# the coupling gates and their tests, and the sanitize guard over every file in
-# the tree. Green here is the bar for every commit; CI runs all but the guard.
-#
-# The guard runs through tools/sanitize_tree.py rather than through the
-# pre-commit hook. The hook's `--staged` mode reads `git diff --cached`, so on a
-# clean tree it scans NOTHING and still exits 0 -- fine for a hook, which exists
-# to catch a term on its way in, and useless as the whole-tree sweep this claims
-# to be. The interpreter search is the hook's, reused rather than repeated.
 set -e
 cd "$(dirname "$0")/.."
 

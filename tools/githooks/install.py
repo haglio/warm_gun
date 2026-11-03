@@ -1,15 +1,3 @@
-"""Point this checkout's git hooks at ``tools/githooks``.
-
-    python tools/githooks/install.py
-
-One ``core.hooksPath`` setting, written to the repository's shared config, and
-every worktree of this repo is covered too — worktrees share that config, so
-there is nothing to re-run when a new one is created. Nothing is copied, so the
-hooks cannot go stale against the tree that defines them.
-
-Run it once per clone. Re-running is harmless; ``--uninstall`` puts the setting
-back the way it was.
-"""
 from __future__ import annotations
 
 import subprocess
@@ -48,8 +36,6 @@ def main(argv: list[str]) -> int:
     if was == HOOKS_DIR:
         print(f"already installed: core.hooksPath = {HOOKS_DIR}")
         return 0
-    # A relative path is resolved against the working tree, so it keeps working
-    # in every worktree; an absolute one would pin all of them to this checkout.
     _git("config", "--local", "core.hooksPath", HOOKS_DIR)
     if was:
         print(f"core.hooksPath was {was!r} — replaced with {HOOKS_DIR!r}")

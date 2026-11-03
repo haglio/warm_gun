@@ -15,11 +15,9 @@
     "WarmGunKit/Sources/WarmGunKit/WatchWeights.swift": 1,
     "WarmGunKit/Sources/WarmGunKit/ZipArchive.swift": 4,
     "WarmGunKit/Tests/WarmGunKitTests/ZipArchiveTests.swift": 1,
-    "install.sh": 13,
-    "install_mac.sh": 13,
-    "tools/check.sh": 9,
-    "tools/githooks/commit-msg": 22,
-    "tools/githooks/pre-commit": 32,
-    "tools/require_overlay.sh": 6
+    "install.sh": 3,
+    "install_mac.sh": 3,
+    "tools/githooks/commit-msg": 2,
+    "tools/githooks/pre-commit": 2
   }
 }

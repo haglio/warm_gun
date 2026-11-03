@@ -1,7 +1,3 @@
-"""Each gate counts what it exists to count, in a tree planted for the purpose.
-
-    python3 -m unittest tools.test_gates
-"""
 from __future__ import annotations
 
 import json

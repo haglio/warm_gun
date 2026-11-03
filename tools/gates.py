@@ -1,38 +1,3 @@
-"""The coupling gates — numbers with a target of zero that fail the build —
-and the ceiling on comment lines.
-
-Length and lint say nothing about coupling, which is what actually rots a
-codebase, so the load-bearing invariants are counted here and a nonzero count
-is a failing exit. The invariants, from docs/design.md:
-
-1. ``WarmGunKit`` is pure Foundation. Everything decidable without a device
-   lives there and is tested headlessly; one stray UIKit/AVFoundation/SwiftUI
-   import and that stops being true.
-2. ``AppModel`` is the only owner of published app state. A second
-   ``@Published`` home is the first step toward two sources of truth.
-3. No module shares mutable state with another: no ``static var`` anywhere —
-   a global is shared mutable state whichever file it hides in.
-4. Views do not reach through the model into its actors. The model hands out
-   values and intents; ``model.<actor>.<anything>`` from a view couples the
-   view to machinery the model exists to own.
-5. The phone and the Mac part ways in ``Platform.swift`` and nowhere else:
-   every ``#if`` but ``DEBUG`` and every UIKit, AppKit or Cocoa import
-   outside it (the Kit included) is a second place the two can drift apart,
-   and the one place is what keeps the app above it one program. Any ``#if``,
-   not only ``os(...)``: a custom compilation condition set per SDK would
-   spell the same fork differently.
-6. A comment is a claim nothing runs, so what a name or a test can say is
-   said there, and the comment lines of each Swift source, test and shell
-   script are held to that file's entry in ``tools/quality_baseline.json``,
-   which only comes down: ``--lower`` takes every fall and refuses every rise,
-   and a file added enters at zero.
-7. The code's word for a thing is the word its screen shows: ``glossary.json``
-   names each thing, and its rows are held to the Swift as every other app's
-   are, here because this repo installs no Python package.
-
-Run: ``python3 tools/gates.py`` (exit 0 = all gates hold).
-"""
-
 from __future__ import annotations
 
 import json
@@ -89,8 +54,6 @@ def is_comment(line: str, marker: str = "//") -> bool:
 
 
 def code_lines(path: Path):
-    """(line_number, line) with comment-only lines dropped — a gate must count
-    code, not prose about code."""
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if is_comment(line):
             continue

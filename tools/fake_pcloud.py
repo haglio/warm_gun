@@ -1,26 +1,3 @@
-"""A stand-in for the pCloud HTTP API, serving a local folder over plain HTTP.
-
-    python tools/fake_pcloud.py --root "/path/to/pCloud Drive" --scratch /tmp/warm-gun-scratch
-
-Warm Gun talks to pCloud through a handful of JSON methods (see WarmGunKit's
-``PCloudAPI``). This serves the same methods with the same response shapes off
-a local directory, so the whole app can be driven end-to-end in the Simulator
-with no credentials — and, just as important, with no writes to the real
-library: ``renamefile`` only records the move in ``<scratch>/moves.json`` and
-hides the file from later listings, and ``uploadfile`` lands in ``<scratch>``.
-Any pCloud path that does not exist under ``--root`` is looked up under
-``--scratch`` instead, which is how the sync folder (``/WarmGun``) works.
-
-Methods: listfolder (recursive), getfilelink, getzip, renamefile,
-createfolderifnotexists, uploadfile, plus ``/dl/<fileid>`` for the bytes a file
-link points at. A development build takes its token from the launch
-environment, so nothing here logs in. Durations come from ffprobe when it is on
-PATH, cached in ``<scratch>/probe_cache.json`` so a second listing is instant.
-
-Point the app at it with API host ``http://localhost:8765`` (the scheme marks
-it as a local origin) and the same library path you would give pCloud.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -115,8 +92,7 @@ class Store:
                 "name": path.name or "/", "isfolder": True, "folderid": folderid,
                 "modified": int(path.stat().st_mtime), "path": pc,
             }
-            # Like the real API: the LISTED folder always carries its immediate
-            # children; only recursive listings carry the children's children.
+            # Like pCloud: the listed folder carries its immediate children; only a recursive listing goes deeper.
             if recursive or top:
                 children = []
                 for child in sorted(path.iterdir()):
@@ -166,8 +142,7 @@ class Handler(BaseHTTPRequestHandler):
         if url.path.startswith("/dl/"):
             return self.serve_file(int(url.path[4:]))
         if method == "getzip":
-            # Like the real API: getzip takes a TREE (folderid), never a path —
-            # the path form once flattered a build that failed against pCloud.
+            # Like pCloud: getzip takes a folderid, never a path.
             if "folderid" not in q:
                 return self.reply({"result": 1017, "error": "Invalid 'folderid' provided."})
             target = self.store.folders_by_id.get(int(q["folderid"]))
@@ -187,9 +162,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if method == "listfolder":
-            # The real API refuses a recursive listing of the root with 1101
-            # (observed 2026-08-24, same as rclone#9315); mirror it so the
-            # app's descend-and-retry path is what the Simulator exercises.
+            # pCloud refuses a recursive listing of the root with 1101.
             if q.get("path", "/") == "/" and q.get("recursive") == "1":
                 return self.reply({"result": 1101, "error": "Invalid request."})
             target = self.store.resolve(q.get("path", "/"))
@@ -226,7 +199,6 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply({"result": 1000, "error": "Unknown method"})
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length)
-        # One multipart part: the bytes between the first blank line and the closing boundary.
         boundary = self.headers.get("Content-Type", "").split("boundary=")[-1].encode()
         head, _, rest = raw.partition(b"\r\n\r\n")
         payload = rest.rsplit(b"\r\n--" + boundary, 1)[0]
@@ -249,7 +221,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(description="A stand-in for the pCloud HTTP API, serving a local folder over plain HTTP.")
     parser.add_argument("--root", required=True, help="local folder standing in for the pCloud root")
     parser.add_argument("--scratch", required=True, help="where uploads, moves and the probe cache go")
     parser.add_argument("--port", type=int, default=8765)
