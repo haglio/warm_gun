@@ -2,11 +2,7 @@ import Foundation
 import Testing
 @testable import WarmGunKit
 
-/// The build is the one place every filter meets the index, so these tests
-/// read as little libraries put through the controls.
 @Suite struct PlaylistTests {
-    /// Every fixture path, source and stem here is invented; the real library
-    /// never appears in this repo.
     static func file(_ path: String, size: Int64 = 2_000_000,
                      seconds: Double? = 5.0, modifiedAt: Double = 1_000) -> LibraryFile {
         LibraryFile(path: path, fileID: 1, size: size, modified: Date(timeIntervalSince1970: modifiedAt),
@@ -24,9 +20,6 @@ import Testing
 }
 
 extension PlaylistTests {
-    /// The shape picks a whole library, not a subset of one: the
-    /// two shapes never mix on screen, and the folder is the authority
-    /// because 21 videos in the library are square.
     @Test func onlyTheChosenOrientationEverPlays() {
         var rng = PlaylistSeededRNG(seed: 1)
         let catalog = Catalog(files: [
@@ -46,9 +39,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// A trash mark is the hard removal the weighting is the soft version of:
-    /// the video is gone from every later build, not merely made rarer, and it
-    /// stays gone until the next index refresh drops it from the catalog too.
     @Test func aVideoMarkedTrashNeverComesBack() {
         var rng = PlaylistSeededRNG(seed: 2)
         let catalog = Catalog(files: [
@@ -65,10 +55,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// A handful of legacy HEVC upscales sit in the originals tree at hundreds
-    /// of megabytes each, and the phone fetches a video whole before it plays —
-    /// so a file over the cap is minutes of black screen and is left out.
-    /// A file exactly at the cap still plays: the cap is what is allowed.
     @Test func aVideoOverTheSizeCapIsLeftOutAndOneExactlyAtItPlays() {
         var rng = PlaylistSeededRNG(seed: 3)
         let catalog = Catalog(files: [
@@ -85,8 +71,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// F-mode shows the favorites alone. A generated video is held by stem, not
-    /// by path: stems are unique library-wide, so the stem names the video exactly.
     @Test func fModeShowsOnlyTheFavoritesAndKnowsThemByStem() {
         var rng = PlaylistSeededRNG(seed: 4)
         let catalog = Catalog(files: [
@@ -104,17 +88,12 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// Shorts is a length filter, and a video whose duration the listing never
-    /// reported cannot be shown to be short — so it sits the build out, the
-    /// same way the Main Funestra's length filter drops what it cannot measure rather than
-    /// guessing. The bound is inclusive.
     @Test func shortsKeepsVideosUpToTheBoundAndJudgesUnknownLengthBySize() {
         var rng = PlaylistSeededRNG(seed: 5)
         let catalog = Catalog(files: [
             Self.file("1_sorted/alpha/portrait/video-one.mp4", seconds: 4.0),
             Self.file("1_sorted/alpha/portrait/video-two.mp4", seconds: 10.0),
             Self.file("1_sorted/alpha/portrait/video-three.mp4", seconds: 10.5),
-            // Unknown length: the size stands in — a big file reads full length.
             Self.file("1_sorted/alpha/portrait/video-four.mp4", size: 20_000_000, seconds: nil),
         ])
 
@@ -126,10 +105,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// Latest is a review order: newest first, and deliberately unweighted, so a
-    /// video that has been skipped away from a dozen times still surfaces when it
-    /// is new. Videos filed in the same second fall back to their path, so the
-    /// order is one order and not whatever the index happened to hold.
     @Test func latestIsNewestFirstTiedOnPathAndCarriesNoWeighting() {
         var rng = PlaylistSeededRNG(seed: 6)
         let catalog = Catalog(files: [
@@ -154,9 +129,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// Shuffle thins rather than removes: a video skipped away from again and
-    /// again sits most builds out — the soft counterpart of the trash gesture —
-    /// while a video at neutral weight or above is in every single build.
     @Test func shuffleLeavesAChronicallySkippedVideoOutOfMostBuilds() {
         var rng = PlaylistSeededRNG(seed: 8)
         let catalog = Catalog(files: [
@@ -178,9 +150,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// The prefetcher fetches ahead *and* back, which only works because the
-    /// run is knowable in advance: one seed is one playlist, every time. It is
-    /// still a shuffle — another seed gives another order.
     @Test func oneSeedAlwaysBuildsTheSamePlaylistAndAnotherSeedDoesNot() {
         let catalog = Catalog(files: (0..<24).map { Self.file("1_sorted/alpha/portrait/video-\($0).mp4") })
         func build(seed: UInt64) -> [String] {
@@ -197,9 +166,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// Every switch narrows the same list, so with them all on only a video that
-    /// clears all five plays. Each of the others here fails exactly one test,
-    /// which is what makes relaxing one switch bring back exactly one video.
     @Test func theFiltersCompose() {
         var rng = PlaylistSeededRNG(seed: 9)
         let catalog = Catalog(files: [
@@ -227,8 +193,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// The counts have to reach the ordering, not only the inclusion draw:
-    /// a loved video is what the run opens on, most of the time.
     @Test func aLovedVideoOpensTheRunFarMoreOftenThanANeutralOne() {
         var rng = PlaylistSeededRNG(seed: 10)
         let catalog = Catalog(files: [
@@ -248,8 +212,6 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    /// The controls are where they were left: the filters are saved between
-    /// launches, so the whole record has to survive a JSON round trip.
     @Test func theFiltersSurviveAJSONRoundTrip() throws {
         let options = Filters(shape: .landscape, favoritesOnly: true, types: [.short, .genauFlick],
                                     shortsMaxSeconds: 8, latest: true, maxBytes: 12_000_000)
@@ -262,9 +224,6 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func persistedFiltersFromBeforeANewSwitchStillDecode() throws {
-        // Settings are persisted and reloaded across app updates: a blob written
-        // before a switch existed must decode with that switch at its default,
-        // not throw away every saved control at once.
         let old = Data(#"{"orientation":"landscape","favoritesOnly":true}"#.utf8)
         let options = try JSONDecoder().decode(Filters.self, from: old)
         #expect(options.shape == .landscape)
@@ -299,10 +258,6 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func everyVideoFallsIntoExactlyOneType() {
-        // Genau's flicks are named by their source folder (the desktop delivers
-        // them from origenerator's genau lane); shorts are by running time; the
-        // rest — unknown durations included — are full length. Act-based types
-        // wait on the metadata sidecar index and classify nowhere yet.
         let genau = PlaylistTests.file("1_sorted/alpha_genau/portrait/video-a.mp4", seconds: 4)
         let short = PlaylistTests.file("1_sorted/alpha/portrait/video-b.mp4", seconds: 8)
         let long = PlaylistTests.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 40)
@@ -315,17 +270,12 @@ extension PlaylistTests {
     }
 
     @Test func theTypeTheDesktopRecordedOutranksEveryGuessHere() {
-        // The desktop writes one type on every video's sidecar, so the phone
-        // reads it instead of running its own three tests. A 40-second video
-        // this would have called full length is a short if that is what the
-        // sidecar says, and a video in the genau lane is whatever it says too.
         let long = Catalog(files: [Self.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 40)]).videos[0]
         let inGenauLane = Catalog(files: [Self.file("1_sorted/alpha_genau/portrait/video-a.mp4", seconds: 4)]).videos[0]
 
         #expect(VideoType.classify(long, shortsMaxSeconds: 10, recorded: "short") == .short)
         #expect(VideoType.classify(long, shortsMaxSeconds: 10, recorded: "excerpt") == .excerpt)
         #expect(VideoType.classify(inGenauLane, shortsMaxSeconds: 10, recorded: "full_length") == .fullLength)
-        // A type this build has never heard of is no type at all.
         #expect(VideoType.classify(long, shortsMaxSeconds: 10, recorded: "medium_length") == .fullLength)
     }
 
@@ -366,9 +316,6 @@ extension PlaylistTests {
     }
 
     @Test func aPersistedShortsOnlyFiltersMigrateToTheTypes() throws {
-        // There used to be one "shorts only" switch; a blob persisted with it
-        // on must come back as the shorts type alone, and one without it as
-        // every type.
         let old = Data(#"{"orientation":"portrait","shortsOnly":true}"#.utf8)
         #expect(try JSONDecoder().decode(Filters.self, from: old).types == [.short])
         let plain = Data(#"{"orientation":"portrait"}"#.utf8)
@@ -378,9 +325,6 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func aVideoTheServerNeverTimedIsJudgedByMeasureThenBySize() {
-        // The real pCloud listing carries no durations at all, so the phone
-        // measures each video as it lands in the cache — and until it has, the
-        // size stands in (the originals run near half a megabyte a second).
         let video = Catalog(files: [PlaylistTests.file("1_sorted/alpha/portrait/video-a.mp4",
                                                       size: 2_000_000, seconds: nil)]).videos[0]
         #expect(VideoType.classify(video, shortsMaxSeconds: 10, measuredSeconds: 40) == .fullLength)
@@ -391,8 +335,6 @@ extension PlaylistTests {
     }
 
     @Test func genauLoopsIgnoreTheShapeFilterAndMeasuredTimesReachTheBuild() {
-        // A Genau flick has no shape folder — it plays whichever way the
-        // phone is held; and a measured duration must beat the size stand-in.
         var rng = PlaylistSeededRNG(seed: 11)
         let genau = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 9, size: 2_000_000,
                                 modified: Date(timeIntervalSince1970: 0), duration: nil,
@@ -407,7 +349,6 @@ extension PlaylistTests {
                                       trash: [], weights: WatchWeights(), rng: &rng)
                 == ["genau/clips/2D/AI/loop-one.mp4"])
         options.types = [.fullLength]
-        // Measured as 40 s, the small file stops reading as a short.
         #expect(PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
                                       trash: [], weights: WatchWeights(),
                                       measuredSeconds: ["1_sorted/alpha/portrait/video-small.mp4": 40], rng: &rng)
@@ -423,11 +364,6 @@ extension PlaylistTests {
     }
 
     @Test func theOverlayNamesTheLanesTheRepoCannot() {
-        // The non-AI buckets' folder names are library content, so which
-        // bucket is which TYPE comes from a git-ignored overlay: a lane maps a
-        // path prefix to a type and, where the folder dictates one, an
-        // shape. Everything unmatched under non_AI is a full-length
-        // scene.
         let overlay = ContentOverlay(lanes: [
             ContentOverlay.Lane(prefix: "non_AI/alpha/special", type: .excerpt, shape: .landscape),
             ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
@@ -450,15 +386,12 @@ extension PlaylistTests {
     }
 
     @Test func theLaneShapeOutranksThePixelsAndTheSizeGateSparesTheScenes() {
-        // A portrait-lane scene follows its lane whatever its pixels say, and
-        // the size ceiling exists to keep legacy monsters out of the AI
-        // originals — a 300 MB real scene must not be filtered by it.
         let overlay = ContentOverlay(lanes: [
             ContentOverlay.Lane(prefix: "non_AI/tall", type: .fullLength, shape: .portrait),
         ])
         var rng = PlaylistSeededRNG(seed: 17)
         let catalog = Catalog(files: [
-            Self.nonAI("non_AI/tall/scene-two.mp4"),   // 1920x1080 pixels, portrait lane
+            Self.nonAI("non_AI/tall/scene-two.mp4"),
             PlaylistTests.file("1_sorted/alpha/portrait/video-huge.mp4", size: 300_000_000, seconds: 40),
         ])
         var options = Filters(shape: .portrait)
@@ -471,10 +404,6 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func theBundledOverlayDecodesInTheShapeItsExampleDocuments() throws {
-        // The lane types are the desktop's own words for the types, so the
-        // file beside the app and this enum have to keep saying the same
-        // thing: a mismatch decodes as no overlay at all, and every non-AI
-        // scene silently becomes a full-length landscape one.
         let json = Data(#"""
         {"lanes": [
            {"prefix": "non_AI/alpha/carved", "type": "excerpt",
@@ -519,8 +448,6 @@ extension PlaylistTests {
     }
 
     @Test func persistedFiltersKeepTheirTypesThroughTheRename() throws {
-        // The types were this app's own words before the desktop had any; a
-        // filters persisted with them must come back as the same types.
         let old = Data(#"{"orientation":"portrait","types":["genau","acts","fullLength"]}"#.utf8)
 
         let restored = try JSONDecoder().decode(Filters.self, from: old)
@@ -546,10 +473,6 @@ extension PlaylistTests {
 
 extension PlaylistTests {
     @Test func theActionButtonsBucketEveryVideoAndCombine() {
-        // Eight combinable action buttons, overlay-defined (the words are library
-        // vocabulary): a video lands in the first bucket whose query matches its
-        // recorded action, and in the catch-all otherwise — including videos with
-        // no action at all. Deselecting a bucket hides its videos.
         let overlay = ContentOverlay(lanes: [], actionFilters: [
             ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
             ContentOverlay.ActionFilter(label: "BE", queries: ["beta"], isOther: false),
@@ -572,12 +495,10 @@ extension PlaylistTests {
                                           trash: [], weights: WatchWeights(), overlay: overlay,
                                           actions: ["1_sorted/alpha/portrait/video-a.mp4": "alpha",
                                                  "1_sorted/alpha/portrait/video-b.mp4": "beta"], rng: &rng)
-        #expect(built == ["1_sorted/alpha/portrait/video-a.mp4"])  // c has no action -> O -> hidden
+        #expect(built == ["1_sorted/alpha/portrait/video-a.mp4"])
     }
 
     @Test func anOverlayOrFiltersWithoutActionFiltersChangesNothing() throws {
-        // No filters defined -> no bucketing, nothing hidden; and an old
-        // persisted filters without the key decodes with none disabled.
         #expect(ContentOverlay(lanes: []).actionBucket(for: "anything") == nil)
         let old = Data(#"{"orientation":"portrait"}"#.utf8)
         #expect(try JSONDecoder().decode(Filters.self, from: old).disabledActions.isEmpty)
@@ -599,7 +520,6 @@ extension PlaylistTests {
 
         #expect(PlaylistBuilder.playsInShape(upright, options: portrait, overlay: overlay))
         #expect(!PlaylistBuilder.playsInShape(upright, options: landscape, overlay: overlay))
-        // 1920x1080 pixels, filed in a portrait lane: the lane decides.
         #expect(PlaylistBuilder.playsInShape(laned, options: portrait, overlay: overlay))
         #expect(!PlaylistBuilder.playsInShape(laned, options: landscape, overlay: overlay))
         #expect(PlaylistBuilder.playsInShape(flick, options: portrait, overlay: overlay))

@@ -1,20 +1,7 @@
 import Foundation
 
-/// The types of video the type buttons let the filters narrow to. Every video
-/// is exactly one, and the desktop settles which: it records the type on the
-/// video's metadata sidecar (`video.type`), for the whole library, so the same
-/// video is the same type in every app that reads it. The raw values are that
-/// field's own words.
-///
-/// Everything after the record is a fallback for a video the phone has no
-/// sidecar for — the non-AI scenes and Genau's flicks, whose records the
-/// index does not carry: the overlay's lanes first, then the source folder,
-/// then a running time. They are how this app answered the question before the
-/// field existed, kept only for where the field cannot reach.
 public enum VideoType: String, Codable, CaseIterable, Sendable {
     case genauFlick = "genau_flick"
-    /// A scene carved out of a longer one. Which folders hold them is library
-    /// vocabulary, defined only by the overlay.
     case excerpt
     case short
     case fullLength = "full_length"
@@ -32,16 +19,10 @@ public enum VideoType: String, Codable, CaseIterable, Sendable {
         if let seconds = measuredSeconds ?? video.duration {
             return seconds <= shortsMaxSeconds ? .short : .fullLength
         }
-        // The real pCloud listing carries no durations at all, so until the
-        // phone has measured a video its size stands in: the originals run
-        // near half a megabyte per second.
         let estimated = Double(video.size) / estimatedBytesPerSecond
         return estimated <= shortsMaxSeconds ? .short : .fullLength
     }
 
-    /// What a type was called in a filters persisted before the desktop's
-    /// vocabulary arrived, and in a sidecar recorded before Genau's clips were
-    /// called flicks. An app update must never cost the saved controls.
     static let retiredNames: [String: VideoType] = [
         "genau": .genauFlick, "genau_clip": .genauFlick, "acts": .excerpt, "fullLength": .fullLength,
     ]
@@ -54,23 +35,13 @@ public enum VideoType: String, Codable, CaseIterable, Sendable {
     private static let estimatedBytesPerSecond = 500_000.0
 }
 
-/// Every filter on the controls, in one value.
-///
-/// A plain record with nothing derived in it, so the app can persist it and hand
-/// it straight back on the next launch — and so a rebuild is a pure function of
-/// this plus the index, with no network in it and nothing to invalidate.
 public struct Filters: Codable, Equatable, Sendable {
     public var shape: VideoShape
     public var favoritesOnly: Bool
     public var types: Set<VideoType>
     public var shortsMaxSeconds: Double
     public var latest: Bool
-    /// Action buttons the user switched OFF (overlay-defined labels); empty means
-    /// everything shows. Stored as the disabled side so the default needs no
-    /// knowledge of which buttons the overlay defines.
     public var disabledActions: Set<String>
-    /// The size ceiling that keeps out the legacy HEVC upscales sitting in the
-    /// originals tree.
     public var maxBytes: Int64
 
     public init(shape: VideoShape = .portrait, favoritesOnly: Bool = false,
@@ -91,9 +62,6 @@ public struct Filters: Codable, Equatable, Sendable {
         case disabledActions = "disabledActs"
     }
 
-    /// A blob persisted before a switch existed decodes with that switch at its
-    /// default — an app update must never cost the saved controls. The retired
-    /// "shorts only" switch migrates into the types it became.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = Filters()
@@ -112,7 +80,6 @@ public struct Filters: Codable, Equatable, Sendable {
         maxBytes = try c.decodeIfPresent(Int64.self, forKey: .maxBytes) ?? defaults.maxBytes
     }
 
-    /// The retired key never rides out again.
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(shape, forKey: .shape)
@@ -137,23 +104,7 @@ public struct Filters: Codable, Equatable, Sendable {
     }
 }
 
-/// Turns the index plus the filters switches into the run of videos to play,
-/// as library-relative original paths in play order.
 public enum PlaylistBuilder {
-    /// Narrow, then order — the desktop satellite's shape
-    /// (`modes.py:build_satellite_playlist_paths`), minus the group collapse it
-    /// does off the metadata sidecars.
-    ///
-    /// The two orders are not two flavors of the same thing. Shuffle is the
-    /// watch-weighted draw: chronically skipped videos sit builds out and loved
-    /// ones land early, on the weight Evolver stamped from BOTH apps' viewing.
-    /// Latest is a review order and carries no weighting at all, deliberately —
-    /// a new arrival must surface however often it has been skipped away from
-    /// before.
-    ///
-    /// Every draw comes off *rng*, so one seed is one playlist: the run is
-    /// knowable in advance, which is what lets the prefetcher work both
-    /// directions from the current video.
     public static func build(catalog: Catalog, options: Filters, favoriteKeys: Set<String>,
                              trash: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
@@ -166,8 +117,6 @@ public enum PlaylistBuilder {
                             measuredSeconds[$0.path], overlay, actions[$0.path])
         }
         if options.latest {
-            // Newest first; same-second arrivals fall back to their path, so the
-            // order is total and a rebuild never reshuffles what did not change.
             return videos
                 .sorted { $0.modified == $1.modified ? $0.path < $1.path : $0.modified > $1.modified }
                 .map(\.path)
@@ -191,19 +140,13 @@ public enum PlaylistBuilder {
         type == .genauFlick || (overlay.lane(for: video.path)?.shape ?? video.shape) == options.shape
     }
 
-    /// The switches, all of which only ever narrow, so their order among
-    /// themselves cannot matter. Favorites are matched by the key their lane is
-    /// filed under (`LibraryPaths.favoriteKey`).
     private static func survivesFilters(_ video: Video, _ options: Filters,
                                         _ favoriteKeys: Set<String>, _ trash: Set<String>,
                                         _ recorded: String?, _ measured: Double?,
                                         _ overlay: ContentOverlay, _ action: String?) -> Bool {
         let type = VideoType.classify(video, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measured, overlay: overlay)
-        // The size ceiling exists to keep the legacy monsters out of the AI
-        // originals; a real scene is big by nature and passes on principle.
         let gated = video.path.hasPrefix("1_sorted/")
-        // The combinable action buttons: a video whose bucket is switched off hides.
         if let bucket = overlay.actionBucket(for: action), options.disabledActions.contains(bucket) {
             return false
         }

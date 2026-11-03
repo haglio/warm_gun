@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import WarmGunKit
 
-/// The weight is the desktop's number, read and never recomputed, so every test
-/// here is about *reading* one — what a sidecar says, and what silence means.
 @Suite struct WatchWeightsTests {
     @Test func aSidecarCarriesTheStampedWeight() throws {
         let json = Data(#"""
@@ -18,10 +16,6 @@ import Testing
 }
 
 extension WatchWeightsTests {
-    /// A weight the sidecar cannot be read for is not a reason to throw the
-    /// sidecar away: the same file carries the action the loops group by. Nor is a
-    /// weight that could not be a multiplier — zero would silence a video
-    /// forever, and a negative one sorts FIRST in the draw, the exact inverse.
     @Test func aWeightThatCannotBeUsedReadsAsNoWeightAndKeepsTheRestOfTheSidecar() throws {
         let bodies = [
             #"{"video": {"action": "waving"}}"#,
@@ -41,9 +35,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// The desktop writes the flag only when it is true, so absence is the
-    /// whole of "not a favorite" — and anything that is not the literal `true`
-    /// is absence too, rather than a decode failure that would cost the action.
     @Test func aSidecarFlagsAFavoriteOnlyBySayingSo() throws {
         let cases = [
             (#"{"video": {"action": "waving"}, "favorite": true}"#, true),
@@ -61,9 +52,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// The corpus is kept on the phone between launches, so what the weight and
-    /// the flag say has to survive the app's own encoder — not just the
-    /// desktop's file. A launch reads that copy before any fetch lands.
     @Test func theStampSurvivesTheCorpusBeingPersistedAndReadBack() throws {
         let corpus = [
             "1_sorted/alpha/portrait/video-one.mp4":
@@ -85,9 +73,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// What the draw asks: one number per video. A video nobody has watched, one
-    /// whose sidecar never arrived, and one whose stamp could not be read all
-    /// answer the same — neutral — because none of them is evidence.
     @Test func aVideoWeighsWhatItsSidecarSaysAndOtherwiseWeighsOne() {
         let weights = WatchWeights(sidecars: [
             "1_sorted/alpha/portrait/video-one.mp4":
@@ -105,11 +90,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// The `video` block is not all strings any more, and a number in it used
-    /// to cost the WHOLE sidecar: Evolver's Video Kinds stage writes
-    /// `video.duration_seconds` as a JSON float beside `video.type`
-    /// (`evolver/util/video_type.py:timed`), so every video that stage has
-    /// measured would decode to nothing — no action, no weight, no flag.
     @Test func aNumberInTheVideoBlockCostsNeitherTheBlockNorTheSidecar() throws {
         let json = Data(#"""
         {"video": {"type": "short", "duration_seconds": 4.2, "seed": 12345,
@@ -122,12 +102,8 @@ extension WatchWeightsTests {
 
         #expect(sidecar.video?["action"] == "waving")
         #expect(sidecar.video?["type"] == "short")
-        // Written the way the desktop's own `str(value)` would write it, since
-        // that is what the group keys are compared against.
         #expect(sidecar.video?["duration_seconds"] == "4.2")
         #expect(sidecar.video?["seed"] == "12345")
-        // A null and a nested block name nothing a key is built from, and
-        // stand for the empty string either way.
         #expect(sidecar.video?["wrong_action"] == nil)
         #expect(sidecar.video?["video"] == nil)
         #expect(sidecar.watchWeight == 4.0)
@@ -136,12 +112,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// The one place this side and the desktop spell a value differently, pinned
-    /// so a change to it is deliberate: a whole number reads back without a
-    /// fractional part, so a running time written as `2.0` reads as "2" where
-    /// Python's `str` would keep the `.0`. Harmless — the running time is not a
-    /// field any group key is built from, and spelling an integer seed as
-    /// "12345" rather than "12345.0" is the trade that buys it.
     @Test func aWholeNumberReadsBackWithoutAFractionalPart() throws {
         let json = Data(#"{"video": {"duration_seconds": 2.0, "seed": 12345}}"#.utf8)
 
@@ -153,9 +123,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// Inclusion is the continuous version of marking a video trash: a video at or
-    /// above neutral always makes the build, and one below it sits out in
-    /// proportion to how far below it has fallen.
     @Test func inclusionKeepsEveryNeutralOrLovedVideoAndThinsTheRest() {
         var rng = PlaylistSeededRNG(seed: 3)
         #expect((0..<100).allSatisfy { _ in Weighting.passesInclusion(weight: 1.0, rng: &rng) })
@@ -168,8 +135,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// A shuffle reorders; it never gains or loses a video — with equal weights
-    /// it is exactly a uniform shuffle of the same set.
     @Test func theWeightedShuffleKeepsEveryItemAndAcceptsAnEmptyList() {
         var rng = PlaylistSeededRNG(seed: 1)
         let stems = (0..<10).map { "video-\($0)" }
@@ -182,8 +147,6 @@ extension WatchWeightsTests {
 }
 
 extension WatchWeightsTests {
-    /// The point of the weighting: over many builds the loved video is the one
-    /// that opens the playlist far more often than the chronically skipped one.
     @Test func theWeightedShuffleFrontLoadsTheHeavierItem() {
         var rng = PlaylistSeededRNG(seed: 7)
         let weights = ["video-heavy": 8.0, "video-light": 0.125]
@@ -198,9 +161,6 @@ extension WatchWeightsTests {
 
 extension WatchWeightsTests {
     @Test func aWeightThatIsNotAPositiveNumberShufflesAsNeutral() {
-        // The desktop coerces a dead weight to 1.0 before drawing; a negative or
-        // non-finite one from a foreign caller must not front-load the item (a
-        // negative key sorts first — the exact inverse of the intent).
         var rng = PlaylistSeededRNG(seed: 3)
         var leads = 0
         for _ in 0..<200 {
@@ -208,6 +168,6 @@ extension WatchWeightsTests {
                                                   weight: { $0 == "d" ? -1.0 : 1.0 }, rng: &rng)
             if order.first == "d" { leads += 1 }
         }
-        #expect((20...80).contains(leads))  // ~1 in 4 of 200; -1.0 raw would be 200 of 200
+        #expect((20...80).contains(leads))
     }
 }

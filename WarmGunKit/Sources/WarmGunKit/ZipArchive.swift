@@ -1,10 +1,7 @@
 import Foundation
 
-/// Just enough of the zip format to open what pCloud's getzip streams back: a
-/// flat archive of small JSON files — central directory at the end, entries
-/// stored or deflated, no zip64, no encryption. Inflation is injected as a
-/// function because raw DEFLATE lives in Apple's Compression framework, which
-/// the app links and this pure-Foundation package must not.
+/// Inflation is injected because raw DEFLATE lives in Apple's Compression framework, which this
+/// Foundation-only package must not import.
 public enum ZipArchive {
     public struct Failure: Error, Equatable, Sendable {
         public let reason: String
@@ -14,14 +11,11 @@ public enum ZipArchive {
         }
     }
 
-    /// Every file entry, in central-directory order. `inflate` receives the
-    /// compressed bytes and the advertised uncompressed size; returning nil
-    /// fails the archive (a truncated body should never half-succeed).
     public static func entries(in data: Data,
                                inflate: (Data, Int) -> Data?) throws -> [(name: String, data: Data)] {
-        // End-of-central-directory: scan back for its signature (the record
-        // carries a variable-length comment, so it is not at a fixed offset).
-        let data = data.startIndex == 0 ? data : Data(data)   // absolute indexing below
+        // The zip end-of-central-directory record carries a variable-length comment, so it is found
+        // by scanning back.
+        let data = data.startIndex == 0 ? data : Data(data)
         let eocdSignature: [UInt8] = [0x50, 0x4B, 0x05, 0x06]
         guard data.count >= 22 else { throw Failure(reason: "too short for a zip") }
         var eocd = -1
@@ -58,9 +52,7 @@ public enum ZipArchive {
             }
             offset += 46 + nameLength + extraLength + commentLength
 
-            if name.hasSuffix("/") { continue }  // a folder row, no bytes
-            // The local header repeats the name/extra lengths; the payload
-            // follows them.
+            if name.hasSuffix("/") { continue }
             guard localOffset + 30 <= data.count, le32(data, localOffset) == 0x0403_4B50 else {
                 throw Failure(reason: "bad local header")
             }

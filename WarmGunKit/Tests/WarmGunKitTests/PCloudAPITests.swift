@@ -12,8 +12,6 @@ import Testing
         #expect(url.scheme == "https")
         #expect(url.host == "api.pcloud.com")
         #expect(url.path == "/userinfo")
-        // A "+" left raw would reach pCloud as a space and a "&" as a field
-        // break, so both have to come back out of the wire form unchanged.
         let parsed = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
         #expect(parsed.queryItems == request.query)
         let encoded = try #require(parsed.percentEncodedQuery)
@@ -24,19 +22,12 @@ import Testing
 
 extension PCloudAPITests {
     @Test func logsInAsAClientWithADeviceIdentityAndNeverKeepsThePassword() {
-        // The `login` method, not `userinfo?getauth=1`: pCloud's new-device
-        // protection answers the latter with "provide 'code'" and never sends
-        // the code anywhere, while a login that introduces itself as a client
-        // (device, deviceid, os) is let straight through — measured against the
-        // real API, 2026-08-24.
         let request = PCloudAPI.login(username: "gunner@example.test", password: "a&b+c d")
         #expect(request.method == "login")
         #expect(request.query == [
             URLQueryItem(name: "getauth", value: "1"),
             URLQueryItem(name: "username", value: "gunner@example.test"),
             URLQueryItem(name: "password", value: "a&b+c d"),
-            // Two years is pCloud's ceiling: the phone is away from home for
-            // weeks at a time and a re-login needs a password we do not store.
             URLQueryItem(name: "authexpire", value: "63072000"),
             URLQueryItem(name: "device", value: "WarmGun"),
             URLQueryItem(name: "deviceid", value: "warmgun-phone"),
@@ -52,8 +43,6 @@ extension PCloudAPITests {
         #expect(request.method == "listfolder")
         #expect(request.query == [
             URLQueryItem(name: "path", value: "/lib/AI"),
-            // One recursive call is the whole index: it also carries each
-            // video's size, duration, codec and dimensions, so nothing is probed.
             URLQueryItem(name: "recursive", value: "1"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
@@ -63,7 +52,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func asksForADownloadLinkByFileIDRatherThanByPath() {
-        // File ids survive a rename; paths do not, and the trash gesture renames.
         let request = PCloudAPI.fileLink(fileID: 90_210, auth: "token-abc")
         #expect(request.method == "getfilelink")
         #expect(request.query == [
@@ -93,9 +81,6 @@ extension PCloudAPITests {
         #expect(request.query == [
             URLQueryItem(name: "path", value: "/WarmGun"),
             URLQueryItem(name: "filename", value: "warm-gun-journal.jsonl"),
-            // nopartial: a truncated upload is discarded rather than stored, so
-            // the journal is never half a file. renameifexists=0: replace the
-            // previous upload instead of accumulating "(1)" copies beside it.
             URLQueryItem(name: "nopartial", value: "1"),
             URLQueryItem(name: "renameifexists", value: "0"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
@@ -121,16 +106,12 @@ extension PCloudAPITests {
             try PCloudAPI.decode(LoginResponse.self, from: json)
         }
         #expect(error == PCloudError(code: 2000, message: "Log in failed."))
-        // 2000 is the app's cue to send the viewer back to the login screen rather
-        // than to retry, which is what it would do for anything else.
         #expect(error.isLoginRequired)
     }
 }
 
 extension PCloudAPITests {
     @Test func assemblesADownloadURLOutOfTheHostAndPathGetfilelinkHandsBack() throws {
-        // getfilelink answers with the pieces, never the URL: a host list to
-        // choose from and a path that is only valid on one of them.
         let json = Data("""
         {"result": 0, "dwltag": "7Qm2vXpLrK", "hash": 4471209983314, "size": 2295611,
          "expires": 1787654400, "path": "/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4",
@@ -139,16 +120,12 @@ extension PCloudAPITests {
         let response = try PCloudAPI.decode(FileLinkResponse.self, from: json)
         #expect(response.hosts == ["edef1.pcloud.com", "c210.pcloud.com"])
         #expect(response.path == "/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4")
-        // timeformat=timestamp, so the expiry arrives as plain unix seconds.
         #expect(response.expires == Date(timeIntervalSince1970: 1_787_654_400))
         #expect(response.url == URL(string: "https://edef1.pcloud.com/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4"))
     }
 }
 
 extension PCloudAPITests {
-    /// One recursive `listfolder` body, shaped the way the library is: sources
-    /// under the root, shapes under each source, videos under those, with
-    /// a stray non-video sitting where the sorter left it.
     static let listing = Data("""
     {"result": 0, "metadata": {"name": "AI", "isfolder": true, "folderid": 10100, "contents": [
       {"name": "alpha", "isfolder": true, "folderid": 10101, "contents": [
@@ -188,15 +165,11 @@ extension PCloudAPITests {
         #expect(video.fileid == 90_210)
         #expect(video.size == 2_295_611)
         #expect(video.modified == Date(timeIntervalSince1970: 1_723_456_789))
-        // pCloud quotes the duration — "5.03", not 5.03 — which a plain
-        // `Double?` would reject outright and take the whole listing down with it.
         #expect(video.duration == 5.03)
         #expect(video.videocodec == "h264")
         #expect(video.width == 720)
         #expect(video.height == 1280)
 
-        // No duration on this one: pCloud omits the field for anything it did
-        // not manage to probe, and that is not a reason to drop the video.
         let second = try #require(root.contents?.first?.contents?.first?.contents?.last)
         #expect(second.duration == nil)
     }
@@ -206,9 +179,6 @@ extension PCloudAPITests {
     @Test func flattensTheTreeIntoLibraryRelativePathsInListingOrder() throws {
         let response = try PCloudAPI.decode(ListFolderResponse.self, from: Self.listing)
         let files = response.metadata.flattenedFiles()
-        // Depth-first, in the order pCloud listed it, and relative to the
-        // folder that was listed — the root's own name is not part of any path,
-        // because the library root is a setting and the paths outlive it.
         #expect(files.map(\.path) == [
             "alpha/portrait/video-one.mp4",
             "alpha/portrait/video-two.mp4",
@@ -236,18 +206,13 @@ extension PCloudAPITests {
             ]),
             PCloudEntry(name: "delta", isfolder: true, folderid: 10106),
         ])
-        // Without an id there is nothing to ask pCloud for, and without a size
-        // the cache cannot budget for it, so neither is a library file.
         #expect(root.flattenedFiles().map(\.path) == ["gamma/video-six.mp4"])
-        // Undated sorts oldest under "Latest" instead of leading it.
         #expect(root.flattenedFiles().first?.modified == Date.distantPast)
     }
 }
 
 extension PCloudAPITests {
     @Test func hasNoURLToOfferWhenTheLinkCameBackWithoutAHost() {
-        // The downloader treats a missing URL as "ask for the link again",
-        // which is why this is nil rather than a URL that would 404 on fetch.
         let response = FileLinkResponse(hosts: [], path: "/cBZ7q0Zwarmgun0ZvideoOneZ/video-one.mp4",
                                         expires: Date(timeIntervalSince1970: 1_787_654_400))
         #expect(response.url == nil)
@@ -256,8 +221,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func onlyARefusedTokenSendsTheViewerBackToLogin() {
-        // Mistaking a rate limit for a dead token would log the viewer out
-        // mid-trip over a burst of prefetches.
         #expect(PCloudError(code: 1000, message: "").isLoginRequired)
         #expect(!PCloudError(code: 4000, message: "").isLoginRequired)
         #expect(!PCloudError(code: 5001, message: "").isLoginRequired)
@@ -266,9 +229,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func buildsAgainstAnyOriginSoTheLocalStandInWorksToo() throws {
-        // The transport may point at the real API (https, bare host) or at
-        // tools/fake_pcloud.py (http://localhost:8765): the request takes the
-        // origin's scheme, host and port rather than assuming https.
         let request = PCloudAPI.listFolder(path: "/lib", auth: "token-a")
         let local = request.url(origin: try #require(URL(string: "http://localhost:8765")))
         #expect(local.absoluteString.hasPrefix("http://localhost:8765/listfolder?"))
@@ -279,9 +239,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func datesDecodeAsUnixSecondsWhateverDecoderReadsThem() throws {
-        // The timestamps are a property of the types, not of one decoder's
-        // configuration: read with a plain JSONDecoder (a cache replay, a test,
-        // a future helper), the same integer must not silently land in 2057.
         let link = try JSONDecoder().decode(FileLinkResponse.self, from: Data(
             #"{"hosts":["cdn.example.test"],"path":"/a/video-one.mp4","expires":1787654400}"#.utf8))
         #expect(link.expires == Date(timeIntervalSince1970: 1_787_654_400))
@@ -294,9 +251,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func everyBuilderCarriesTimeformatSoAnyDateComesBackAsSeconds() {
-        // The date rule above holds only if no call can come back with pCloud's
-        // default RFC-1123 strings — so the parameter rides on every request,
-        // not just the ones whose responses carry dates today.
         let requests = [
             PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4",
                                  toPath: "/lib/2_outbox/trash/video-one_topaz.mp4", auth: "t"),
@@ -310,25 +264,16 @@ extension PCloudAPITests {
     }
 
     @Test func aDownloadPathWithAQueryDelimiterSurvivesIntoTheURL() {
-        // A raw "#" or "?" in the path must not be read as a fragment or query
-        // and silently truncate the download URL into a 404.
         let link = FileLinkResponse(hosts: ["cdn.example.test"], path: "/a/video#one?.mp4",
                                     expires: Date(timeIntervalSince1970: 1))
         #expect(link.url?.absoluteString == "https://cdn.example.test/a/video%23one%3F.mp4")
     }
 
     @Test func durationReadsFromANumberAndRefusesTheUnreadable() throws {
-        // The three rungs of the ladder, pinned: a JSON number, a numeric
-        // string (already covered), and the unreadable shapes — which must read
-        // as absent, never sink the listing.
         let number = try PCloudAPI.decode(PCloudEntry.self, from: Data(
             #"{"result":0,"name":"video-one.mp4","isfolder":false,"duration":5}"#.utf8))
         #expect(number.duration == 5.0)
         for bad in [#""abc""#, #""""#, "null", "true"] {
-            // Built as one string: the pieces were `Data(...)`s added together,
-            // which the compiler resolved here and not on the CI runner (it
-            // read the first as a `String.UTF8View` and asked it to be
-            // range-replaceable). One literal cannot be read two ways.
             let body = #"{"result":0,"name":"video-one.mp4","isfolder":false,"duration":"# + bad + "}"
             let entry = try PCloudAPI.decode(PCloudEntry.self, from: Data(body.utf8))
             #expect(entry.duration == nil, "duration \(bad) should read as absent")
@@ -338,9 +283,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func movesAnUpscaleByGivingRenamefileItsPathAndAWholeDestination() {
-        // The trash gesture on the wire: the index keeps no id for an upscale,
-        // so it is named by path, and `topath` carries the filename, so the
-        // move and the rename are one call.
         let request = PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4",
                                            toPath: "/lib/2_outbox/trash/video-one_topaz.mp4",
                                            auth: "token-abc")
@@ -356,9 +298,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func aPCloudErrorSpeaksTheServersOwnWords() {
-        // Surfaced straight to the login screen: `localizedDescription` must be
-        // the server's message, not Foundation's "operation couldn't be
-        // completed" shrug — the message is the only clue the user gets.
         let error: Error = PCloudError(code: 2000, message: "Log in failed.")
         #expect(error.localizedDescription == "pCloud: Log in failed. (code 2000)")
     }
@@ -366,9 +305,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func aLoginCanCarryTheVerificationCodeTheServerAskedFor() {
-        // Error 1022 ("Please provide 'code'.") is pCloud asking for a second
-        // factor — an authenticator or emailed code. The retry is the same
-        // login with `code` riding along; without a code the query is unchanged.
         let plain = PCloudAPI.login(username: "gunner@example.test", password: "pw")
         #expect(plain == PCloudAPI.login(username: "gunner@example.test", password: "pw", code: nil))
         let coded = PCloudAPI.login(username: "gunner@example.test", password: "pw", code: "123456")
@@ -379,9 +315,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func aTwoFactorChallengeCarriesItsTokenOutOfTheErrorEnvelope() throws {
-        // A 2FA account answers the password with an error that ALSO carries a
-        // token; the app exchanges that token plus a code via tfa_login.
-        // Dropping it is what made the challenge look like a dead end.
         let json = Data(#"{"result": 2297, "error": "TFA login required.", "token": "tfa-tok-1", "tfatype": 1, "hasdevices": true}"#.utf8)
         let error = try #require(throws: PCloudError.self) {
             try PCloudAPI.decode(LoginResponse.self, from: json)
@@ -431,9 +364,6 @@ extension PCloudAPITests {
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])
-        // pCloud refuses recursive listings of the ROOT with 1101 (a 2025-era
-        // server change, see rclone#9315), so the hunt must be able to descend
-        // one shallow rung at a time.
         let shallow = PCloudAPI.listFolders(path: "/", auth: "token-abc", recursive: false)
         #expect(shallow.query == [
             URLQueryItem(name: "path", value: "/"),
@@ -446,10 +376,6 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func fetchesTheWholeSidecarCorpusAsOneZip() {
-        // 1,341 sidecars are 1.5 MB but would be 2,682 round-trips fetched one
-        // by one; getzip streams the folder as a single body. It takes a TREE —
-        // folderid, never a path (the fake accepted a path once and flattered
-        // a build that failed against the real server with 'provide folderid').
         let request = PCloudAPI.getZip(folderID: 4242, auth: "token-abc")
         #expect(request.method == "getzip")
         #expect(request.query == [

@@ -1,6 +1,5 @@
 import Foundation
 
-/// Where a pCloud login stands between one press of Log in and the next.
 public struct LoginState: Equatable, Sendable {
     public enum Attempt: Equatable, Sendable {
         case password(code: String?)

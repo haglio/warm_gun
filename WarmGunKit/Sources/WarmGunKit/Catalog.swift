@@ -1,7 +1,5 @@
 import Foundation
 
-/// One file as the listing reported it: where it sits relative to the library
-/// root, and what pCloud already knows about it (so nothing is ever probed).
 public struct LibraryFile: Equatable, Sendable {
     public let path: String
     public let fileID: Int64
@@ -26,15 +24,12 @@ public struct LibraryFile: Equatable, Sendable {
 }
 
 public extension LibraryFile {
-    /// The same file, filed under an app-side prefix — how the Genau and
-    /// non-AI listings join the one catalog namespace.
     func prefixed(_ prefix: String) -> LibraryFile {
         LibraryFile(path: prefix + path, fileID: fileID, size: size, modified: modified,
                     duration: duration, videoCodec: videoCodec, width: width, height: height)
     }
 }
 
-/// A playable original, identified everywhere by its library-relative path.
 public struct Video: Codable, Hashable, Identifiable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case path, fileID, size, modified, duration, videoCodec, width, height, source, stem
@@ -54,9 +49,6 @@ public struct Video: Codable, Hashable, Identifiable, Sendable {
     public let shape: VideoShape
     public let stem: String
 
-    /// Whether the video streams straight off its pCloud link rather than
-    /// being fetched whole: a real scene runs to hundreds of megabytes, and
-    /// most carry their index up front, so playback starts in seconds.
     public var streams: Bool { size > Self.streamThresholdBytes }
 
     private static let streamThresholdBytes: Int64 = 25_000_000
@@ -68,9 +60,6 @@ public struct Video: Codable, Hashable, Identifiable, Sendable {
             shape = original.shape
             stem = original.stem
         } else if file.path.hasPrefix(LibraryPaths.nonAIPrefix) {
-            // A real scene. Each exists as an original and often again as a
-            // huge processed upscale; the phone plays originals only, so the
-            // variants (a `processed` folder, a Topaz/iris suffix) stay out.
             let inner = file.path.dropFirst(LibraryPaths.nonAIPrefix.count)
             let components = inner.split(separator: "/").map(String.init)
             guard let name = components.last, !components.dropLast().contains("processed") else { return nil }
@@ -85,9 +74,6 @@ public struct Video: Codable, Hashable, Identifiable, Sendable {
             }
             stem = bare
         } else if file.path.hasPrefix(LibraryPaths.genauFlatPrefix) {
-            // A 2D Genau flick: no shape folder — its pixels decide when
-            // the listing has them, and portrait stands in when it does not
-            // (the filters lets Genau's flicks through either way).
             source = "genau"
             if let w = file.width, let h = file.height {
                 shape = h >= w ? .portrait : .landscape
@@ -111,8 +97,6 @@ public struct Video: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// The local index of the library: built once from a listing, persisted, and
-/// the only thing a playlist rebuild ever reads.
 public struct Catalog: Codable, Equatable, Sendable {
     public let videos: [Video]
 

@@ -25,9 +25,6 @@ import Testing
 
 extension CatalogTests {
     @Test func aGenauFlickJoinsTheCatalogUnderItsOwnSource() {
-        // Genau's flicks live outside the sorted tree, carry no shape
-        // folders, and are filed under the source "genau" — shape comes
-        // from their pixels when the listing has them, portrait otherwise.
         let wide = LibraryFile(path: "genau/clips/2D/AI/loop-one.mp4", fileID: 1, size: 2_000_000,
                                modified: Date(timeIntervalSince1970: 0), duration: nil,
                                videoCodec: nil, width: 1920, height: 1080)
@@ -43,9 +40,6 @@ extension CatalogTests {
     }
 
     @Test func onlyGenausTwoDFlicksReachThePhone() {
-        // Genau's flicks folder holds a 2D folder and a VR folder, as the
-        // library's videos do; a VR video is for the headset, and a file still
-        // at the top of the folder is from before the split.
         let catalog = Catalog(files: [
             Self.file("genau/clips/2D/AI/loop-one.mp4", id: 1),
             Self.file("genau/clips/VR/scene-one_180.mp4", id: 2),
@@ -57,8 +51,6 @@ extension CatalogTests {
 
 extension CatalogTests {
     @Test func nonAIScenesJoinTheCatalogAndTheirUpscaleVariantsDoNot() {
-        // The non-AI tree holds each scene once as an original and again as a
-        // huge processed upscale; the phone plays originals only.
         func file(_ path: String, width: Int? = nil, height: Int? = nil) -> LibraryFile {
             LibraryFile(path: path, fileID: 1, size: 300_000_000,
                         modified: Date(timeIntervalSince1970: 0), duration: nil,
