@@ -17,13 +17,11 @@ struct Settings: Codable, Equatable {
     // throws on a key it cannot find, which would drop every other setting
     // back to its default. Renaming it needs a migration, not an edit.
     var prefetchBehind = 3
-    var moveToTrashInCloud = true
 
     private enum CodingKeys: String, CodingKey {
         case apiHost, username, libraryPath, syncFolder, cacheCapMB, prefetchAhead, prefetchBehind
         case filters = "browse"
         case loopVideo = "loopClip"
-        case moveToTrashInCloud = "moveWeirdInCloud"
     }
 
     var cacheCapBytes: Int64 { Int64(cacheCapMB) * 1_000_000 }
