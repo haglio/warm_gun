@@ -1,8 +1,5 @@
 import Foundation
 
-/// A seeded generator, so every ordering test asserts on one fixed draw rather
-/// than on a distribution that could flake. SplitMix64 is four lines and needs
-/// no state beyond the seed — the same stream on every machine and every run.
 struct PlaylistSeededRNG: RandomNumberGenerator {
     private var state: UInt64
 

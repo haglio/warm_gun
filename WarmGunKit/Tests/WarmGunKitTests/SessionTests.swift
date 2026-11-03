@@ -21,9 +21,9 @@ extension SessionTests {
         session.step(1)
         #expect(session.index == 1)
         session.step(2)
-        #expect(session.index == 0)  // wraps forward
+        #expect(session.index == 0)
         session.step(-1)
-        #expect(session.index == 2)  // and backward
+        #expect(session.index == 2)
     }
 }
 
@@ -43,7 +43,7 @@ extension SessionTests {
         var session = Session(playlist: Self.three)
         session.setLocked(true)
         #expect(session.locked)
-        #expect(session.staged == nil)  // nothing may roll on off a locked video
+        #expect(session.staged == nil)
         session.advance()
         #expect(session.index == 0)
 
@@ -56,8 +56,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func navigatingReleasesTheLock() {
-        // The desktop's dispatcher sends UNLOCK before any NEXT/PREV: a deliberate
-        // step off a held video means you are done holding it.
         var session = Session(playlist: Self.three)
         session.setLocked(true)
         session.step(1)
@@ -78,8 +76,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func playingAVideoIntoAnEmptySessionStartsTheRunWithIt() {
-        // The session before the first index arrives is empty, and a favorites
-        // jump may land in it: it starts the run rather than reaching past its end.
         var session = Session(playlist: [])
         session.playFile(Self.three[0])
         #expect(session.playlist == [Self.three[0]])
@@ -90,8 +86,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func playingANewcomerSplicesItInAfterTheCurrentVideoAndPlaysIt() {
-        // What a favorites jump does with a video the live filters exclude: it is
-        // spliced next, so the run carries on into the list it came from.
         var session = Session(playlist: Self.three)
         let newcomer = "1_sorted/gamma/portrait/video-four.mp4"
         session.playFile(newcomer)
@@ -125,8 +119,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func replacingThePlaylistKeepsTheVideoOnScreenWhenItSurvives() {
-        // A filter toggle rebuilds the list; the video you are watching should
-        // keep playing rather than flicker back to the top of the new one.
         var session = Session(playlist: Self.three, index: 1)
         session.setLocked(true)
         session.replacePlaylist(["1_sorted/gamma/portrait/video-four.mp4",
@@ -134,14 +126,12 @@ extension SessionTests {
                                  "1_sorted/gamma/landscape/video-five.mp4"])
         #expect(session.current == Self.three[1])
         #expect(session.index == 1)
-        #expect(session.locked)  // a rebuild is not a gesture: the hold stands
+        #expect(session.locked)
     }
 }
 
 extension SessionTests {
     @Test func theOnlyRemainingEntryCannotBeDiscarded() {
-        // A satellite must always have something to play, so the final video is a
-        // no-op rather than an empty screen.
         var session = Session(playlist: [Self.three[0]])
         #expect(session.discard() == nil)
         #expect(session.playlist == [Self.three[0]])
@@ -162,8 +152,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func aRestoredIndexBeyondTheListIsWrappedRatherThanTrusted() {
-        // The saved position is restored onto a rebuilt playlist, which may have
-        // shrunk since — the desktop wraps on load (`session.py`), never traps.
         let session = Session(playlist: Self.three, index: 7)
         #expect(session.index == 1)
         #expect(session.current == Self.three[1])
@@ -176,10 +164,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func discardReleasesTheLockSoTheRunCarriesOn() {
-        // The desktop dispatcher sends UNLOCK before TRASH for the same reason it
-        // does before NEXT (`command_dispatch.py`): a locked satellite is
-        // repeat-one, and without the release the video that shifts into the
-        // discarded slot would be held forever with nothing staged after it.
         var session = Session(playlist: Self.three)
         session.setLocked(true)
         #expect(session.discard() == Self.three[0])
@@ -189,15 +173,12 @@ extension SessionTests {
         var lone = Session(playlist: [Self.three[0]])
         lone.setLocked(true)
         #expect(lone.discard() == nil)
-        #expect(lone.locked == false)  // the no-op discard still releases
+        #expect(lone.locked == false)
     }
 }
 
 extension SessionTests {
     @Test func anEmptyReplacementLeavesTheRunInPlace() {
-        // A filter that matches nothing must not blank the screen: the desktop
-        // refuses an empty replacement outright (`session.py` raises), and the
-        // design says the current playlist stays until a filter matches again.
         var session = Session(playlist: Self.three, index: 1)
         session.replacePlaylist([])
         #expect(session.playlist == Self.three)
@@ -207,9 +188,6 @@ extension SessionTests {
 
 extension SessionTests {
     @Test func aRebuildThatLosesTheHeldVideoReleasesTheHold() {
-        // The desktop cancels the lock on every rebuild that touches the Funestra
-        // (`command_dispatch.py` `_cancel_lock`): repeat-one must never be
-        // inherited by whatever video happens to land at the top of a new list.
         var session = Session(playlist: Self.three, index: 1)
         session.setLocked(true)
         session.replacePlaylist(["1_sorted/gamma/portrait/video-four.mp4",
@@ -236,8 +214,6 @@ extension SessionTests {
         #expect(resumed.current == Self.three[2])
         #expect(resumed.locked)
 
-        // The held video left the library: its lock does not pass to the video
-        // that takes its place, as a rebuild that loses it does not either.
         let lost = Session(restoring: Self.three, at: 1, locked: true, keeping: known)
         #expect(lost.current == Self.three[0])
         #expect(!lost.locked)

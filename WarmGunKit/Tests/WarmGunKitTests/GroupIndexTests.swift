@@ -2,10 +2,6 @@ import Foundation
 import Testing
 @testable import WarmGunKit
 
-/// The desktop's grouping, ported field for field from
-/// `fun_time/media_metadata.py`: an ACTION group holds the seed fixed and lets
-/// the action vary; a SEED family holds the action fixed and lets the seed vary.
-/// Every fixture is fabricated.
 @Suite struct GroupIndexTests {
     static func sidecar(action: String? = "alpha", prompt: String? = "a scene",
                         videoSeed: String? = "111", image: Bool = false,
@@ -30,8 +26,6 @@ import Testing
     }
 
     @Test func textToVideoTwinsShareAnActionGroupAcrossActions() {
-        // Same prompt/params/SEED, different actions: one subject doing different
-        // things — the action group. A different seed is a different subject.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "alpha"),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta"),
@@ -46,9 +40,6 @@ import Testing
     }
 
     @Test func seedFamiliesHoldTheActionFixedAndLetTheSeedVary() {
-        // Same prompt/params/ACT, different seeds — and the desktop narrows
-        // the family to the anchor's own action with normalized comparison, so a
-        // casing variant does not split the row.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "Alpha", videoSeed: "111"),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "alpha", videoSeed: "222"),
@@ -59,8 +50,6 @@ import Testing
     }
 
     @Test func imageToVideoVideosGroupOnTheSourceImageIdentity() {
-        // With a source_image block the IMAGE's identity is the key: the image
-        // seed varies the seed family; the actions vary within one image.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "alpha", image: true, imageSeed: "901"),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "beta", image: true, imageSeed: "901"),
@@ -68,14 +57,11 @@ import Testing
         ])
         #expect(index.actionVideos(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/two.mp4"])
-        // The image family spans actions, so the seed row narrows to the anchor's.
         #expect(index.seedVideos(of: "1_sorted/a/portrait/one.mp4")
                 == ["1_sorted/a/portrait/one.mp4", "1_sorted/a/portrait/three.mp4"])
     }
 
     @Test func aVideoWithoutTheKeyFieldsBelongsToNoGroup() {
-        // No sidecar, no prompt, or no seed: the desktop returns None — the
-        // video loops as itself alone.
         let index = GroupIndex(sidecars: [
             "1_sorted/a/portrait/one.mp4": Self.sidecar(prompt: nil),
             "1_sorted/a/portrait/two.mp4": Self.sidecar(videoSeed: nil),
