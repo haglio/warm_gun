@@ -3,7 +3,7 @@
 An iPhone satellite player for the Fun Time library: a never-ending,
 auto-advancing run of the library's videos, cached on the phone so nothing
 ever waits. No OSR2, no voice — four taps and the controls laid over the
-picture. The name and the magenta 5x5 lettermark follow Fun Time's. The
+video. The name and the magenta 5x5 lettermark follow Fun Time's. The
 same app builds for the Mac, where it takes the whole screen, taps are
 clicks, and the P and L keys stand in for turning the phone.
 
@@ -17,9 +17,9 @@ clicks, and the P and L keys stand in for turning the phone.
   1, Seed, Action), space and Esc pause and play, and P and L pick the
   portrait or the landscape library.
 - **Source**: the AI library's originals under `1_sorted/` (small H.264),
-  Genau's 2D flicks and the non-AI scenes, through the pCloud HTTP API. Small
+  Genau's 2D flicks and the non-AI videos, through the pCloud HTTP API. Small
   videos are fetched whole and played from an on-device cache, with a deep
-  two-sided prefetch window keeping the neighbors resident; a real scene
+  two-sided prefetch window keeping the neighbors resident; a real video
   streams. The Topaz upscales stay home.
 - **Shared state**: favorites and trash marks live on the phone, and every
   event goes out as a journal to a pCloud folder. Evolver reads that
