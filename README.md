@@ -17,9 +17,9 @@ clicks, and the P and L keys stand in for turning the phone.
   1, Seed, Action), space and Esc pause and play, and P and L pick the
   portrait or the landscape library.
 - **Source**: the AI library's originals under `1_sorted/` (small H.264),
-  Genau's 2D flicks and the non-AI videos, through the pCloud HTTP API. Small
+  Genau's 2D flicks and the non-AI scenes, through the pCloud HTTP API. Small
   videos are fetched whole and played from an on-device cache, with a deep
-  two-sided prefetch window keeping the neighbors resident; a real video
+  two-sided prefetch window keeping the neighbors resident; a real scene
   streams. The Topaz upscales stay home.
 - **Shared state**: favorites and trash marks live on the phone, and every
   event goes out as a journal to a pCloud folder. Evolver reads that
