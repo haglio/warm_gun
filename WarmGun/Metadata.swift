@@ -32,10 +32,10 @@ enum MetadataFetcher {
         return MirrorSurvey(branches: branches)
     }
 
-    static func fetchSidecars(client: PCloudClient, branches: [SurveyedBranch]) async -> [String: Sidecar] {
-        var sidecars: [String: Sidecar] = [:]
+    static func fetchSidecars(client: PCloudClient, branches: [SurveyedBranch]) async -> [String: Data] {
+        var sidecars: [String: Data] = [:]
         for branch in branches {
-            let fetched: [String: Sidecar]
+            let fetched: [String: Data]
             do {
                 fetched = try await fetchViaZip(client: client, branch: branch)
                 log.notice("\(branch.path, privacy: .private): \(fetched.count) sidecars by zip")
@@ -49,7 +49,7 @@ enum MetadataFetcher {
         return sidecars
     }
 
-    private static func fetchViaZip(client: PCloudClient, branch: SurveyedBranch) async throws -> [String: Sidecar] {
+    private static func fetchViaZip(client: PCloudClient, branch: SurveyedBranch) async throws -> [String: Data] {
         guard let folderID = try await client.folderSkeleton(path: branch.path, recursive: false).folderid else {
             throw ZipArchive.Failure(reason: "metadata folder has no id")
         }
@@ -58,21 +58,18 @@ enum MetadataFetcher {
             // pCloud answers errors as JSON even where a zip was asked for.
             _ = try PCloudAPI.decode(EmptyPayload.self, from: body)
         }
-        let decoder = JSONDecoder()
-        var sidecars: [String: Sidecar] = [:]
+        var sidecars: [String: Data] = [:]
         for entry in try ZipArchive.entries(in: body, inflate: inflate) {
-            guard let video = branch.index.video(forZipEntry: entry.name),
-                  let sidecar = try? decoder.decode(Sidecar.self, from: entry.data) else { continue }
-            sidecars[video] = sidecar
+            guard let video = branch.index.video(forZipEntry: entry.name) else { continue }
+            sidecars[video] = entry.data
         }
         return sidecars
     }
 
-    private static func fetchSingly(client: PCloudClient, branch: SurveyedBranch) async -> [String: Sidecar] {
+    private static func fetchSingly(client: PCloudClient, branch: SurveyedBranch) async -> [String: Data] {
         let wanted = branch.index.videosByListedSidecar
         let files = branch.files.filter { wanted[$0.path] != nil }
-        let decoder = JSONDecoder()
-        var sidecars: [String: Sidecar] = [:]
+        var sidecars: [String: Data] = [:]
         await withTaskGroup(of: (String, Data)?.self) { group in
             var iterator = files.makeIterator()
             var inFlight = 0
@@ -91,9 +88,8 @@ enum MetadataFetcher {
             while inFlight > 0 {
                 guard let result = await group.next() else { break }
                 inFlight -= 1
-                if let (path, data) = result, let video = wanted[path],
-                   let sidecar = try? decoder.decode(Sidecar.self, from: data) {
-                    sidecars[video] = sidecar
+                if let (path, data) = result, let video = wanted[path] {
+                    sidecars[video] = data
                 }
                 addNext(&group)
             }

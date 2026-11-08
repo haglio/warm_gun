@@ -53,18 +53,15 @@ extension WatchWeightsTests {
 
 extension WatchWeightsTests {
     @Test func theStampSurvivesTheCorpusBeingPersistedAndReadBack() throws {
-        let corpus = [
+        let corpus = SidecarCorpus(records: [
             "1_sorted/alpha/portrait/video-one.mp4":
-                Sidecar(video: ["action": "waving"], sourceImage: nil,
-                        watch: Sidecar.Watch(weight: 0.125), favorite: true),
-            "genau/clips/2D/AI/loop-two.mp4":
-                Sidecar(video: ["action": "turning"], sourceImage: nil),
-        ]
+                Data(#"{"video": {"action": "waving"}, "watch": {"weight": 0.125}, "favorite": true}"#.utf8),
+            "genau/clips/2D/AI/loop-two.mp4": Data(#"{"video": {"action": "turning"}}"#.utf8),
+        ])
 
         let data = try JSONEncoder().encode(corpus)
-        let read = try JSONDecoder().decode([String: Sidecar].self, from: data)
+        let read = try JSONDecoder().decode(SidecarCorpus.self, from: data).sidecars
 
-        #expect(read == corpus)
         #expect(read["1_sorted/alpha/portrait/video-one.mp4"]?.watchWeight == 0.125)
         #expect(read["1_sorted/alpha/portrait/video-one.mp4"]?.favorite == true)
         #expect(read["genau/clips/2D/AI/loop-two.mp4"]?.watchWeight == nil)

@@ -29,7 +29,7 @@ import Testing
 
     @Test func aFetchSpeaksForTheMirrorOnlyWhenEverySidecarTheSurveyNamedCameBack() {
         let survey = MirrorSurvey(branches: [Self.branch([Self.oneSidecar: 1_000, Self.twoSidecar: 2_000])])
-        let sidecar = Sidecar(video: ["action": "alpha"], sourceImage: nil)
+        let sidecar = Data(#"{"video": {"action": "alpha"}}"#.utf8)
         #expect(survey.isComplete([Self.one: sidecar, Self.two: sidecar]))
         #expect(!survey.isComplete([Self.one: sidecar]))
     }

@@ -164,12 +164,6 @@ extension GroupIndexTests {
         #expect(try JSONDecoder().decode(Sidecar.self, from: Data(#"{"video": {}}"#.utf8)).labels == [])
     }
 
-    @Test func theLabelsSurviveTheCorpusTheAppKeepsOnDisk() throws {
-        let kept = Sidecar(video: ["action": "alpha act"], labels: ["Alpha", "Second box"], sourceImage: nil)
-        let restored = try JSONDecoder().decode(Sidecar.self, from: JSONEncoder().encode(kept))
-        #expect(restored == kept)
-    }
-
     @Test func aSeedFamilyHoldsItsLabelsFixedAndFallsBackToTheSitesWordWithoutThem() {
         func labeled(_ labels: [String], action: String, seed: String) -> Sidecar {
             Sidecar(video: Self.sidecar(action: action, videoSeed: seed).video, labels: labels,
