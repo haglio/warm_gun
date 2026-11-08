@@ -134,7 +134,6 @@
       ],
       "keep": [
         "\"acts\"",
-        "\"act_filters\"",
         "\"disabledActs\""
       ]
     },

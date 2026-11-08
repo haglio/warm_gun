@@ -86,12 +86,22 @@ import Testing
 }
 
 extension GroupIndexTests {
-    @Test func handsOutTheNormalizedActionsForTheBuildToFilterOn() {
+    @Test func handsOutEachVideosLabelsForTheBuildToFilterOn() {
         let index = GroupIndex(sidecars: [
-            "1_sorted/a/portrait/one.mp4": Self.sidecar(action: "Very  Special"),
-            "1_sorted/a/portrait/two.mp4": Self.sidecar(action: nil),
+            "1_sorted/a/portrait/one.mp4": Sidecar(video: ["action": "site word"], labels: ["Alpha", "Second box"],
+                                                    sourceImage: nil),
+            "1_sorted/a/portrait/two.mp4": Self.sidecar(action: "site word"),
         ])
-        #expect(index.actionsByPath == ["1_sorted/a/portrait/one.mp4": "very special"])
+        #expect(index.labelsByPath == ["1_sorted/a/portrait/one.mp4": ["Alpha", "Second box"]])
+    }
+
+    @Test func everyLabelInTheLibraryNamesOneActionButtonInAlphabeticalOrder() {
+        let index = GroupIndex(sidecars: [
+            "1_sorted/a/portrait/one.mp4": Sidecar(video: [:], labels: ["beta", "Second box"], sourceImage: nil),
+            "1_sorted/a/portrait/two.mp4": Sidecar(video: [:], labels: ["Alpha", "beta"], sourceImage: nil),
+            "1_sorted/a/portrait/three.mp4": Self.sidecar(action: "site word"),
+        ])
+        #expect(index.labelNames == ["Alpha", "beta", "Second box"])
     }
 }
 
@@ -140,5 +150,39 @@ extension GroupIndexTests {
     @Test func normalizedTextCollapsesWhitespaceLowersCaseAndReadsNilAsEmpty() {
         #expect(GroupIndex.normText("  Big\t ALPHA\n") == "big alpha")
         #expect(GroupIndex.normText(nil) == "")
+    }
+}
+
+extension GroupIndexTests {
+    @Test func aSidecarReadsTheLabelsGivenItsVideo() throws {
+        let json = Data("""
+        {"video": {"action": "alpha act", "labels": ["Alpha", "Second box"], "seed": "111"}}
+        """.utf8)
+        let sidecar = try JSONDecoder().decode(Sidecar.self, from: json)
+        #expect(sidecar.labels == ["Alpha", "Second box"])
+        #expect(sidecar.video?["action"] == "alpha act")
+        #expect(try JSONDecoder().decode(Sidecar.self, from: Data(#"{"video": {}}"#.utf8)).labels == [])
+    }
+
+    @Test func theLabelsSurviveTheCorpusTheAppKeepsOnDisk() throws {
+        let kept = Sidecar(video: ["action": "alpha act"], labels: ["Alpha", "Second box"], sourceImage: nil)
+        let restored = try JSONDecoder().decode(Sidecar.self, from: JSONEncoder().encode(kept))
+        #expect(restored == kept)
+    }
+
+    @Test func aSeedFamilyHoldsItsLabelsFixedAndFallsBackToTheSitesWordWithoutThem() {
+        func labeled(_ labels: [String], action: String, seed: String) -> Sidecar {
+            Sidecar(video: Self.sidecar(action: action, videoSeed: seed).video, labels: labels,
+                    sourceImage: Self.sidecar(image: true).sourceImage)
+        }
+        let one = "1_sorted/a/portrait/one.mp4"
+        let index = GroupIndex(sidecars: [
+            one: labeled(["Alpha", "Second box"], action: "site word", seed: "111"),
+            "1_sorted/a/portrait/two.mp4": labeled(["alpha", "second box"], action: "other word", seed: "222"),
+            "1_sorted/a/portrait/three.mp4": labeled(["Alpha"], action: "site word", seed: "333"),
+            "1_sorted/a/portrait/four.mp4": labeled([], action: "site word", seed: "444"),
+        ])
+        #expect(index.seedVideos(of: one) == [one, "1_sorted/a/portrait/two.mp4"])
+        #expect(index.seedVideos(of: "1_sorted/a/portrait/four.mp4") == ["1_sorted/a/portrait/four.mp4"])
     }
 }

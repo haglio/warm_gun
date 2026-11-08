@@ -409,14 +409,12 @@ extension PlaylistTests {
            {"prefix": "non_AI/alpha/carved", "type": "excerpt",
             "orientation": "landscape"},
            {"prefix": "non_AI/tall", "type": "full_length",
-            "orientation": "portrait"}],
-         "act_filters": [{"label": "AL", "queries": ["alpha"]}]}
+            "orientation": "portrait"}]}
         """#.utf8)
 
         let overlay = try JSONDecoder().decode(ContentOverlay.self, from: json)
 
         #expect(overlay.lanes.map(\.type) == [.excerpt, .fullLength])
-        #expect(overlay.actionFilters.map(\.label) == ["AL"])
     }
 
     @Test func anOverlayStillNamingTheExcerptsChipDecodesTheSame() throws {
@@ -472,17 +470,7 @@ extension PlaylistTests {
 }
 
 extension PlaylistTests {
-    @Test func theActionButtonsBucketEveryVideoAndCombine() {
-        let overlay = ContentOverlay(lanes: [], actionFilters: [
-            ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
-            ContentOverlay.ActionFilter(label: "BE", queries: ["beta"], isOther: false),
-            ContentOverlay.ActionFilter(label: "O", queries: [], isOther: true),
-        ])
-        #expect(overlay.actionBucket(for: "big alpha act") == "AL")
-        #expect(overlay.actionBucket(for: "beta") == "BE")
-        #expect(overlay.actionBucket(for: "gamma") == "O")
-        #expect(overlay.actionBucket(for: nil) == "O")
-
+    @Test func aVideoCarryingALabelWhoseButtonIsOffSitsOutAndAnUnlabeledOneAlwaysPlays() {
         var rng = PlaylistSeededRNG(seed: 29)
         let catalog = Catalog(files: [
             PlaylistTests.file("1_sorted/alpha/portrait/video-a.mp4", seconds: 30),
@@ -490,16 +478,16 @@ extension PlaylistTests {
             PlaylistTests.file("1_sorted/alpha/portrait/video-c.mp4", seconds: 30),
         ])
         var options = Filters()
-        options.disabledActions = ["BE", "O"]
+        options.disabledActions = ["Second box"]
         let built = PlaylistBuilder.build(catalog: catalog, options: options, favoriteKeys: [],
-                                          trash: [], weights: WatchWeights(), overlay: overlay,
-                                          actions: ["1_sorted/alpha/portrait/video-a.mp4": "alpha",
-                                                 "1_sorted/alpha/portrait/video-b.mp4": "beta"], rng: &rng)
-        #expect(built == ["1_sorted/alpha/portrait/video-a.mp4"])
+                                          trash: [], weights: WatchWeights(),
+                                          labels: ["1_sorted/alpha/portrait/video-a.mp4": ["Alpha"],
+                                                   "1_sorted/alpha/portrait/video-b.mp4": ["Alpha", "Second box"]],
+                                          rng: &rng)
+        #expect(Set(built) == ["1_sorted/alpha/portrait/video-a.mp4", "1_sorted/alpha/portrait/video-c.mp4"])
     }
 
-    @Test func anOverlayOrFiltersWithoutActionFiltersChangesNothing() throws {
-        #expect(ContentOverlay(lanes: []).actionBucket(for: "anything") == nil)
+    @Test func filtersSavedBeforeAnyActionButtonWasTurnedOffTurnNoneOff() throws {
         let old = Data(#"{"orientation":"portrait"}"#.utf8)
         #expect(try JSONDecoder().decode(Filters.self, from: old).disabledActions.isEmpty)
     }
@@ -534,21 +522,6 @@ extension PlaylistTests {
         let path = "non_AI/alpha/special/scene-one.mp4"
         #expect(ContentOverlay(lanes: [wide, narrow]).lane(for: path)?.type == .excerpt)
         #expect(ContentOverlay(lanes: [narrow, wide]).lane(for: path)?.type == .excerpt)
-    }
-
-    @Test func anActionTwoButtonsCouldClaimGoesToTheFirstOfThem() {
-        let overlay = ContentOverlay(actionFilters: [
-            ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
-            ContentOverlay.ActionFilter(label: "BE", queries: ["alpha", "beta"], isOther: false),
-        ])
-        #expect(overlay.actionBucket(for: "alpha") == "AL")
-    }
-
-    @Test func anUnclaimedActionHasNoButtonWhereNoneIsTheCatchAll() {
-        let overlay = ContentOverlay(actionFilters: [
-            ContentOverlay.ActionFilter(label: "AL", queries: ["alpha"], isOther: false),
-        ])
-        #expect(overlay.actionBucket(for: "gamma") == nil)
     }
 
     @Test func theRetiredShortsOnlySwitchIsNeverWrittenBack() throws {

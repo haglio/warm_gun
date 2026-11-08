@@ -109,12 +109,12 @@ public enum PlaylistBuilder {
                              trash: Set<String>, weights: WatchWeights,
                              measuredSeconds: [String: Double] = [:],
                              overlay: ContentOverlay = .empty,
-                             actions: [String: String] = [:],
+                             labels: [String: [String]] = [:],
                              recordedTypes: [String: String] = [:],
                              rng: inout some RandomNumberGenerator) -> [String] {
         let videos = catalog.videos.filter {
             survivesFilters($0, options, favoriteKeys, trash, recordedTypes[$0.path],
-                            measuredSeconds[$0.path], overlay, actions[$0.path])
+                            measuredSeconds[$0.path], overlay, labels[$0.path] ?? [])
         }
         if options.latest {
             return videos
@@ -143,11 +143,11 @@ public enum PlaylistBuilder {
     private static func survivesFilters(_ video: Video, _ options: Filters,
                                         _ favoriteKeys: Set<String>, _ trash: Set<String>,
                                         _ recorded: String?, _ measured: Double?,
-                                        _ overlay: ContentOverlay, _ action: String?) -> Bool {
+                                        _ overlay: ContentOverlay, _ labels: [String]) -> Bool {
         let type = VideoType.classify(video, shortsMaxSeconds: options.shortsMaxSeconds,
                                      recorded: recorded, measuredSeconds: measured, overlay: overlay)
         let gated = video.path.hasPrefix("1_sorted/")
-        if let bucket = overlay.actionBucket(for: action), options.disabledActions.contains(bucket) {
+        if labels.contains(where: options.disabledActions.contains) {
             return false
         }
         return fitsShape(video, type, options, overlay)
