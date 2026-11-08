@@ -76,7 +76,7 @@ final class AppModel: ObservableObject {
                 overlay = try JSONDecoder().decode(ContentOverlay.self, from: Data(contentsOf: url))
             } catch {
                 overlay = .empty
-                overlayProblem = "Content overlay unreadable — no lanes and no action buttons: "
+                overlayProblem = "Content overlay unreadable — no lanes: "
                     + error.localizedDescription
             }
         } else {
@@ -375,7 +375,7 @@ final class AppModel: ObservableObject {
         let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.filters,
                                              favoriteKeys: favorites.held, trash: trash,
                                              weights: weights, measuredSeconds: measuredSeconds,
-                                             overlay: overlay, actions: groupIndex.actionsByPath,
+                                             overlay: overlay, labels: groupIndex.labelsByPath,
                                              recordedTypes: groupIndex.typesByPath, rng: &rng)
         if playlist.isEmpty {
             session = Session(playlist: [])
@@ -548,6 +548,8 @@ final class AppModel: ObservableObject {
             sync()
         }
     }
+
+    var labelNames: [String] { groupIndex.labelNames }
 
     func canLoop(_ mode: LoopMode) -> Bool {
         session.current.map { groupIndex.canLoop(mode, from: $0) } ?? false

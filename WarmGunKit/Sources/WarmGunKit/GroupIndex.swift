@@ -16,11 +16,16 @@ public struct Sidecar: Codable, Equatable, Sendable {
     }
 
     public let video: [String: String]?
+    public let labels: [String]
     public let sourceImage: [String: String]?
     public let watch: Watch?
     public let favorite: Bool
 
     public var watchWeight: Double? { watch?.weight }
+
+    public var actionsText: String {
+        labels.isEmpty ? video?["action"] ?? "" : labels.joined(separator: ", ")
+    }
 
     enum CodingKeys: String, CodingKey {
         case video
@@ -29,9 +34,10 @@ public struct Sidecar: Codable, Equatable, Sendable {
         case favorite
     }
 
-    public init(video: [String: String]?, sourceImage: [String: String]?,
+    public init(video: [String: String]?, labels: [String] = [], sourceImage: [String: String]?,
                 watch: Watch? = nil, favorite: Bool = false) {
         self.video = video
+        self.labels = labels
         self.sourceImage = sourceImage
         self.watch = watch
         self.favorite = favorite
@@ -40,6 +46,7 @@ public struct Sidecar: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         video = Self.block(c, .video)
+        labels = Self.labels(c)
         sourceImage = Self.block(c, .sourceImage)
         watch = try? c.decodeIfPresent(Watch.self, forKey: .watch)
         favorite = ((try? c.decodeIfPresent(Bool.self, forKey: .favorite)) ?? nil) ?? false
@@ -48,6 +55,33 @@ public struct Sidecar: Codable, Equatable, Sendable {
     private static func block(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> [String: String]? {
         guard let fields = ((try? c.decodeIfPresent([String: Field].self, forKey: key)) ?? nil) else { return nil }
         return fields.compactMapValues(\.text)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        if video != nil || !labels.isEmpty {
+            var block = c.nestedContainer(keyedBy: VideoKey.self, forKey: .video)
+            for (key, text) in video ?? [:] { try block.encode(text, forKey: VideoKey(key)) }
+            if !labels.isEmpty { try block.encode(labels, forKey: .labels) }
+        }
+        try c.encodeIfPresent(sourceImage, forKey: .sourceImage)
+        try c.encodeIfPresent(watch, forKey: .watch)
+        try c.encode(favorite, forKey: .favorite)
+    }
+
+    private static func labels(_ c: KeyedDecodingContainer<CodingKeys>) -> [String] {
+        let block = try? c.nestedContainer(keyedBy: VideoKey.self, forKey: .video)
+        return ((try? block?.decodeIfPresent([String].self, forKey: .labels)) ?? nil) ?? []
+    }
+
+    private struct VideoKey: CodingKey {
+        static let labels = VideoKey("labels")
+        let stringValue: String
+        var intValue: Int? { nil }
+
+        init(_ name: String) { stringValue = name }
+        init?(stringValue: String) { self.init(stringValue) }
+        init?(intValue: Int) { nil }
     }
 
     private struct Field: Decodable {
@@ -69,12 +103,10 @@ public struct GroupIndex: Sendable, Equatable {
     private var seedKeyByPath: [String: String] = [:]
     private var actionByPath: [String: String] = [:]
     private var typeByPath: [String: String] = [:]
+    public private(set) var labelsByPath: [String: [String]] = [:]
+    public private(set) var labelNames: [String] = []
     private var actionVideosByKey: [String: [String]] = [:]
     private var seedVideosByKey: [String: [String]] = [:]
-
-    public var actionsByPath: [String: String] {
-        actionByPath.filter { !$0.value.isEmpty }
-    }
 
     public var typesByPath: [String: String] {
         typeByPath.filter { !$0.value.isEmpty }
@@ -84,8 +116,9 @@ public struct GroupIndex: Sendable, Equatable {
 
     public init(sidecars: [String: Sidecar]) {
         for (path, sidecar) in sidecars {
-            actionByPath[path] = Self.normText(sidecar.video?["action"])
+            actionByPath[path] = Self.normText(sidecar.actionsText)
             typeByPath[path] = sidecar.video?["type"] ?? ""
+            if !sidecar.labels.isEmpty { labelsByPath[path] = sidecar.labels }
             if let key = Self.actionGroupKey(sidecar) {
                 actionKeyByPath[path] = key
                 actionVideosByKey[key, default: []].append(path)
@@ -97,6 +130,8 @@ public struct GroupIndex: Sendable, Equatable {
         }
         for key in actionVideosByKey.keys { actionVideosByKey[key]?.sort() }
         for key in seedVideosByKey.keys { seedVideosByKey[key]?.sort() }
+        labelNames = Set(labelsByPath.values.joined())
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     public func actionVideos(of path: String) -> [String] {

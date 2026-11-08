@@ -31,16 +31,23 @@ not alone.
   metadata sidecar (`video.type`), and `VideoType` is that field's
   vocabulary, so a video is the same type here as in Fun Time. For a video
   whose sidecar has not arrived, the overlay's lanes, the source folder and
-  a running time stand in, in that order. The action a video records
-  (`video.action`) is a different axis, the action buttons'; it never decides
-  a type.
+  a running time stand in, in that order. A video's actions are a different
+  axis, the action buttons'; they never decide a type.
+- **The action buttons are the labels on the sidecars.** Origenerator names
+  each AI video's actions in his words, its image's, its own, then its
+  checked boxes, and Evolver copies them onto the sidecar as `video.labels`.
+  Origenerator's list lives on the desktop, out of the phone's reach, so
+  there is one button for every label some sidecar carries, in alphabetical
+  order, and no second list. A video sits out while any of its labels is
+  turned off; one with no labels always plays. The Seed loop holds a video's
+  labels fixed, and reads the site's own word (`video.action`) only for a
+  video with none, as Fun Time does.
 - **What the repo cannot name lives in a git-ignored overlay.** The non-AI
-  lanes' folder names and the action buttons are library vocabulary, so they
-  ship in `WarmGun/content.local.json`, bundled at build time and never
-  committed (`content.example.json` documents the shape). Without it the
-  app plays with no lanes and no action buttons, which looks like a
-  regression, so the install scripts refuse to build without it when the
-  primary checkout has one.
+  lanes' folder names are library vocabulary, so they ship in
+  `WarmGun/content.local.json`, bundled at build time and never committed
+  (`content.example.json` documents the shape). Without it the app plays
+  with no lanes, which looks like a regression, so the install scripts
+  refuse to build without it when the primary checkout has one.
 
 ## Playback
 
