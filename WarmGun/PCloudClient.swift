@@ -19,8 +19,6 @@ actor PCloudClient {
     private let origin: URL
     private let auth: String
     private let session: URLSession
-    /// pCloud's getzip assembles the archive before its first byte, past URLSession's 30-second timeout.
-    private let patientSession: URLSession
 
     init(apiHost: String, auth: String) throws {
         let text = apiHost.contains("://") ? apiHost : "https://\(apiHost)"
@@ -32,11 +30,6 @@ actor PCloudClient {
         config.timeoutIntervalForResource = 600
         config.waitsForConnectivity = true
         session = URLSession(configuration: config)
-        let patient = URLSessionConfiguration.default
-        patient.timeoutIntervalForRequest = 300
-        patient.timeoutIntervalForResource = 900
-        patient.waitsForConnectivity = true
-        patientSession = URLSession(configuration: patient)
     }
 
     static func login(apiHost: String, username: String, password: String, code: String? = nil) async throws -> LoginResponse {
@@ -92,14 +85,6 @@ actor PCloudClient {
         let (response, http) = try await session.upload(for: request, from: body)
         try Self.check(http)
         _ = try PCloudAPI.decode(Acknowledged.self, from: response)
-    }
-
-    func downloadRaw(_ request: PCloudRequest, patientFirstByte: Bool = false) async throws -> Data {
-        let authed = PCloudRequest(method: request.method,
-                                   query: request.query.map { $0.name == "auth" ? URLQueryItem(name: "auth", value: auth) : $0 })
-        let (data, response) = try await (patientFirstByte ? patientSession : session).data(from: authed.url(origin: origin))
-        try Self.check(response)
-        return data
     }
 
     func download(_ url: URL) async throws -> URL {

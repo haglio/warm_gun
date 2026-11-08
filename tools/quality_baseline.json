@@ -1,8 +1,8 @@
 {
   "prose_lines": {
     "WarmGun/AppModel.swift": 4,
-    "WarmGun/Metadata.swift": 4,
-    "WarmGun/PCloudClient.swift": 2,
+    "WarmGun/Metadata.swift": 2,
+    "WarmGun/PCloudClient.swift": 1,
     "WarmGun/Platform.swift": 9,
     "WarmGun/PlayerEngine.swift": 4,
     "WarmGun/PlayerView.swift": 2,
@@ -10,11 +10,9 @@
     "WarmGun/Settings.swift": 2,
     "WarmGun/VideoCache.swift": 2,
     "WarmGunKit/Sources/WarmGunKit/Journal.swift": 1,
-    "WarmGunKit/Sources/WarmGunKit/PCloudAPI.swift": 18,
+    "WarmGunKit/Sources/WarmGunKit/PCloudAPI.swift": 17,
     "WarmGunKit/Sources/WarmGunKit/Ring.swift": 1,
     "WarmGunKit/Sources/WarmGunKit/WatchWeights.swift": 1,
-    "WarmGunKit/Sources/WarmGunKit/ZipArchive.swift": 4,
-    "WarmGunKit/Tests/WarmGunKitTests/ZipArchiveTests.swift": 1,
     "install.sh": 3,
     "install_mac.sh": 3,
     "tools/githooks/commit-msg": 2,

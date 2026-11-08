@@ -141,26 +141,6 @@ class Handler(BaseHTTPRequestHandler):
         method = url.path.strip("/")
         if url.path.startswith("/dl/"):
             return self.serve_file(int(url.path[4:]))
-        if method == "getzip":
-            # Like pCloud: getzip takes a folderid, never a path.
-            if "folderid" not in q:
-                return self.reply({"result": 1017, "error": "Invalid 'folderid' provided."})
-            target = self.store.folders_by_id.get(int(q["folderid"]))
-            if target is None or not target.is_dir():
-                return self.reply({"result": 2005, "error": "Directory does not exist."})
-            import io, zipfile
-            buf = io.BytesIO()
-            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-                for f in sorted(target.rglob("*")):
-                    if f.is_file() and not f.name.startswith("."):
-                        z.write(f, str(f.relative_to(target)))
-            body = buf.getvalue()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/zip")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-            return
         if method == "listfolder":
             # pCloud refuses a recursive listing of the root with 1101.
             if q.get("path", "/") == "/" and q.get("recursive") == "1":

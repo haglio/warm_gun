@@ -139,15 +139,6 @@ public enum PCloudAPI {
         ])
     }
 
-    /// pCloud's getzip takes a folderid, never a path.
-    public static func getZip(folderID: Int64, auth: String) -> PCloudRequest {
-        PCloudRequest(method: "getzip", query: [
-            URLQueryItem(name: "folderid", value: String(folderID)),
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: auth),
-        ])
-    }
-
     /// pCloud answers HTTP 200 to everything; only `result` says whether a call worked.
     public static func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         // Built per call: JSONDecoder is a class and the prefetcher decodes on several threads.

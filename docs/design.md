@@ -27,8 +27,8 @@ not alone.
   progress: what left the library is pruned, new arrivals join at the next
   rebuild he asks for.
 - **The sidecars are kept as the mirror wrote them.** The device saves each
-  sidecar's own bytes and reads them at launch, and fetches the mirror again
-  only when its listing changes. A copy saved as what one version read would
+  sidecar's own bytes and reads them at launch, and fetches a sidecar again
+  only when the mirror lists it as written since. A copy saved as what one version read would
   hide a field the next version reads until some sidecar changed, which is
   how the action buttons came up empty on 2026-11-07.
 - **What type a video is comes from the desktop.** Evolver records one of
@@ -168,9 +168,12 @@ every video's sidecar with a `watch` block. Warm Gun reads both: the weight is
 all its shuffle draws on, and the flag joins its favorites, only ever adding, since
 the flag is a snapshot from the last time the stage ran and would otherwise
 undo a favorite made away from home; an unfavorite made here is held until
-the desktop agrees. The sidecars arrive as one `getzip` per branch of the
-metadata mirror, falling back to one file at a time; a launch whose survey finds the
-mirror unchanged fetches nothing.
+the desktop agrees. A launch lists the metadata mirror and fetches, one file
+at a time, only the sidecars written since the device kept them, saving every
+hundred, so a launch cut short resumes where it stopped. A `getzip` of a whole
+branch came first; pCloud built it for minutes before its first byte, and
+nothing was kept until all three branches arrived, so on the phone a refresh
+had not finished since 2026-10-08.
 
 ## The Mac
 

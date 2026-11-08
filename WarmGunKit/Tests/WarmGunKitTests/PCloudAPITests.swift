@@ -373,15 +373,3 @@ extension PCloudAPITests {
         ])
     }
 }
-
-extension PCloudAPITests {
-    @Test func fetchesTheWholeSidecarCorpusAsOneZip() {
-        let request = PCloudAPI.getZip(folderID: 4242, auth: "token-abc")
-        #expect(request.method == "getzip")
-        #expect(request.query == [
-            URLQueryItem(name: "folderid", value: "4242"),
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: "token-abc"),
-        ])
-    }
-}
