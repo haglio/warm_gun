@@ -5,15 +5,15 @@ import Testing
 @Suite struct SidecarCorpusTests {
     static let one = "1_sorted/alpha/portrait/video-one.mp4"
     static let two = "1_sorted/beta/landscape/video-two.mp4"
-    static let oneSidecar = "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json"
-    static let twoSidecar = "2_outbox/upscaled_by_orientation/landscape/beta/video-two_topaz.json"
+    static let oneSidecar = "portrait/alpha/video-one_topaz.json"
+    static let twoSidecar = "landscape/beta/video-two_topaz.json"
 
     static func branch(_ listed: [String: Double]) -> SurveyedBranch {
         let files = listed.map { path, written in
             LibraryFile(path: path, fileID: 1, size: 100, modified: Date(timeIntervalSince1970: written),
                         duration: nil, videoCodec: nil, width: nil, height: nil)
         }
-        return SurveyedBranch(path: "/mirror/2D/AI", files: files,
+        return SurveyedBranch(path: "/mirror/kino/2D/AI", files: files,
                               index: SidecarIndex(branch: .ai, videoPaths: [one, two], listing: Array(listed.keys)))
     }
 

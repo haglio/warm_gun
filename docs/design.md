@@ -16,7 +16,7 @@ not alone.
   the non-AI library, filed in the catalog under `genau/clips/` and
   `non_AI/`; a scene's processed copies and upscales stay out.
 - **The library is found, never typed.** It is the one folder in the
-  account holding both pipeline stages, `1_sorted` and `2_outbox`, so a
+  account holding both pipeline stages, `0_inbox` and `1_sorted`, so a
   folders-only listing finds it; a parked copy under an underscore folder
   loses to the live tree. pCloud refuses a recursive listing of the root
   (1101), so the hunt descends one shallow level at a time from there.
@@ -119,7 +119,8 @@ From Fun Time's `fun_time/command_dispatch.py` and `fun_time/lock.py`:
   a `lock` event; unlocking moves on and never unfavorites.
 - **Trash** is the two-step demotion. A favorite only loses its star and
   the run moves on ("Unfavorited"). Anything else leaves the run, and its
-  upscale moves into `2_outbox/trash/` through the API's `renamefile`
+  upscale moves into the `trash` folder in Kino's folder (`kino` beside the
+  library's `2D` folder, as Genau's is) through the API's `renamefile`
   ("Sent to Trash"), to wait there with the original and its sidecar to be
   reviewed, so a trash on the phone is a trash everywhere. It never deletes
   anything. One accepted divergence: `renamefile` replaces a same-named

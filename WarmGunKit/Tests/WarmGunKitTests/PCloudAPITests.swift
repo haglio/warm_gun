@@ -252,8 +252,8 @@ extension PCloudAPITests {
 extension PCloudAPITests {
     @Test func everyBuilderCarriesTimeformatSoAnyDateComesBackAsSeconds() {
         let requests = [
-            PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4",
-                                 toPath: "/lib/2_outbox/trash/video-one_topaz.mp4", auth: "t"),
+            PCloudAPI.renameFile(path: "/lib/kino/2D/AI/portrait/alpha/video-one_topaz.mp4",
+                                 toPath: "/lib/kino/trash/video-one_topaz.mp4", auth: "t"),
             PCloudAPI.createFolderIfNotExists(path: "/Sync", auth: "t"),
             PCloudAPI.uploadFile(folderPath: "/Sync", filename: "journal.jsonl", auth: "t"),
         ]
@@ -283,13 +283,13 @@ extension PCloudAPITests {
 
 extension PCloudAPITests {
     @Test func movesAnUpscaleByGivingRenamefileItsPathAndAWholeDestination() {
-        let request = PCloudAPI.renameFile(path: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4",
-                                           toPath: "/lib/2_outbox/trash/video-one_topaz.mp4",
+        let request = PCloudAPI.renameFile(path: "/lib/kino/2D/AI/portrait/alpha/video-one_topaz.mp4",
+                                           toPath: "/lib/kino/trash/video-one_topaz.mp4",
                                            auth: "token-abc")
         #expect(request.method == "renamefile")
         #expect(request.query == [
-            URLQueryItem(name: "path", value: "/lib/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4"),
-            URLQueryItem(name: "topath", value: "/lib/2_outbox/trash/video-one_topaz.mp4"),
+            URLQueryItem(name: "path", value: "/lib/kino/2D/AI/portrait/alpha/video-one_topaz.mp4"),
+            URLQueryItem(name: "topath", value: "/lib/kino/trash/video-one_topaz.mp4"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: "token-abc"),
         ])
