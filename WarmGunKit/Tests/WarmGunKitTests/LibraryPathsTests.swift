@@ -12,7 +12,7 @@ import Testing
 
 extension LibraryPathsTests {
     @Test func refusesPathsOutsideTheSortedTree() {
-        #expect(LibraryPaths.parseOriginal("2_outbox/upscaled_by_orientation/portrait/alpha/video_topaz.mp4") == nil)
+        #expect(LibraryPaths.parseOriginal("2D/AI/portrait/alpha/video_topaz.mp4") == nil)
         #expect(LibraryPaths.parseOriginal("1_sorted/alpha/sideways/video.mp4") == nil)
         #expect(LibraryPaths.parseOriginal("1_sorted/alpha/portrait/noext") == nil)
         #expect(LibraryPaths.parseOriginal("1_sorted/alpha/portrait") == nil)
@@ -22,14 +22,19 @@ extension LibraryPathsTests {
 extension LibraryPathsTests {
     @Test func namesTheUpscaleOfAnOriginalWithTheTreesNestedTheOtherWayRound() {
         #expect(LibraryPaths.upscalePath(forOriginal: "1_sorted/alpha/portrait/video-one.mp4")
-                == "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.mp4")
+                == "2D/AI/portrait/alpha/video-one_topaz.mp4")
         #expect(LibraryPaths.upscalePath(forOriginal: "not/a/library/path.mp4") == nil)
     }
 }
 
 extension LibraryPathsTests {
-    @Test func namesTheFolderTheTrashGestureMovesAnUpscaleInto() {
-        #expect(LibraryPaths.trashDir == "2_outbox/trash")
+    @Test func namesKinosFolderBesideTheLibrarysTwoDFolderAsGenausIs() {
+        #expect(LibraryPaths.kinoPath(forLibrary: "/alpha/videos/videos/2D/AI") == "/alpha/videos/videos/kino")
+        #expect(LibraryPaths.kinoPath(forLibrary: "/AI") == nil)
+    }
+
+    @Test func namesTheFolderInKinosTheTrashGestureMovesAnUpscaleInto() {
+        #expect(LibraryPaths.kinoTrashFolder == "trash")
     }
 }
 
@@ -44,10 +49,10 @@ extension LibraryPathsTests {
                 Self.folder("videos", [
                     Self.folder("videos", [
                         Self.folder("2D", [
-                            Self.folder("AI", [Self.folder("1_sorted"), Self.folder("2_outbox")]),
+                            Self.folder("AI", [Self.folder("0_inbox"), Self.folder("1_sorted")]),
                         ]),
                     ]),
-                    Self.folder("metadata", [Self.folder("2D", [Self.folder("AI", [Self.folder("2_outbox")])])]),
+                    Self.folder("metadata", [Self.folder("2D", [Self.folder("AI", [Self.folder("1_sorted")])])]),
                 ]),
             ]),
         ])
@@ -56,14 +61,14 @@ extension LibraryPathsTests {
 
     @Test func aSubtreeListingYieldsAbsolutePathsWhenGivenItsBase() {
         let subtree = Self.folder("videos", [
-            Self.folder("2D", [Self.folder("AI", [Self.folder("1_sorted"), Self.folder("2_outbox")])]),
+            Self.folder("2D", [Self.folder("AI", [Self.folder("0_inbox"), Self.folder("1_sorted")])]),
         ])
         #expect(LibraryPaths.discoverLibrary(root: subtree, at: "/alpha/videos") == "/alpha/videos/2D/AI")
     }
 
     @Test func anArchivedCopyLosesToTheLiveTree() {
-        let live = Self.folder("lib", [Self.folder("1_sorted"), Self.folder("2_outbox")])
-        let parked = Self.folder("_old", [Self.folder("lib", [Self.folder("1_sorted"), Self.folder("2_outbox")])])
+        let live = Self.folder("lib", [Self.folder("0_inbox"), Self.folder("1_sorted")])
+        let parked = Self.folder("_old", [Self.folder("lib", [Self.folder("0_inbox"), Self.folder("1_sorted")])])
         let root = Self.folder("/", [parked, live])
         #expect(LibraryPaths.discoverLibrary(root: root) == "/lib")
         #expect(LibraryPaths.discoverLibrary(root: Self.folder("/", [Self.folder("empty")])) == nil)
@@ -125,7 +130,7 @@ extension LibraryPathsTests {
         let nonAI = LibraryPaths.MetadataBranch.nonAI
 
         #expect(ai.sidecarPath(forVideo: "1_sorted/alpha/portrait/video-one.mp4")
-                == "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz")
+                == "portrait/alpha/video-one_topaz")
         #expect(genau.sidecarPath(forVideo: "genau/clips/2D/AI/loop-two.mp4") == "2D/AI/loop-two")
         #expect(nonAI.sidecarPath(forVideo: "non_AI/bucket/inner/scene-three.mkv")
                 == "bucket/inner/scene-three")
@@ -157,7 +162,7 @@ extension LibraryPathsTests {
         let library = "/alpha/videos/videos/2D/AI"
 
         #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: library, genauFlicksFolder: "flicks")
-                == "/alpha/videos/metadata/2D/AI")
+                == "/alpha/videos/metadata/kino/2D/AI")
         #expect(LibraryPaths.MetadataBranch.genau.path(forLibrary: library, genauFlicksFolder: "flicks")
                 == "/alpha/videos/metadata/genau/flicks")
         #expect(LibraryPaths.MetadataBranch.nonAI.path(forLibrary: library, genauFlicksFolder: "flicks")
@@ -171,7 +176,7 @@ extension LibraryPathsTests {
 
         #expect(LibraryPaths.MetadataBranch.genau.path(forLibrary: library, genauFlicksFolder: nil) == nil)
         #expect(LibraryPaths.MetadataBranch.ai.path(forLibrary: library, genauFlicksFolder: nil)
-                == "/alpha/videos/metadata/2D/AI")
+                == "/alpha/videos/metadata/kino/2D/AI")
     }
 }
 

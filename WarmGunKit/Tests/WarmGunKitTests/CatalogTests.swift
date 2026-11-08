@@ -13,7 +13,7 @@ import Testing
             Self.file("1_sorted/alpha/portrait/one.mp4", id: 1),
             Self.file("1_sorted/alpha/portrait/two.funscript", id: 2),
             Self.file("1_sorted/alpha/portrait/brokenmp4", id: 3),
-            Self.file("2_outbox/upscaled_by_orientation/portrait/alpha/one_topaz.mp4", id: 4),
+            Self.file("0_inbox/alpha/one.mp4", id: 4),
             Self.file("1_sorted/beta/landscape/three.MP4", id: 5),
         ])
         #expect(catalog.videos.map(\.path) == ["1_sorted/alpha/portrait/one.mp4", "1_sorted/beta/landscape/three.MP4"])

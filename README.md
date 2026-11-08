@@ -27,7 +27,7 @@ clicks, and the P and L keys stand in for turning the phone.
   and a favorites flag back onto each video's metadata sidecar — which is where
   the phone reads both, so neither app keeps a copy of the formula and what the
   PC watched moves the phone's shuffle. The trash gesture parks the video's upscale in
-  `2_outbox/trash/`, where it waits to be reviewed — same as the desktop.
+  the `trash` folder in Kino's folder, where it waits to be reviewed — same as the desktop.
 
 ## Layout
 

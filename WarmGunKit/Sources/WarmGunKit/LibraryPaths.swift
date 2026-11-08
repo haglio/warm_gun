@@ -29,12 +29,16 @@ public enum LibraryPaths {
     }
 
     public static let upscaleSuffix = "_topaz"
-    public static let upscaledRoot = "2_outbox/upscaled_by_orientation"
-    public static let trashDir = "2_outbox/trash"
+    public static let kinoUpscalesFolder = "2D/AI"
+    public static let kinoTrashFolder = "trash"
+
+    public static func kinoPath(forLibrary libraryPath: String) -> String? {
+        replacingLastFolders(2, of: libraryPath, with: "kino")
+    }
 
     public static func upscalePath(forOriginal path: String) -> String? {
         guard let o = parseOriginal(path) else { return nil }
-        return "\(upscaledRoot)/\(o.shape.rawValue)/\(o.source)/\(o.stem)\(upscaleSuffix).mp4"
+        return "\(kinoUpscalesFolder)/\(o.shape.rawValue)/\(o.source)/\(o.stem)\(upscaleSuffix).mp4"
     }
 
     public static func discoverLibrary(root: PCloudEntry, at basePath: String = "") -> String? {
@@ -57,7 +61,7 @@ public enum LibraryPaths {
         guard entry.isfolder else { return }
         let children = entry.contents ?? []
         let names = Set(children.filter(\.isfolder).map(\.name))
-        if names.contains("1_sorted") && names.contains("2_outbox") {
+        if names.contains("0_inbox") && names.contains("1_sorted") {
             candidates.append(path.isEmpty ? "/" : path)
         }
         for child in children where child.isfolder {
@@ -122,7 +126,7 @@ public enum LibraryPaths {
         public func path(forLibrary libraryPath: String, genauFlicksFolder: String?) -> String? {
             guard let root = LibraryPaths.metadataRoot(forLibrary: libraryPath) else { return nil }
             switch self {
-            case .ai: return root + "/2D/AI"
+            case .ai: return root + "/kino/" + LibraryPaths.kinoUpscalesFolder
             case .genau: return genauFlicksFolder.map { root + "/genau/" + $0 }
             case .nonAI: return root + "/2D/non_AI"
             }
@@ -132,8 +136,7 @@ public enum LibraryPaths {
             switch self {
             case .ai:
                 guard let original = LibraryPaths.parseOriginal(videoPath) else { return nil }
-                return "\(LibraryPaths.upscaledRoot)/\(original.shape.rawValue)"
-                    + "/\(original.source)/\(original.stem)\(LibraryPaths.upscaleSuffix)"
+                return "\(original.shape.rawValue)/\(original.source)/\(original.stem)\(LibraryPaths.upscaleSuffix)"
             case .genau:
                 guard videoPath.hasPrefix(LibraryPaths.genauPrefix) else { return nil }
                 return LibraryPaths.dropExtension(

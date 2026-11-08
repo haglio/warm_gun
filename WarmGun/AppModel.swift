@@ -121,7 +121,7 @@ final class AppModel: ObservableObject {
             phase = .indexing
             do {
                 guard let client, let found = try await Self.discoverLibrary(client: client) else {
-                    lastProblem = "No folder holding both 1_sorted and 2_outbox found in this account"
+                    lastProblem = "No folder holding both 0_inbox and 1_sorted found in this account"
                     phase = .needsLibrary
                     return
                 }
@@ -506,12 +506,12 @@ final class AppModel: ObservableObject {
     }
 
     private func moveUpscaleToTrash(_ path: String) async {
-        guard let client, let upscale = LibraryPaths.upscalePath(forOriginal: path) else { return }
-        let root = settings.libraryPath
-        let trashDir = root + "/" + LibraryPaths.trashDir
+        guard let client, let upscale = LibraryPaths.upscalePath(forOriginal: path),
+              let kino = LibraryPaths.kinoPath(forLibrary: settings.libraryPath) else { return }
+        let trashDir = kino + "/" + LibraryPaths.kinoTrashFolder
         do {
             try await client.createFolderIfNotExists(path: trashDir)
-            try await client.renameFile(path: root + "/" + upscale,
+            try await client.renameFile(path: kino + "/" + upscale,
                                          toPath: trashDir + "/" + (upscale as NSString).lastPathComponent)
         } catch {
             lastProblem = "Could not move the upscale to trash: \(error.localizedDescription)"

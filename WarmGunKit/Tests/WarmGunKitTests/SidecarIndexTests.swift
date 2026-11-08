@@ -12,17 +12,17 @@ import Testing
 
     @Test func keepsTheListedSidecarsThatNameAVideoAndDropsTheRest() {
         let index = SidecarIndex(branch: .ai, videoPaths: Self.videos, listing: [
-            "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json",
-            "2_outbox/upscaled_by_orientation/landscape/beta/video-two_topaz.json",
-            "2_outbox/upscaled_by_orientation/portrait/alpha/video-gone_topaz.json",
-            "2_outbox/trash/video-one_topaz.json",
+            "portrait/alpha/video-one_topaz.json",
+            "landscape/beta/video-two_topaz.json",
+            "portrait/alpha/video-gone_topaz.json",
+            "landscape/alpha/video-one_topaz.json",
             "not-a-sidecar.txt",
         ])
 
         #expect(index.videosByListedSidecar == [
-            "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json":
+            "portrait/alpha/video-one_topaz.json":
                 "1_sorted/alpha/portrait/video-one.mp4",
-            "2_outbox/upscaled_by_orientation/landscape/beta/video-two_topaz.json":
+            "landscape/beta/video-two_topaz.json":
                 "1_sorted/beta/landscape/video-two.mp4",
         ])
     }

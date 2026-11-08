@@ -155,7 +155,6 @@
         "orientation"
       ],
       "keep": [
-        "upscaled_by_orientation",
         "beginGeneratingDeviceOrientationNotifications",
         "orientationDidChangeNotification",
         "UIDevice.current.orientation",
