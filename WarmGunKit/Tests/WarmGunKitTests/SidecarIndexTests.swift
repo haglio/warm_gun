@@ -41,27 +41,3 @@ extension SidecarIndexTests {
                 == ["bucket/inner/scene-four.json": "non_AI/bucket/inner/scene-four.mkv"])
     }
 }
-
-extension SidecarIndexTests {
-    @Test func aZipEntryIsMatchedByItsTailWhateverRootTheServerChose() {
-        let index = SidecarIndex(branch: .ai, videoPaths: Self.videos, listing: [
-            "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json",
-        ])
-        let video = "1_sorted/alpha/portrait/video-one.mp4"
-
-        #expect(index.video(forZipEntry: "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json") == video)
-        #expect(index.video(forZipEntry: "AI/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json") == video)
-        #expect(index.video(forZipEntry: "whatever/2D/AI/2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json") == video)
-        #expect(index.video(forZipEntry: "alpha/video-one_topaz.json") == nil)
-        #expect(index.video(forZipEntry: "2_outbox/upscaled_by_orientation/portrait/alpha/video-gone_topaz.json") == nil)
-    }
-}
-
-extension SidecarIndexTests {
-    @Test func aZipEntryMatchesOnlyWhereItsTailStartsOnASeparator() {
-        let index = SidecarIndex(branch: .ai, videoPaths: Self.videos, listing: [
-            "2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json",
-        ])
-        #expect(index.video(forZipEntry: "x2_outbox/upscaled_by_orientation/portrait/alpha/video-one_topaz.json") == nil)
-    }
-}

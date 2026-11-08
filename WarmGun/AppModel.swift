@@ -314,38 +314,42 @@ final class AppModel: ObservableObject {
         let flicksFolder = self.genauFlicksFolder
         let videoPaths = catalog.videos.map(\.path)
         Task {
-            let survey = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
+            let branches = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
                                                       genauFlicksFolder: flicksFolder, videoPaths: videoPaths)
-            guard !survey.branches.isEmpty else {
+            guard !branches.isEmpty else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"
                 MetadataFetcher.log.error("no branch of the metadata mirror answered")
                 retryMetadataLater()
                 return
             }
-            let stored = UserDefaults.standard.string(forKey: Self.metadataFingerprintKey)
-            if survey.fingerprint == stored, !groupIndex.isEmpty {
-                MetadataFetcher.log.notice("mirror unchanged, the corpus on disk serves")
-                return
+            var missed = 0
+            for branch in branches {
+                let stale = corpus.stale(in: branch)
+                MetadataFetcher.log.notice("\(branch.path, privacy: .private): \(stale.count) sidecars to fetch")
+                for start in stride(from: 0, to: stale.count, by: Self.sidecarsPerSave) {
+                    let batch = Array(stale[start..<min(start + Self.sidecarsPerSave, stale.count)])
+                    let fetched = await MetadataFetcher.fetch(client: client, files: batch)
+                    var grown = corpus
+                    for file in batch {
+                        guard let record = fetched[file.path],
+                              let video = branch.index.videosByListedSidecar[file.path] else { continue }
+                        grown.keep(record, for: video, written: file.modified)
+                    }
+                    missed += batch.count - fetched.count
+                    adopt(grown)
+                    if session.playlist.isEmpty { rebuild(startAtTop: true) }
+                    try? JSONEncoder().encode(corpus).write(to: sidecarsURL, options: .atomic)
+                }
             }
-            let fetched = await MetadataFetcher.fetchSidecars(client: client, branches: survey.branches)
-            guard !fetched.isEmpty else {
-                lastProblem = "Metadata: the metadata folders came back empty"
-                MetadataFetcher.log.error("the metadata folders came back empty")
+            if missed > 0 {
+                lastProblem = "Metadata: \(missed) sidecars would not download"
+                MetadataFetcher.log.error("\(missed) sidecars would not download")
                 retryMetadataLater()
-                return
-            }
-            MetadataFetcher.log.notice("adopting \(fetched.count) sidecars")
-            adopt(SidecarCorpus(records: corpus.records.merging(fetched) { _, new in new }))
-            if session.playlist.isEmpty { rebuild(startAtTop: true) }
-            guard let data = try? JSONEncoder().encode(corpus),
-                  (try? data.write(to: sidecarsURL, options: .atomic)) != nil else { return }
-            if survey.isComplete(fetched) {
-                UserDefaults.standard.set(survey.fingerprint, forKey: Self.metadataFingerprintKey)
             }
         }
     }
 
-    private static let metadataFingerprintKey = "warm-gun.metadata-fingerprint"
+    private static let sidecarsPerSave = 100
 
     private func retryMetadataLater() {
         guard metadataAttempts < 5 else {
