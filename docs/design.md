@@ -26,6 +26,11 @@ not alone.
   in memory, with no network on a tap. A refresh never reshuffles the run in
   progress: what left the library is pruned, new arrivals join at the next
   rebuild he asks for.
+- **The sidecars are kept as the mirror wrote them.** The device saves each
+  sidecar's own bytes and reads them at launch, and fetches the mirror again
+  only when its listing changes. A copy saved as what one version read would
+  hide a field the next version reads until some sidecar changed, which is
+  how the action buttons came up empty on 2026-11-07.
 - **What type a video is comes from the desktop.** Evolver records one of
   `genau_flick` / `excerpt` / `short` / `full_length` on every video's
   metadata sidecar (`video.type`), and `VideoType` is that field's

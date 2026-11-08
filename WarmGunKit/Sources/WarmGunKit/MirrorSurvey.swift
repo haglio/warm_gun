@@ -26,7 +26,7 @@ public struct MirrorSurvey: Sendable {
         }.joined(separator: ";")
     }
 
-    public func isComplete(_ fetched: [String: Sidecar]) -> Bool {
+    public func isComplete(_ fetched: [String: Data]) -> Bool {
         branches.allSatisfy { branch in
             branch.index.videosByListedSidecar.values.allSatisfy { fetched[$0] != nil }
         }

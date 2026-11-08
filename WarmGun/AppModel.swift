@@ -32,7 +32,7 @@ final class AppModel: ObservableObject {
     private var measuredSeconds: [String: Double] = [:]
     @Published private var groupIndex = GroupIndex(sidecars: [:])
     private var weights = WatchWeights()
-    private var sidecars: [String: Sidecar] = [:]
+    private var corpus = SidecarCorpus()
     private var refreshedMetadata = false
     private var metadataAttempts = 0
     private var genauFlicksFolder: String?
@@ -335,9 +335,9 @@ final class AppModel: ObservableObject {
                 return
             }
             MetadataFetcher.log.notice("adopting \(fetched.count) sidecars")
-            adopt(sidecars: sidecars.merging(fetched) { _, new in new })
+            adopt(SidecarCorpus(records: corpus.records.merging(fetched) { _, new in new }))
             if session.playlist.isEmpty { rebuild(startAtTop: true) }
-            guard let data = try? JSONEncoder().encode(sidecars),
+            guard let data = try? JSONEncoder().encode(corpus),
                   (try? data.write(to: sidecarsURL, options: .atomic)) != nil else { return }
             if survey.isComplete(fetched) {
                 UserDefaults.standard.set(survey.fingerprint, forKey: Self.metadataFingerprintKey)
@@ -359,14 +359,15 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func adopt(sidecars corpus: [String: Sidecar]) {
-        sidecars = corpus
-        groupIndex = GroupIndex(sidecars: corpus)
-        weights = WatchWeights(sidecars: corpus)
-        let flagged = Set(corpus.filter(\.value.favorite).keys.compactMap(LibraryPaths.favoriteKey(forVideo:)))
+    private func adopt(_ corpus: SidecarCorpus) {
+        self.corpus = corpus
+        let sidecars = corpus.sidecars
+        groupIndex = GroupIndex(sidecars: sidecars)
+        weights = WatchWeights(sidecars: sidecars)
+        let flagged = Set(sidecars.filter(\.value.favorite).keys.compactMap(LibraryPaths.favoriteKey(forVideo:)))
         let before = favorites
         favorites.adopt(flagged: flagged,
-                        covering: Set(corpus.keys.compactMap(LibraryPaths.favoriteKey(forVideo:))))
+                        covering: Set(sidecars.keys.compactMap(LibraryPaths.favoriteKey(forVideo:))))
         if favorites != before { persistState() }
     }
 
@@ -786,8 +787,8 @@ final class AppModel: ObservableObject {
 
     private func foldSavedCorpusIntoRestoredFavorites() {
         if let data = try? Data(contentsOf: sidecarsURL),
-           let sidecars = try? JSONDecoder().decode([String: Sidecar].self, from: data) {
-            adopt(sidecars: sidecars)
+           let corpus = try? JSONDecoder().decode(SidecarCorpus.self, from: data) {
+            adopt(corpus)
         }
     }
 

@@ -1,11 +1,15 @@
 import Foundation
 
-public struct Sidecar: Codable, Equatable, Sendable {
-    public struct Watch: Codable, Equatable, Sendable {
+public struct Sidecar: Decodable, Equatable, Sendable {
+    public struct Watch: Decodable, Equatable, Sendable {
         public let weight: Double?
 
         public init(weight: Double?) {
             self.weight = weight
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case weight
         }
 
         public init(from decoder: Decoder) throws {
@@ -55,18 +59,6 @@ public struct Sidecar: Codable, Equatable, Sendable {
     private static func block(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> [String: String]? {
         guard let fields = ((try? c.decodeIfPresent([String: Field].self, forKey: key)) ?? nil) else { return nil }
         return fields.compactMapValues(\.text)
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        if video != nil || !labels.isEmpty {
-            var block = c.nestedContainer(keyedBy: VideoKey.self, forKey: .video)
-            for (key, text) in video ?? [:] { try block.encode(text, forKey: VideoKey(key)) }
-            if !labels.isEmpty { try block.encode(labels, forKey: .labels) }
-        }
-        try c.encodeIfPresent(sourceImage, forKey: .sourceImage)
-        try c.encodeIfPresent(watch, forKey: .watch)
-        try c.encode(favorite, forKey: .favorite)
     }
 
     private static func labels(_ c: KeyedDecodingContainer<CodingKeys>) -> [String] {
