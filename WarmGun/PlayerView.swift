@@ -246,10 +246,13 @@ private struct ControlsOverlay: View {
             action()
         } label: {
             Text(label)
+                .fontWeight(.bold)
+                .hidden()
+                .overlay { Text(label).fontWeight(selected ? .bold : .regular) }
                 .frame(minWidth: compact ? 40 : 84, minHeight: 34)
         }
         .buttonStyle(.plain)
-        .font(.subheadline.weight(selected ? .bold : .regular))
+        .font(.subheadline)
         .padding(.horizontal, compact ? 2 : 8)
         .padding(.vertical, compact ? 3 : 5)
         .background(selected ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
