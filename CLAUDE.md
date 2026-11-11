@@ -45,9 +45,9 @@ SwiftPM package in `WarmGunKit/` (Foundation only, enforced by a gate).
 
 ## The phone does not self-update
 
-A change reaches the iPhone only by `./install.sh` with the phone plugged in
-and *unlocked* (the build outlasts the auto-lock; unlock again for the install
-step). Until that has run, a phone fix is NOT fixed, however green the suite —
+A change reaches the iPhone only by `./install.sh` with the phone plugged in.
+The build outlasts the auto-lock, so the script reads the lock state and waits
+for an unlock; ask for one only when it prints that it is waiting. Until that has run, a phone fix is NOT fixed, however green the suite —
 say so rather than reporting it landed. If you need the phone, **ask for it**;
 never verify around its absence when the change is about device behavior.
 
