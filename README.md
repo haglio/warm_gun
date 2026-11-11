@@ -47,7 +47,7 @@ clicks, and the P and L keys stand in for turning the phone.
 ## Running
 
 - Tests: `cd WarmGunKit && swift test`; everything: `sh tools/check.sh`.
-- Phone: `./install.sh` with the iPhone plugged in and unlocked.
+- Phone: `./install.sh` with the iPhone plugged in; it waits for the phone to be unlocked before installing.
 - Mac: `./install_mac.sh` builds a Release app into `~/Applications/Warm Gun.app`
   and opens it. It signs with the development certificate alone, so there is
   no device registration and no Apple-side step.

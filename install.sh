@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Xcode's build outlasts the iPhone's auto-lock, so unlock it again for the install step.
+# Xcode's build outlasts the iPhone's auto-lock, so the install waits until the phone is unlocked.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -22,6 +22,15 @@ fi
 if [[ -z "$DEVICE" ]]; then
   echo "No iPhone found. Plug it in (unlock it), or pass DEVICE=<udid>." >&2
   exit 1
+fi
+
+locked() {
+  xcrun devicectl device info lockState --device "$DEVICE" --quiet --json-output - 2>/dev/null \
+    | python3 -c 'import json, sys; sys.exit(0 if json.load(sys.stdin)["result"]["passcodeRequired"] else 1)'
+}
+if locked; then
+  echo "Unlock the iPhone to install. Waiting..." >&2
+  while locked; do sleep 2; done
 fi
 
 xcrun devicectl device install app --device "$DEVICE" "$APP"
