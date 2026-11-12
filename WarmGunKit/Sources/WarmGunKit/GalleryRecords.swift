@@ -12,6 +12,11 @@ public struct GalleryRecords: Sendable {
         self.videosByKey = videosByKey
     }
 
+    public func videosKeepingSidecars(of videoPaths: [String]) -> [String] {
+        let kept = Set(videosByKey.values)
+        return videoPaths.filter { !kept.contains($0) }
+    }
+
     public func records(in file: Data) -> [String: Data] {
         guard let entries = (try? JSONSerialization.jsonObject(with: file)) as? [String: Any] else { return [:] }
         var records: [String: Data] = [:]
