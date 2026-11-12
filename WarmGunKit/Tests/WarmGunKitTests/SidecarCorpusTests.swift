@@ -60,4 +60,20 @@ import Testing
         #expect(corpus.sidecars[Self.two] == nil)
         #expect(corpus.sidecars[scene]?.favorite == true)
     }
+
+    @Test func theGallerysFileIsFetchedAgainOnlyWhenTheMirrorListsItAsWrittenSinceItWasKept() throws {
+        let gallery = GalleryRecords(libraryPath: "/alpha/videos/videos/2D/AI", genauFlicksFolder: nil, videoPaths: [Self.one])
+        func listed(_ written: Double) -> LibraryFile {
+            LibraryFile(path: "gallery_records.json", fileID: 9, size: 100, modified: Date(timeIntervalSince1970: written),
+                        duration: nil, videoCodec: nil, width: nil, height: nil)
+        }
+        var corpus = SidecarCorpus()
+        #expect(corpus.galleryIsStale(listed(1_000)))
+
+        corpus.keepGallery(Data("{}".utf8), read: gallery, written: Date(timeIntervalSince1970: 1_000))
+        let saved = try JSONDecoder().decode(SidecarCorpus.self, from: JSONEncoder().encode(corpus))
+
+        #expect(!saved.galleryIsStale(listed(1_000)))
+        #expect(saved.galleryIsStale(listed(1_500)))
+    }
 }
