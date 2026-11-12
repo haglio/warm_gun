@@ -315,22 +315,23 @@ final class AppModel: ObservableObject {
         let videoPaths = catalog.videos.map(\.path)
         Task {
             var missed = 0
-            let gallery = await MetadataFetcher.gallery(client: client, libraryPath: libraryPath,
-                                                        genauFlicksFolder: flicksFolder, videoPaths: videoPaths)
-            if let gallery, corpus.galleryIsStale(gallery.file) {
+            let gallery = GalleryRecords(libraryPath: libraryPath, genauFlicksFolder: flicksFolder,
+                                         videoPaths: videoPaths)
+            let galleryFile = await MetadataFetcher.galleryFile(client: client, libraryPath: libraryPath)
+            if let galleryFile, corpus.galleryIsStale(galleryFile) {
                 MetadataFetcher.log.notice("the gallery file is written since it was kept: fetching it")
-                if let file = await MetadataFetcher.fetch(client: client, files: [gallery.file])[gallery.file.path] {
+                if let file = await MetadataFetcher.fetch(client: client, files: [galleryFile])[galleryFile.path] {
                     var grown = corpus
-                    grown.keepGallery(file, read: gallery.records, written: gallery.file.modified)
+                    grown.keepGallery(file, read: gallery, written: galleryFile.modified)
                     adoptAndSave(grown)
                 } else {
                     missed += 1
                 }
             }
-            let sidecarVideos = gallery?.records.videosKeepingSidecars(of: videoPaths) ?? videoPaths
             let branches = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
-                                                      genauFlicksFolder: flicksFolder, videoPaths: sidecarVideos)
-            guard !branches.isEmpty || gallery != nil else {
+                                                      genauFlicksFolder: flicksFolder,
+                                                      videoPaths: gallery.videosKeepingSidecars(of: videoPaths))
+            guard !branches.isEmpty || galleryFile != nil else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"
                 MetadataFetcher.log.error("no branch of the metadata mirror answered")
                 retryMetadataLater()

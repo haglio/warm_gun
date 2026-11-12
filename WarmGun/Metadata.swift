@@ -31,8 +31,7 @@ enum MetadataFetcher {
         return branches
     }
 
-    static func gallery(client: PCloudClient, libraryPath: String, genauFlicksFolder: String?,
-                        videoPaths: [String]) async -> (records: GalleryRecords, file: LibraryFile)? {
+    static func galleryFile(client: PCloudClient, libraryPath: String) async -> LibraryFile? {
         guard let root = LibraryPaths.metadataRoot(forLibrary: libraryPath) else { return nil }
         let files: [LibraryFile]
         do {
@@ -45,9 +44,7 @@ enum MetadataFetcher {
             log.notice("no gallery file in the metadata mirror")
             return nil
         }
-        let records = GalleryRecords(libraryPath: libraryPath, genauFlicksFolder: genauFlicksFolder,
-                                     videoPaths: videoPaths)
-        return (records, file)
+        return file
     }
 
     static func fetch(client: PCloudClient, files: [LibraryFile]) async -> [String: Data] {
