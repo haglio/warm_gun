@@ -31,6 +31,25 @@ enum MetadataFetcher {
         return branches
     }
 
+    static func gallery(client: PCloudClient, libraryPath: String, genauFlicksFolder: String?,
+                        videoPaths: [String]) async -> (records: GalleryRecords, file: LibraryFile)? {
+        guard let root = LibraryPaths.metadataRoot(forLibrary: libraryPath) else { return nil }
+        let files: [LibraryFile]
+        do {
+            files = try await client.listLibrary(path: root, recursive: false)
+        } catch {
+            log.error("the metadata mirror's top would not list: \(error.localizedDescription)")
+            return nil
+        }
+        guard let file = files.first(where: { $0.path == GalleryRecords.fileName }) else {
+            log.notice("no gallery file in the metadata mirror")
+            return nil
+        }
+        let records = GalleryRecords(libraryPath: libraryPath, genauFlicksFolder: genauFlicksFolder,
+                                     videoPaths: videoPaths)
+        return (records, file)
+    }
+
     static func fetch(client: PCloudClient, files: [LibraryFile]) async -> [String: Data] {
         var records: [String: Data] = [:]
         await withTaskGroup(of: (String, Data)?.self) { group in
