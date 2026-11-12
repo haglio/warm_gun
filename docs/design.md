@@ -31,18 +31,25 @@ not alone.
   only when the mirror lists it as written since. A copy saved as what one version read would
   hide a field the next version reads until some sidecar changed, which is
   how the action buttons came up empty on 2026-11-07.
-- **What type a video is comes from the desktop.** Evolver records one of
-  `genau_flick` / `excerpt` / `short` / `full_length` on every video's
-  metadata sidecar (`video.type`), and `VideoType` is that field's
+- **The AI videos' records come from Origenerator's gallery.** The gallery
+  is the only record of a video under a 2D/AI folder (Kino's upscales and
+  Genau's AI flicks), and Origenerator copies it into one file in the
+  mirror's top, `gallery_records.json`, keyed by each video's path from the
+  library root and shaped as a sidecar per video. The phone fetches that
+  file whenever the mirror lists it as written since it was kept, takes
+  every AI video's record from it, and fetches sidecars only for the other
+  videos. Until the file appears it fetches the AI sidecars as before.
+- **What type a video is comes from the desktop.** Its record carries one of
+  `genau_flick` / `excerpt` / `short` / `full_length` (`video.type`), and `VideoType` is that field's
   vocabulary, so a video is the same type here as in Fun Time. For a video
-  whose sidecar has not arrived, the overlay's lanes, the source folder and
+  whose record has not arrived, the overlay's lanes, the source folder and
   a running time stand in, in that order. A video's actions are a different
   axis, the action buttons'; they never decide a type.
-- **The action buttons are the labels on the sidecars.** Origenerator names
+- **The action buttons are the labels on the records.** Origenerator names
   each AI video's actions in his words, its image's, its own, then its
-  checked boxes, and Evolver copies them onto the sidecar as `video.labels`.
+  checked boxes, and writes them into the gallery's file as `video.labels`.
   Origenerator's list lives on the desktop, out of the phone's reach, so
-  there is one button for every label some sidecar carries, in alphabetical
+  there is one button for every label some record carries, in alphabetical
   order, and no second list. A video sits out while any of its labels is
   turned off; one with no labels always plays. The Seed loop holds a video's
   labels fixed, and reads the site's own word (`video.action`) only for a
@@ -132,7 +139,7 @@ From Fun Time's `fun_time/command_dispatch.py` and `fun_time/lock.py`:
 - **The Loop control** has four stops: All, the whole run; 1, every video
   repeating until tapped (Warm Gun's own); and the desktop's group loops,
   Seed (the video's action done by its other subjects) and Action (its subject
-  doing other actions), grouped over the metadata sidecars exactly as
+  doing other actions), grouped over the videos' records exactly as
   `fun_time/media_metadata.py` groups them. A group loop re-seats the
   playlist with the video on screen first, which never restarts; a group of
   one is no loop, so its stop is grayed out, and on the Mac E steps the four
@@ -141,9 +148,10 @@ From Fun Time's `fun_time/command_dispatch.py` and `fun_time/lock.py`:
   that these four are right and Fun Time's cycle is the one to change.
 - **Ordering.** Shuffle is the desktop's watch-weighted Efraimidis–Spirakis
   shuffle with probabilistic inclusion; the weight is read, never computed:
-  Evolver sums what Fun Time and Warm Gun each completed, skipped and locked
-  and stamps the result on every video's sidecar as `watch.weight`
-  (`evolver/util/watch.py`), so one formula serves both apps. No weight
+  Evolver sums what Fun Time and Warm Gun each completed, skipped and locked,
+  and the result reaches every video's record as `watch.weight`: stamped on
+  a sidecar, or handed to the gallery for an AI video, which writes it into
+  its file. One formula serves both apps. No weight
   weighs 1. Latest is newest first and carries no weighting, so a new
   arrival surfaces whatever its weight. A filter change keeps the
   video on screen when it survives; a filter
@@ -162,15 +170,16 @@ uploads run one at a time, so the size recorded as uploaded is the size the
 cloud holds. The phone writes `warm-gun-journal.jsonl` and the Mac
 `warm-gun-journal-mac.jsonl`, since Evolver reads every `.jsonl` there.
 
-The return leg arrives on the sidecars. Evolver applies the journals'
-favorites and unfavorites to the sidecars, through a cursor kept per journal
-file: a favorite is only the `favorite: true` mark there. It also stamps
-every video's sidecar with a `watch` block. Warm Gun reads both: the weight is
+The return leg arrives on the records. Evolver applies the journals'
+favorites and unfavorites, through a cursor kept per journal file, to the
+sidecars and, for the AI videos, to the gallery: a favorite is only the
+`favorite: true` mark on a record. Every record also carries a `watch`
+block. Warm Gun reads both: the weight is
 all its shuffle draws on, and the flag joins its favorites, only ever adding, since
 the flag is a snapshot from the last time the stage ran and would otherwise
 undo a favorite made away from home; an unfavorite made here is held until
 the desktop agrees. A launch lists the metadata mirror and fetches, one file
-at a time, only the sidecars written since the device kept them, saving every
+at a time, only the sidecars (and the gallery's file) written since the device kept them, saving every
 hundred, so a launch cut short resumes where it stopped. A `getzip` of a whole
 branch came first; pCloud built it for minutes before its first byte, and
 nothing was kept until all three branches arrived, so on the phone a refresh
