@@ -118,6 +118,12 @@ public enum LibraryPaths {
         replacingLastFolders(3, of: libraryPath, with: "metadata")
     }
 
+    public static func relativeToLibraryRoot(_ path: String, forLibrary libraryPath: String) -> String? {
+        let rootDepth = libraryPath.split(separator: "/").count - 4
+        guard rootDepth >= 0 else { return nil }
+        return path.split(separator: "/").dropFirst(rootDepth).joined(separator: "/")
+    }
+
     public enum MetadataBranch: String, CaseIterable, Sendable {
         case ai
         case genau
