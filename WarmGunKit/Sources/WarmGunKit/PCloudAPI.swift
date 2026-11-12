@@ -77,23 +77,24 @@ public enum PCloudAPI {
         PCloudRequest(method: "tfa_sendcodeviasysnotification", query: [URLQueryItem(name: "token", value: token)])
     }
 
-    public static func listFolder(path: String, auth: String) -> PCloudRequest {
-        PCloudRequest(method: "listfolder", query: [
-            URLQueryItem(name: "path", value: path),
-            URLQueryItem(name: "recursive", value: "1"),
-            URLQueryItem(name: "timeformat", value: "timestamp"),
-            URLQueryItem(name: "auth", value: auth),
-        ])
+    public static func listFolder(path: String, auth: String, recursive: Bool = true) -> PCloudRequest {
+        listing(path: path, auth: auth, recursive: recursive, nofiles: false)
     }
 
     /// pCloud answers a recursive listing of the root with 1101.
     public static func listFolders(path: String, auth: String, recursive: Bool = true) -> PCloudRequest {
+        listing(path: path, auth: auth, recursive: recursive, nofiles: true)
+    }
+
+    private static func listing(path: String, auth: String, recursive: Bool, nofiles: Bool) -> PCloudRequest {
         var query = [URLQueryItem(name: "path", value: path)]
         if recursive {
             query.append(URLQueryItem(name: "recursive", value: "1"))
         }
+        if nofiles {
+            query.append(URLQueryItem(name: "nofiles", value: "1"))
+        }
         query.append(contentsOf: [
-            URLQueryItem(name: "nofiles", value: "1"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
             URLQueryItem(name: "auth", value: auth),
         ])
