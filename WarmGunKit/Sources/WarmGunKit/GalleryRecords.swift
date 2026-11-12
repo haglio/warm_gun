@@ -6,7 +6,8 @@ public struct GalleryRecords: Sendable {
     public init(libraryPath: String, genauFlicksFolder: String?, videoPaths: [String]) {
         var videosByKey: [String: String] = [:]
         for video in videoPaths {
-            if let key = Self.key(forVideo: video, libraryPath: libraryPath) { videosByKey[key] = video }
+            if let key = Self.key(forVideo: video, libraryPath: libraryPath,
+                                   genauFlicksFolder: genauFlicksFolder) { videosByKey[key] = video }
         }
         self.videosByKey = videosByKey
     }
@@ -22,9 +23,26 @@ public struct GalleryRecords: Sendable {
         return records
     }
 
-    private static func key(forVideo video: String, libraryPath: String) -> String? {
+    private static func key(forVideo video: String, libraryPath: String, genauFlicksFolder: String?) -> String? {
+        guard let path = libraryPathOf(video, libraryPath: libraryPath, genauFlicksFolder: genauFlicksFolder)
+        else { return nil }
+        return LibraryPaths.relativeToLibraryRoot(path, forLibrary: libraryPath)
+    }
+
+    private static func libraryPathOf(_ video: String, libraryPath: String, genauFlicksFolder: String?) -> String? {
+        if video.hasPrefix(LibraryPaths.genauPrefix) {
+            let inner = String(video.dropFirst(LibraryPaths.genauPrefix.count))
+            guard isUnderAnAIFolder(inner), let folder = genauFlicksFolder,
+                  let genau = LibraryPaths.genauPath(forLibrary: libraryPath) else { return nil }
+            return genau + "/" + folder + "/" + inner
+        }
         guard let kino = LibraryPaths.kinoPath(forLibrary: libraryPath),
               let upscale = LibraryPaths.upscalePath(forOriginal: video) else { return nil }
-        return LibraryPaths.relativeToLibraryRoot(kino + "/" + upscale, forLibrary: libraryPath)
+        return kino + "/" + upscale
+    }
+
+    private static func isUnderAnAIFolder(_ path: String) -> Bool {
+        let folders = path.split(separator: "/")
+        return zip(folders, folders.dropFirst()).contains { $0 == "2D" && $1 == "AI" }
     }
 }
