@@ -3,6 +3,7 @@ import Foundation
 public struct SidecarCorpus: Codable, Equatable, Sendable {
     public private(set) var records: [String: Data]
     private var written: [String: Date]
+    private var galleryWritten: Date?
 
     public init() {
         records = [:]
@@ -10,13 +11,14 @@ public struct SidecarCorpus: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case records, written
+        case records, written, galleryWritten
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         records = try c.decode([String: Data].self, forKey: .records)
         written = try c.decodeIfPresent([String: Date].self, forKey: .written) ?? [:]
+        galleryWritten = try c.decodeIfPresent(Date.self, forKey: .galleryWritten)
     }
 
     public var sidecars: [String: Sidecar] {
@@ -37,6 +39,11 @@ public struct SidecarCorpus: Codable, Equatable, Sendable {
         for (video, record) in gallery.records(in: file) {
             keep(record, for: video, written: when)
         }
+        galleryWritten = when
+    }
+
+    public func galleryIsStale(_ listed: LibraryFile) -> Bool {
+        galleryWritten.map { listed.modified > $0 } ?? true
     }
 
     public func stale(in branch: SurveyedBranch) -> [LibraryFile] {
