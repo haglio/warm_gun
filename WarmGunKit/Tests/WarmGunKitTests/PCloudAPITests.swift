@@ -51,6 +51,17 @@ extension PCloudAPITests {
 }
 
 extension PCloudAPITests {
+    @Test func aShallowListingNamesOnlyTheFolderItAsksFor() {
+        let request = PCloudAPI.listFolder(path: "/lib/metadata", auth: "token-abc", recursive: false)
+        #expect(request.query == [
+            URLQueryItem(name: "path", value: "/lib/metadata"),
+            URLQueryItem(name: "timeformat", value: "timestamp"),
+            URLQueryItem(name: "auth", value: "token-abc"),
+        ])
+    }
+}
+
+extension PCloudAPITests {
     @Test func asksForADownloadLinkByFileIDRatherThanByPath() {
         let request = PCloudAPI.fileLink(fileID: 90_210, auth: "token-abc")
         #expect(request.method == "getfilelink")
