@@ -2,6 +2,9 @@
 # Xcode's build outlasts the iPhone's auto-lock, so the install waits until the phone is unlocked.
 set -euo pipefail
 cd "$(dirname "$0")"
+mkdir -p build
+exec > >(tee build/install.log) 2>&1
+echo "This run is logged to $PWD/build/install.log."
 
 source tools/require_overlay.sh
 
@@ -12,8 +15,7 @@ xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
 
 APP="build/Build/Products/Debug-iphoneos/Warm Gun.app"
 
-# devicectl lists the Simulator's devices beside the real ones, and its table prints a sentence
-# where none matches, so the phone is picked by what it is and read out of the JSON.
+# devicectl's table lists simulators and prints a sentence when none match, so read its JSON instead.
 if [[ -z "${DEVICE:-}" ]]; then
   DEVICE=$(xcrun devicectl list devices --quiet --json-output - \
     --filter "properties.hardware.platform == 'iOS' AND properties.hardware.reality != 'simulated'" 2>/dev/null \
@@ -33,5 +35,11 @@ if locked; then
   while locked; do sleep 2; done
 fi
 
-xcrun devicectl device install app --device "$DEVICE" "$APP"
+# The phone sometimes drops the connection mid-install (CoreDeviceError 4000); a retry gets through.
+for attempt in 1 2 3; do
+  xcrun devicectl device install app --device "$DEVICE" "$APP" && break
+  (( attempt < 3 )) || exit 1
+  echo "Install attempt $attempt failed. Retrying in 5 seconds..." >&2
+  sleep 5
+done
 echo "Installed onto $DEVICE."
