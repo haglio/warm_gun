@@ -314,15 +314,28 @@ final class AppModel: ObservableObject {
         let flicksFolder = self.genauFlicksFolder
         let videoPaths = catalog.videos.map(\.path)
         Task {
+            var missed = 0
+            let gallery = await MetadataFetcher.gallery(client: client, libraryPath: libraryPath,
+                                                        genauFlicksFolder: flicksFolder, videoPaths: videoPaths)
+            if let gallery, corpus.galleryIsStale(gallery.file) {
+                MetadataFetcher.log.notice("the gallery file is written since it was kept: fetching it")
+                if let file = await MetadataFetcher.fetch(client: client, files: [gallery.file])[gallery.file.path] {
+                    var grown = corpus
+                    grown.keepGallery(file, read: gallery.records, written: gallery.file.modified)
+                    adoptAndSave(grown)
+                } else {
+                    missed += 1
+                }
+            }
+            let sidecarVideos = gallery?.records.videosKeepingSidecars(of: videoPaths) ?? videoPaths
             let branches = await MetadataFetcher.survey(client: client, libraryPath: libraryPath,
-                                                      genauFlicksFolder: flicksFolder, videoPaths: videoPaths)
-            guard !branches.isEmpty else {
+                                                      genauFlicksFolder: flicksFolder, videoPaths: sidecarVideos)
+            guard !branches.isEmpty || gallery != nil else {
                 lastProblem = "Metadata: no branch of the metadata mirror answered"
                 MetadataFetcher.log.error("no branch of the metadata mirror answered")
                 retryMetadataLater()
                 return
             }
-            var missed = 0
             for branch in branches {
                 let stale = corpus.stale(in: branch)
                 MetadataFetcher.log.notice("\(branch.path, privacy: .private): \(stale.count) sidecars to fetch")
@@ -336,9 +349,7 @@ final class AppModel: ObservableObject {
                         grown.keep(record, for: video, written: file.modified)
                     }
                     missed += batch.count - fetched.count
-                    adopt(grown)
-                    if session.playlist.isEmpty { rebuild(startAtTop: true) }
-                    try? JSONEncoder().encode(corpus).write(to: sidecarsURL, options: .atomic)
+                    adoptAndSave(grown)
                 }
             }
             if missed > 0 {
@@ -350,6 +361,12 @@ final class AppModel: ObservableObject {
     }
 
     private static let sidecarsPerSave = 100
+
+    private func adoptAndSave(_ grown: SidecarCorpus) {
+        adopt(grown)
+        if session.playlist.isEmpty { rebuild(startAtTop: true) }
+        try? JSONEncoder().encode(corpus).write(to: sidecarsURL, options: .atomic)
+    }
 
     private func retryMetadataLater() {
         guard metadataAttempts < 5 else {

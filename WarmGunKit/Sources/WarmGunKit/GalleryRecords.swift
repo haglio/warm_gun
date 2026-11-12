@@ -1,6 +1,8 @@
 import Foundation
 
 public struct GalleryRecords: Sendable {
+    public static let fileName = "gallery_records.json"
+
     public let videosByKey: [String: String]
 
     public init(libraryPath: String, genauFlicksFolder: String?, videoPaths: [String]) {

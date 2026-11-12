@@ -53,8 +53,9 @@ actor PCloudClient {
         try await call(PCloudAPI.listFolders(path: path, auth: auth, recursive: recursive), as: ListFolderResponse.self).metadata
     }
 
-    func listLibrary(path: String) async throws -> [LibraryFile] {
-        let listing = try await call(PCloudAPI.listFolder(path: path, auth: auth), as: ListFolderResponse.self)
+    func listLibrary(path: String, recursive: Bool = true) async throws -> [LibraryFile] {
+        let listing = try await call(PCloudAPI.listFolder(path: path, auth: auth, recursive: recursive),
+                                     as: ListFolderResponse.self)
         return listing.metadata.flattenedFiles()
     }
 
