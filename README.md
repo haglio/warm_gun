@@ -23,9 +23,10 @@ clicks, and the P and L keys stand in for turning the phone.
   streams. The Topaz upscales stay home.
 - **Shared state**: favorites and trash marks live on the phone, and every
   event goes out as a journal to a pCloud folder. Evolver reads that
-  journal, sums it with Fun Time's own viewing, and stamps the playback weight
-  and a favorites flag back onto each video's metadata sidecar — which is where
-  the phone reads both, so neither app keeps a copy of the formula and what the
+  journal, sums it with Fun Time's own viewing, and puts the playback weight
+  and a favorites flag back onto each video's record (a metadata sidecar, or
+  for an AI video Origenerator's gallery, copied into one file for the phone)
+  — which is where the phone reads both, so neither app keeps a copy of the formula and what the
   PC watched moves the phone's shuffle. The trash gesture parks the video's upscale in
   the `trash` folder in Kino's folder, where it waits to be reviewed — same as the desktop.
 
