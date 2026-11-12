@@ -21,4 +21,19 @@ import Testing
         #expect(sidecar.favorite)
         #expect(sidecar.watchWeight == 2.5)
     }
+
+    @Test func onlyTheAIVideosAreTheGallerysAndAGenauFlickIsKeyedInsideItsFolder() {
+        let gallery = GalleryRecords(libraryPath: Self.library, genauFlicksFolder: "loops", videoPaths: [
+            Self.one,
+            "genau/clips/2D/AI/loop-three.mp4",
+            "genau/clips/2D/non_AI/loop-four.mp4",
+            "genau/clips/VR/loop-five.mp4",
+            "non_AI/bucket/inner/scene-six.mkv",
+        ])
+
+        #expect(gallery.videosByKey == [
+            "videos/videos/kino/2D/AI/portrait/alpha/video-one_topaz.mp4": Self.one,
+            "videos/videos/genau/loops/2D/AI/loop-three.mp4": "genau/clips/2D/AI/loop-three.mp4",
+        ])
+    }
 }
