@@ -43,4 +43,21 @@ import Testing
         let saved = try JSONDecoder().decode(SidecarCorpus.self, from: JSONEncoder().encode(corpus))
         #expect(saved.stale(in: branch).map(\.path) == [Self.twoSidecar])
     }
+
+    @Test func theGallerysFileReplacesEveryAIVideosRecordAndLeavesTheSidecarsOfTheRest() throws {
+        let scene = "non_AI/bucket/scene-three.mkv"
+        let gallery = GalleryRecords(libraryPath: "/alpha/videos/videos/2D/AI", genauFlicksFolder: nil,
+                                     videoPaths: [Self.one, Self.two, scene])
+        var corpus = SidecarCorpus()
+        corpus.keep(Data(#"{"favorite": false}"#.utf8), for: Self.one, written: Date(timeIntervalSince1970: 1_000))
+        corpus.keep(Data(#"{"favorite": true}"#.utf8), for: Self.two, written: Date(timeIntervalSince1970: 1_000))
+        corpus.keep(Data(#"{"favorite": true}"#.utf8), for: scene, written: Date(timeIntervalSince1970: 1_000))
+
+        corpus.keepGallery(Data(#"{"videos/videos/kino/2D/AI/portrait/alpha/video-one_topaz.mp4": {"favorite": true}}"#.utf8),
+                           read: gallery, written: Date(timeIntervalSince1970: 2_000))
+
+        #expect(corpus.sidecars[Self.one]?.favorite == true)
+        #expect(corpus.sidecars[Self.two] == nil)
+        #expect(corpus.sidecars[scene]?.favorite == true)
+    }
 }
