@@ -38,7 +38,7 @@ not alone.
   library root and shaped as a sidecar per video. The phone fetches that
   file whenever the mirror lists it as written since it was kept, takes
   every AI video's record from it, and fetches sidecars only for the other
-  videos. Until the file appears it fetches the AI sidecars as before.
+  videos, whether or not the file is there.
 - **What type a video is comes from the desktop.** Its record carries one of
   `genau_flick` / `excerpt` / `short` / `full_length` (`video.type`), and `VideoType` is that field's
   vocabulary, so a video is the same type here as in Fun Time. For a video
