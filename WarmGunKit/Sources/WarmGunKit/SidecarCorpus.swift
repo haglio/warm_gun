@@ -29,6 +29,16 @@ public struct SidecarCorpus: Codable, Equatable, Sendable {
         written[video] = when
     }
 
+    public mutating func keepGallery(_ file: Data, read gallery: GalleryRecords, written when: Date) {
+        for video in gallery.videosByKey.values {
+            records[video] = nil
+            written[video] = nil
+        }
+        for (video, record) in gallery.records(in: file) {
+            keep(record, for: video, written: when)
+        }
+    }
+
     public func stale(in branch: SurveyedBranch) -> [LibraryFile] {
         branch.files.filter { file in
             guard let video = branch.index.videosByListedSidecar[file.path] else { return false }
