@@ -31,6 +31,7 @@ SCREEN_NOUNS = frozenset((
 ))
 IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
+STRING_LITERAL = re.compile(r'"(?:[^"\\]|\\.)*"')
 
 
 def kit_sources(root: Path) -> Path:
@@ -207,6 +208,16 @@ def gate_platform_seam(root: Path) -> list[str]:
     return hits
 
 
+def gate_enhance_is_the_word(root: Path) -> list[str]:
+    hits = []
+    for path in swift_files(app_sources(root)) + swift_files(kit_sources(root)):
+        for number, line in code_lines(path):
+            for literal in STRING_LITERAL.findall(line):
+                if " " in literal.strip('"').strip() and "upscal" in literal.lower():
+                    hits.append(f"{where(path, root, number)}: {literal}")
+    return hits
+
+
 def _words_of(identifier: str) -> list[str]:
     return [m.group(0).lower() for piece in identifier.split("_") for m in WORD.finditer(piece)]
 
@@ -283,6 +294,7 @@ GATES = {
     "comment lines off their entries": gate_prose_ceiling,
     "comment line entries raised above main": gate_no_entry_above_main,
     "words off the glossary": gate_glossary,
+    "sentences on the screen that say upscale": gate_enhance_is_the_word,
 }
 
 
