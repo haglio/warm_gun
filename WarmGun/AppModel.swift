@@ -532,7 +532,7 @@ final class AppModel: ObservableObject {
             try await client.renameFile(path: kino + "/" + upscale,
                                          toPath: trashDir + "/" + (upscale as NSString).lastPathComponent)
         } catch {
-            lastProblem = "Could not move the upscale to trash: \(error.localizedDescription)"
+            lastProblem = "Could not move the enhanced video to trash: \(error.localizedDescription)"
         }
     }
 

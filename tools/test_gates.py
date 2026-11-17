@@ -28,6 +28,21 @@ class GateTests(unittest.TestCase):
         self.assertEqual(gates.gate_kit_purity(root),
                          ["WarmGunKit/Sources/WarmGunKit/Stray.swift:2: import SwiftUI"])
 
+    def test_no_sentence_on_the_screen_says_upscale(self):
+        root = self.plant({
+            "WarmGun/Shown.swift": (
+                'let fine = "Could not move the enhanced video to trash"\n'
+                'let stray = "Could not move the upscale to trash: \\(error)"\n'
+                "let path = LibraryPaths.upscalePath(forOriginal: original)\n"
+                'let key = "evolver_upscale"\n'
+                '// the upscale in prose\n'),
+            "WarmGunKit/Sources/WarmGunKit/Kit.swift": 'let told = "an Upscaled copy"\n',
+        })
+        self.assertEqual(gates.gate_enhance_is_the_word(root), [
+            "WarmGun/Shown.swift:2: \"Could not move the upscale to trash: \\(error)\"",
+            "WarmGunKit/Sources/WarmGunKit/Kit.swift:1: \"an Upscaled copy\"",
+        ])
+
     def test_published_state_has_one_home_in_the_app_model(self):
         root = self.plant({
             "WarmGun/AppModel.swift": "@Published var fine = 0\n",
