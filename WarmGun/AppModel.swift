@@ -61,6 +61,10 @@ final class AppModel: ObservableObject {
     private var planGeneration = 0
     @Published private var fetchFailures = FetchFailures()
     var holding: Bool { fetchFailures.holding }
+    private var streamRefusals: [String: Int] = [:]
+    private var streamRetry: Task<Void, Never>?
+    @Published private(set) var streamRetrying: String?
+    private var streamAsking: String?
     private var overlayProblem: String?
     private var persistTask: Task<Void, Never>?
     private var videosByPath: [String: Video] = [:]
@@ -629,12 +633,19 @@ final class AppModel: ObservableObject {
         if let video = videosByPath[current], video.streams, !cached.contains(current) {
             waitingFor = nil
             showing = current
-            Task {
-                do {
-                    let url = try await prefetcher.streamURL(for: video)
+            if streamAsking != current && streamRetrying != current {
+                streamAsking = current
+                Task {
+                    let url = try? await prefetcher.streamURL(for: video)
+                    if streamAsking == current { streamAsking = nil }
+                    guard session.current == current else { return }
+                    guard let url else {
+                        streamRefused(current)
+                        return
+                    }
+                    streamRefusals[current] = nil
+                    fetchFailures.fetched()
                     engine.show(current: url, next: nil, loop: loop, autoplay: !self.paused)
-                } catch {
-                    flash("Scene won't stream", favorite: false)
                 }
             }
             persistSoon()
@@ -662,6 +673,27 @@ final class AppModel: ObservableObject {
             engine.show(current: currentURL, next: nextURL, loop: loop, autoplay: !self.paused)
         }
         persistSoon()
+    }
+
+    private func streamRefused(_ path: String) {
+        let attempts = (streamRefusals[path] ?? 0) + 1
+        streamRefusals[path] = attempts
+        if fetchFailures.failed(attempts: attempts) == .skip {
+            streamRefusals[path] = nil
+            flash("Skipping — scene won't stream", favorite: false)
+            session.step(1)
+            sync()
+            return
+        }
+        if !holding { flash("Scene won't stream — retrying", favorite: false) }
+        streamRetry?.cancel()
+        streamRetrying = path
+        streamRetry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled, let self else { return }
+            self.streamRetrying = nil
+            if self.session.current == path { self.sync() }
+        }
     }
 
     private func advanced(to url: URL) {

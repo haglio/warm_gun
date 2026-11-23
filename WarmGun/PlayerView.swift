@@ -56,7 +56,7 @@ struct PlayerView: View {
                         if model.waitingFor != nil && model.showing != nil {
                             pill { ProgressView().controlSize(.mini).tint(.white); Text("fetching") }
                         }
-                        if model.holding && model.waitingFor != nil {
+                        if model.holding && (model.waitingFor != nil || model.streamRetrying != nil) {
                             pill { Image(systemName: "wifi.exclamationmark"); Text("pCloud can't be reached — retrying") }
                         }
                         if model.session.locked {
