@@ -580,6 +580,10 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func sayWhyGrayed(_ group: LoopMode) {
+        flash(LoopCycle.noneForThisOne(group), favorite: false)
+    }
+
     var labelNames: [String] { groupIndex.labelNames }
 
     func canLoop(_ mode: LoopMode) -> Bool {
