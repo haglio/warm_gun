@@ -2,13 +2,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 source tools/require_overlay.sh
+icon=AppIconPreview; [[ -d .git ]] && icon=AppIcon
 
 # xcodebuild's `generic/platform=macOS` names the native Mac build; a bare `platform=macOS` can
 # also match the "Designed for iPhone" variant.
 xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
   -destination "generic/platform=macOS" \
   -configuration Release \
-  -derivedDataPath build build
+  -derivedDataPath build build ASSETCATALOG_COMPILER_APPICON_NAME=$icon
 
 APP="build/Build/Products/Release/Warm Gun.app"
 DEST="$HOME/Applications/Warm Gun.app"

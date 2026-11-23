@@ -7,11 +7,12 @@ exec > >(tee build/install.log) 2>&1
 echo "This run is logged to $PWD/build/install.log."
 
 source tools/require_overlay.sh
+icon=AppIconPreview; [[ -d .git ]] && icon=AppIcon
 
 xcodebuild -project WarmGun.xcodeproj -scheme WarmGun \
   -destination "generic/platform=iOS" \
   -derivedDataPath build \
-  -allowProvisioningUpdates build
+  -allowProvisioningUpdates build ASSETCATALOG_COMPILER_APPICON_NAME=$icon
 
 APP="build/Build/Products/Debug-iphoneos/Warm Gun.app"
 
