@@ -6,18 +6,23 @@ public struct FetchFailures: Equatable, Sendable {
     }
 
     private var skippedInARow = 0
+    public private(set) var holding = false
 
     public init() {}
 
     public mutating func failed(attempts: Int) -> Answer {
         guard attempts >= Self.refusalsBeforeSkipping else { return .keepWaiting }
-        guard skippedInARow < Self.skipsBeforeHolding else { return .hold }
+        guard skippedInARow < Self.skipsBeforeHolding else {
+            holding = true
+            return .hold
+        }
         skippedInARow += 1
         return .skip
     }
 
     public mutating func fetched() {
         skippedInARow = 0
+        holding = false
     }
 
     private static let refusalsBeforeSkipping = 3

@@ -4,7 +4,7 @@ import WarmGunKit
 actor Prefetcher {
     enum Event: Sendable {
         case ready(String)
-        case failed(String, String, attempts: Int, loginRequired: Bool)
+        case failed(String, attempts: Int, loginRequired: Bool)
         case evicted([String])
     }
 
@@ -94,8 +94,7 @@ actor Prefetcher {
             let attempts = (failures[video.path]?.attempts ?? 0) + 1
             failures[video.path] = (attempts, Date())
             let loginRequired = (error as? PCloudError)?.isLoginRequired ?? false
-            continuation.yield(.failed(video.path, error.localizedDescription,
-                                       attempts: attempts, loginRequired: loginRequired))
+            continuation.yield(.failed(video.path, attempts: attempts, loginRequired: loginRequired))
         }
         await pump()
     }

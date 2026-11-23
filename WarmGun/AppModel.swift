@@ -59,7 +59,9 @@ final class AppModel: ObservableObject {
     private var tracker = WatchTracker()
     @Published private(set) var showing: String?
     private var planGeneration = 0
-    private var fetchFailures = FetchFailures()
+    @Published private var fetchFailures = FetchFailures()
+    var holding: Bool { fetchFailures.holding }
+    private var overlayProblem: String?
     private var persistTask: Task<Void, Never>?
     private var videosByPath: [String: Video] = [:]
     private var rng = SystemRandomNumberGenerator()
@@ -71,14 +73,12 @@ final class AppModel: ObservableObject {
     private var syncWanted = false
 
     init(stateDirectory: URL = AppModel.defaultStateDirectory, cache: VideoCache? = nil) {
-        var overlayProblem: String?
         if let url = Bundle.main.url(forResource: "content.local", withExtension: "json") {
             do {
                 overlay = try JSONDecoder().decode(ContentOverlay.self, from: Data(contentsOf: url))
             } catch {
                 overlay = .empty
-                overlayProblem = "Content overlay unreadable — no lanes: "
-                    + error.localizedDescription
+                overlayProblem = "Content overlay unreadable — no lanes"
             }
         } else {
             overlay = .empty
@@ -93,7 +93,6 @@ final class AppModel: ObservableObject {
         Platform.observeRotation { [weak self] landscape in self?.deviceRotated(landscape: landscape) }
         engine.onProgress = { [weak self] fraction in self?.progressed(fraction) }
         engine.onItemFailed = { [weak self] url in self?.itemFailed(url) }
-        lastProblem = overlayProblem
     }
 
     nonisolated static var defaultStateDirectory: URL {
@@ -138,6 +137,10 @@ final class AppModel: ObservableObject {
             phase = .ready
             if !rebuildIfStale() { sync() }
             Task { await index() }
+        }
+        if phase == .ready, let overlayProblem {
+            flash(overlayProblem, favorite: false)
+            self.overlayProblem = nil
         }
     }
 
@@ -221,6 +224,7 @@ final class AppModel: ObservableObject {
     private func connect(token: String) throws {
         let client = try PCloudClient(apiHost: apiHost, auth: token)
         self.client = client
+        fetchFailures = FetchFailures()
         let prefetcher = Prefetcher(client: client, cache: cache, capBytes: settings.cacheCapBytes)
         self.prefetcher = prefetcher
         eventPump?.cancel()
@@ -240,8 +244,7 @@ final class AppModel: ObservableObject {
             measureDuration(of: path)
             cached = await cache.cachedPaths()
             if path == waitingFor || path == session.staged { sync() }
-        case .failed(let path, let message, let attempts, let loginRequired):
-            lastProblem = "\(message) — \((path as NSString).lastPathComponent)"
+        case .failed(let path, let attempts, let loginRequired):
             if loginRequired {
                 Keychain.forget()
                 phase = .needsLogin
@@ -253,9 +256,7 @@ final class AppModel: ObservableObject {
                 flash("Skipping — video won't fetch", favorite: false)
                 session.step(1)
                 sync()
-            case .hold:
-                lastProblem = "pCloud unreachable — holding here and retrying"
-            case .keepWaiting:
+            case .hold, .keepWaiting:
                 break
             }
         case .evicted(let paths):
@@ -296,7 +297,11 @@ final class AppModel: ObservableObject {
                 sync()
             }
         } catch {
-            if catalog == nil { phase = .failed(error.localizedDescription) } else { lastProblem = error.localizedDescription }
+            if catalog == nil {
+                phase = .failed(error.localizedDescription)
+            } else {
+                flash("Couldn't refresh the library from pCloud", favorite: false)
+            }
         }
     }
 
@@ -333,7 +338,7 @@ final class AppModel: ObservableObject {
                                                       genauFlicksFolder: flicksFolder,
                                                       videoPaths: gallery.videosKeepingSidecars(of: videoPaths))
             guard !branches.isEmpty || galleryFile != nil else {
-                lastProblem = "Metadata: no branch of the metadata mirror answered"
+                flash("Couldn't reach the videos' records in pCloud", favorite: false)
                 MetadataFetcher.log.error("no branch of the metadata mirror answered")
                 retryMetadataLater()
                 return
@@ -355,7 +360,7 @@ final class AppModel: ObservableObject {
                 }
             }
             if missed > 0 {
-                lastProblem = "Metadata: \(missed) sidecars would not download"
+                flash("\(missed) videos' records wouldn't download", favorite: false)
                 MetadataFetcher.log.error("\(missed) sidecars would not download")
                 retryMetadataLater()
             }
@@ -545,7 +550,7 @@ final class AppModel: ObservableObject {
             try await client.renameFile(path: kino + "/" + upscale,
                                          toPath: trashDir + "/" + (upscale as NSString).lastPathComponent)
         } catch {
-            lastProblem = "Could not move the enhanced video to trash: \(error.localizedDescription)"
+            flash("Couldn't move it to Trash in pCloud", favorite: false)
         }
     }
 
@@ -629,7 +634,6 @@ final class AppModel: ObservableObject {
                     let url = try await prefetcher.streamURL(for: video)
                     engine.show(current: url, next: nil, loop: loop, autoplay: !self.paused)
                 } catch {
-                    lastProblem = error.localizedDescription
                     flash("Scene won't stream", favorite: false)
                 }
             }
@@ -686,7 +690,6 @@ final class AppModel: ObservableObject {
         guard let path = session.playlist.first(where: { url.lastPathComponent == VideoCache.fileName(for: $0) })
         else { return }
         dropFromCache(path)
-        lastProblem = "Unplayable video — \((path as NSString).lastPathComponent)"
         if path == showing {
             flash("Skipping unplayable video", favorite: false)
             session.step(1)
@@ -786,7 +789,7 @@ final class AppModel: ObservableObject {
                 UserDefaults.standard.set(data.count, forKey: Self.journalUploadedKey)
             }
         } catch {
-            lastProblem = "Cloud sync: \(error.localizedDescription)"
+            flash("Couldn't send the journal to pCloud", favorite: false)
         }
     }
 
