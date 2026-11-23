@@ -137,7 +137,7 @@ private struct ControlsOverlay: View {
                 cluster {
                     wordButton("Shuffle", on: orderBinding(latest: false))
                     wordButton("Latest", on: orderBinding(latest: true))
-                    wordButton("Favs", on: favoritesBinding())
+                    wordButton("Favorites", on: favoritesBinding())
                 }
             }
             pinned(.bottomLeading) {

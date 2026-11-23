@@ -9,7 +9,7 @@ clicks, and the P and L keys stand in for turning the phone.
 
 - **Taps**: left third = previous, right third = next, top-middle = trash,
   lower-middle = lock (favorite + repeat-one). Tap the middle for the
-  controls — the type buttons (Genau, Clips, Full), Shuffle/Latest and Favs,
+  controls — the type buttons (Genau, Clips, Full), Shuffle/Latest and Favorites,
   the Loop control, the action buttons, the four gestures as buttons and pause
   in the center — and double-tap it to pause. On the Mac the keyboard does
   the same: the arrows and WASD are previous, next, trash and lock (left,
