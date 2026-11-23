@@ -42,3 +42,18 @@ extension LoopCycleTests {
         #expect(LoopCycle.next(after: .single, canLoop: { _ in false }) == .all && LoopCycle.next(after: .all, canLoop: { _ in false }) == .single)
     }
 }
+
+extension LoopCycleTests {
+    @Test func endingAGroupLoopSaysLoopOff() {
+        #expect(LoopCycle.message(leaving: .seed, for: .all) == "Loop off")
+        #expect(LoopCycle.message(leaving: .action, for: .single) == "Loop off")
+    }
+}
+
+extension LoopCycleTests {
+    @Test func leavingNoGroupLoopSaysNothing() {
+        #expect(LoopCycle.message(leaving: .all, for: .all) == nil)
+        #expect(LoopCycle.message(leaving: .single, for: .all) == nil)
+        #expect(LoopCycle.message(leaving: .seed, for: .action) == nil)
+    }
+}
