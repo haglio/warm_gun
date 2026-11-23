@@ -89,7 +89,8 @@ not alone.
   so auto-advance is a roll-on. Navigating to a video not yet on disk keeps
   the old picture looping under a spinner; a change of filters clears it,
   so the switch is seen to land.
-- **A video that will not come is stepped past only on its third refusal**,
+- **A video that will not come, or a scene whose stream link will not come, is
+  stepped past only on its third refusal**,
   and after five such skips in a row the run holds and keeps retrying: a
   dead network must not sprint it silently through the playlist. A video the
   player refuses outright leaves the disk and is skipped.
