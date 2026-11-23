@@ -539,19 +539,21 @@ final class AppModel: ObservableObject {
     func update(filters: Filters) {
         let orderChanged = filters.latest != settings.filters.latest
         settings.filters = filters
-        if loopMode == .seed || loopMode == .action { loopMode = .all }
+        let ending = LoopCycle.message(leaving: loopMode, for: .all)
+        if ending != nil { loopMode = .all }
         rebuild(startAtTop: orderChanged)
+        if let ending { flash(ending, favorite: false) }
     }
 
     func setLoop(_ mode: LoopMode) {
         switch mode {
         case .all, .single:
-            let wasGrouped = loopMode == .seed || loopMode == .action
+            let ending = LoopCycle.message(leaving: loopMode, for: mode)
             loopMode = mode
             settings.loopVideo = mode == .single
-            if wasGrouped {
+            if let ending {
                 rebuild(startAtTop: false)
-                flash("Loop off", favorite: false)
+                flash(ending, favorite: false)
             } else {
                 sync()
             }
