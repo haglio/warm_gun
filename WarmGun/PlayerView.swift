@@ -162,9 +162,9 @@ private struct ControlsOverlay: View {
             }
             pinned(.leading) { iconButton("backward.frame.fill") { perform(.previous) } }
             pinned(.trailing) { iconButton("forward.frame.fill") { perform(.next) } }
-            pinned(.top) { iconButton("hand.thumbsdown.fill") { perform(.trash) } }
+            pinned(.top) { iconButton("trash.fill") { perform(.trash) } }
             lowEdge {
-                iconButton(model.session.locked ? "lock.fill" : "lock.open") { perform(.lock) }
+                iconButton("lock.fill", lit: model.session.locked) { perform(.lock) }
             }
             iconButton(model.paused ? "play.fill" : "pause.fill", large: true) {
                 onAnyInteraction()
@@ -261,13 +261,14 @@ private struct ControlsOverlay: View {
         .contentShape(Capsule())
     }
 
-    private func iconButton(_ systemName: String, large: Bool = false, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ systemName: String, large: Bool = false, lit: Bool = false,
+                            action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(large ? .title : .title3)
                 .foregroundStyle(.white)
                 .padding(large ? 18 : 13)
-                .background(.black.opacity(0.45), in: Circle())
+                .background(lit ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Circle())
         }
         .buttonStyle(.plain)
     }
