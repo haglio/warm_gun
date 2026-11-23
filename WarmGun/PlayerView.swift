@@ -234,12 +234,13 @@ private struct ControlsOverlay: View {
     }
 
     private func loopButton(_ label: String, _ mode: LoopMode, enabled: Bool = true) -> some View {
-        capsuleButton(label, selected: model.loopMode == mode, opacity: enabled ? 1 : 0.3, enabled: enabled) {
-            model.setLoop(mode)
+        capsuleButton(label, selected: model.loopMode == mode, opacity: enabled ? 1 : 0.3) {
+            enabled ? model.setLoop(mode) : model.sayWhyGrayed(mode)
         }
+        .help(enabled ? "" : LoopCycle.noneForThisOne(mode))
     }
 
-    private func capsuleButton(_ label: String, selected: Bool, opacity: Double = 1, enabled: Bool = true,
+    private func capsuleButton(_ label: String, selected: Bool, opacity: Double = 1,
                                compact: Bool = false, action: @escaping () -> Void) -> some View {
         Button {
             onAnyInteraction()
@@ -257,7 +258,6 @@ private struct ControlsOverlay: View {
         .padding(.vertical, compact ? 3 : 5)
         .background(selected ? Color.accentColor.opacity(0.4) : Color.black.opacity(0.45), in: Capsule())
         .foregroundStyle(.white.opacity(opacity))
-        .disabled(!enabled)
         .contentShape(Capsule())
     }
 

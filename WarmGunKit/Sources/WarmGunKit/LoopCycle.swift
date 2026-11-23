@@ -22,6 +22,10 @@ public enum LoopCycle {
         running.isGroup && !next.isGroup ? "Loop off" : nil
     }
 
+    public static func noneForThisOne(_ group: LoopMode) -> String {
+        "\(group.rawValue.capitalized) loop (none for this one)"
+    }
+
     public static func message(stepping running: LoopMode, to next: LoopMode) -> String? {
         if let ending = message(leaving: running, for: next) { return ending }
         switch next {

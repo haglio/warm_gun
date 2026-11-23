@@ -76,3 +76,10 @@ extension LoopCycleTests {
         #expect(LoopCycle.message(stepping: .single, to: .seed) == nil)
     }
 }
+
+extension LoopCycleTests {
+    @Test func aGrayedGroupStopSaysWhyAsTheFunestrasDo() {
+        #expect(LoopCycle.noneForThisOne(.action) == "Action loop (none for this one)")
+        #expect(LoopCycle.noneForThisOne(.seed) == "Seed loop (none for this one)")
+    }
+}
