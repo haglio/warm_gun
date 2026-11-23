@@ -113,7 +113,7 @@ final class AppModel: ObservableObject {
     func start() async {
         cached = await cache.cachedPaths()
         loadPersistedState()
-        guard let token = Keychain.token() else { phase = .needsLogin; return }
+        guard let token = Keychain.token() else { askForLogin(saying: nil); return }
         do {
             try connect(token: token)
         } catch {
@@ -191,12 +191,23 @@ final class AppModel: ObservableObject {
     }
 
     func logout() {
-        Keychain.forget()
         UserDefaults.standard.removeObject(forKey: Self.journalUploadedKey)
+        askForLogin(saying: nil)
+    }
+
+    private func loginRanOut() {
+        guard phase != .needsLogin else { return }
+        askForLogin(saying: LoginState.ranOut)
+    }
+
+    private func askForLogin(saying problem: String?) {
+        Keychain.forget()
         eventPump?.cancel()
         client = nil
         prefetcher = nil
         engine.clear()
+        lastProblem = problem
+        loginForm = LoginState()
         phase = .needsLogin
     }
 
@@ -250,8 +261,7 @@ final class AppModel: ObservableObject {
             if path == waitingFor || path == session.staged { sync() }
         case .failed(let path, let attempts, let loginRequired):
             if loginRequired {
-                Keychain.forget()
-                phase = .needsLogin
+                loginRanOut()
                 return
             }
             guard path == waitingFor else { return }
@@ -636,11 +646,17 @@ final class AppModel: ObservableObject {
             if streamAsking != current && streamRetrying != current {
                 streamAsking = current
                 Task {
-                    let url = try? await prefetcher.streamURL(for: video)
+                    var url: URL?
+                    var refusal: Error?
+                    do { url = try await prefetcher.streamURL(for: video) } catch { refusal = error }
                     if streamAsking == current { streamAsking = nil }
                     guard session.current == current else { return }
                     guard let url else {
-                        streamRefused(current)
+                        if (refusal as? PCloudError)?.isLoginRequired == true {
+                            loginRanOut()
+                        } else {
+                            streamRefused(current)
+                        }
                         return
                     }
                     streamRefusals[current] = nil

@@ -44,6 +44,8 @@ public struct LoginState: Equatable, Sendable {
         }
     }
 
+    public static let ranOut = "Your pCloud login ran out — log in again."
+
     private static let shortestRecoveryCode = 16
     private static let codeWanted = 1022
     private static let codeRefused = 2012
