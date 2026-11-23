@@ -57,3 +57,22 @@ extension LoopCycleTests {
         #expect(LoopCycle.message(leaving: .seed, for: .action) == nil)
     }
 }
+
+extension LoopCycleTests {
+    @Test func steppingOntoAllOrOneNamesTheStop() {
+        #expect(LoopCycle.message(stepping: .single, to: .all) == "Loop: All")
+        #expect(LoopCycle.message(stepping: .all, to: .single) == "Loop: 1")
+    }
+}
+
+extension LoopCycleTests {
+    @Test func steppingOutOfAGroupLoopSaysLoopOff() {
+        #expect(LoopCycle.message(stepping: .action, to: .all) == "Loop off")
+    }
+}
+
+extension LoopCycleTests {
+    @Test func steppingIntoAGroupLoopLeavesTheWordsToTheLoop() {
+        #expect(LoopCycle.message(stepping: .single, to: .seed) == nil)
+    }
+}

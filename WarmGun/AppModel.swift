@@ -477,7 +477,13 @@ final class AppModel: ObservableObject {
         setShape(landscape ? .landscape : .portrait)
     }
 
-    func setShape(_ shape: VideoShape) {
+    func pickShape(_ shape: VideoShape) {
+        let ending = settings.filters.shape == shape ? nil : LoopCycle.message(leaving: loopMode, for: .all)
+        setShape(shape)
+        flash([shape.label, ending].compactMap { $0 }.joined(separator: " — "), favorite: false)
+    }
+
+    private func setShape(_ shape: VideoShape) {
         guard settings.filters.shape != shape else { return }
         var filters = settings.filters
         filters.shape = shape
@@ -582,7 +588,10 @@ final class AppModel: ObservableObject {
 
     func cycleLoop() {
         guard let current = session.current else { return }
-        setLoop(LoopCycle.next(after: loopMode) { groupIndex.canLoop($0, from: current) })
+        let running = loopMode
+        let next = LoopCycle.next(after: running) { groupIndex.canLoop($0, from: current) }
+        setLoop(next)
+        if let words = LoopCycle.message(stepping: running, to: next) { flash(words, favorite: false) }
     }
 
     private func sync() {

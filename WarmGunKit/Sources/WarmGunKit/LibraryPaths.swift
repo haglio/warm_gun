@@ -3,6 +3,8 @@ import Foundation
 public enum VideoShape: String, Codable, CaseIterable, Sendable {
     case portrait
     case landscape
+
+    public var label: String { rawValue.capitalized }
 }
 
 public enum LibraryPaths {

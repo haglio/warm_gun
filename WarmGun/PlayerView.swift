@@ -317,9 +317,9 @@ private struct KeyboardShortcuts: View {
                 .keyboardShortcut(.space, modifiers: [])
             Button("Pause") { model.togglePause() }
                 .keyboardShortcut(.escape, modifiers: [])
-            Button("Portrait") { model.setShape(.portrait) }
+            Button("Portrait") { model.pickShape(.portrait) }
                 .keyboardShortcut("p", modifiers: [])
-            Button("Landscape") { model.setShape(.landscape) }
+            Button("Landscape") { model.pickShape(.landscape) }
                 .keyboardShortcut("l", modifiers: [])
         }
         .opacity(0)
