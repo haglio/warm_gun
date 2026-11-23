@@ -93,3 +93,10 @@ extension CatalogTests {
         #expect(videos.map(\.streams) == [false, true])
     }
 }
+
+extension CatalogTests {
+    @Test func eachShapeHasTheWordTheScreenSays() {
+        #expect(VideoShape.portrait.label == "Portrait")
+        #expect(VideoShape.landscape.label == "Landscape")
+    }
+}

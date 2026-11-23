@@ -21,4 +21,13 @@ public enum LoopCycle {
     public static func message(leaving running: LoopMode, for next: LoopMode) -> String? {
         running.isGroup && !next.isGroup ? "Loop off" : nil
     }
+
+    public static func message(stepping running: LoopMode, to next: LoopMode) -> String? {
+        if let ending = message(leaving: running, for: next) { return ending }
+        switch next {
+        case .all: return "Loop: All"
+        case .single: return "Loop: 1"
+        case .seed, .action: return nil
+        }
+    }
 }
