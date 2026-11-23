@@ -27,6 +27,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var favorites = Favorites()
     @Published private(set) var trash: Set<String> = []
     @Published private(set) var loopMode: LoopMode = .all
+    @Published private(set) var trashedEmpty = false
 
     /// pCloud's listing carries no durations, so the phone measures them off the cached files.
     private var measuredSeconds: [String: Double] = [:]
@@ -395,12 +396,9 @@ final class AppModel: ObservableObject {
 
     private func rebuild(startAtTop: Bool) {
         guard let catalog else { return }
-        let playlist = PlaylistBuilder.build(catalog: catalog, options: settings.filters,
-                                             favoriteKeys: favorites.held, trash: trash,
-                                             weights: weights, measuredSeconds: measuredSeconds,
-                                             overlay: overlay, labels: groupIndex.labelsByPath,
-                                             recordedTypes: groupIndex.typesByPath, rng: &rng)
+        let playlist = build(catalog, leavingOut: trash)
         if playlist.isEmpty {
+            trashedEmpty = !build(catalog, leavingOut: []).isEmpty
             session = Session(playlist: [])
             sync()
             return
@@ -417,6 +415,14 @@ final class AppModel: ObservableObject {
         }
         clearOnNextWait = session.current != before
         sync()
+    }
+
+    private func build(_ catalog: Catalog, leavingOut trash: Set<String>) -> [String] {
+        PlaylistBuilder.build(catalog: catalog, options: settings.filters,
+                              favoriteKeys: favorites.held, trash: trash,
+                              weights: weights, measuredSeconds: measuredSeconds,
+                              overlay: overlay, labels: groupIndex.labelsByPath,
+                              recordedTypes: groupIndex.typesByPath, rng: &rng)
     }
 
     func tap(_ action: TapAction) {
@@ -517,6 +523,7 @@ final class AppModel: ObservableObject {
             trash.insert(path)
             journal("trash", path)
             if session.playlist.count <= 1 {
+                trashedEmpty = true
                 session = Session(playlist: [])
             } else {
                 _ = session.discard()

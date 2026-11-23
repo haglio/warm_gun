@@ -25,7 +25,7 @@ struct PlayerView: View {
                 }
                 .ignoresSafeArea()
                 if model.phase == .ready && model.catalog != nil && model.session.playlist.isEmpty {
-                    Text("Nothing matches these filters")
+                    Text(model.trashedEmpty ? "Nothing left — the rest went to Trash" : "Nothing matches these filters")
                         .font(.headline)
                         .foregroundStyle(.white.opacity(0.85))
                 } else if model.phase == .indexing
