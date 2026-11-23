@@ -196,6 +196,19 @@
       "status": "agreed"
     },
     {
+      "screen": [
+        "Try again"
+      ],
+      "his_word": null,
+      "code_word": null,
+      "id": "try_again",
+      "thing": "the button on the setup screen, while logged in, that reruns a launch that could not read the library",
+      "code_today": [
+        "try again"
+      ],
+      "status": "unruled"
+    },
+    {
       "screen": null,
       "his_word": null,
       "code_word": "flick",

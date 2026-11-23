@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var password = ""
     @State private var verificationCode = ""
     @State private var loggingIn = false
+    @State private var trying = false
 
     var body: some View {
         NavigationStack {
@@ -49,6 +50,21 @@ struct SettingsView: View {
                                 .foregroundStyle(.red)
                         }
                     } else {
+                        if let problem = model.lastProblem {
+                            Text(problem)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
+                        if model.phase == .failed || model.phase == .needsLibrary {
+                            Button(trying ? "Trying again…" : "Try again") {
+                                trying = true
+                                Task {
+                                    await model.tryAgain()
+                                    trying = false
+                                }
+                            }
+                            .disabled(trying)
+                        }
                         LabeledContent("pCloud", value: "logged in")
                         Button("Log out", role: .destructive) { model.logout() }
                     }
@@ -80,7 +96,7 @@ struct SetupView: View {
         switch model.phase {
         case .needsLogin: return "Log in to pCloud to begin"
         case .needsLibrary: return "No library found in this pCloud account"
-        case .failed(let message): return message
+        case .failed: return "Couldn't read the library from pCloud — check the connection and try again"
         default: return ""
         }
     }

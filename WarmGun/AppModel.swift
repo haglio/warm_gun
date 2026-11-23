@@ -9,7 +9,7 @@ final class AppModel: ObservableObject {
         case needsLibrary
         case indexing
         case ready
-        case failed(String)
+        case failed
     }
 
     struct Message: Equatable {
@@ -110,6 +110,11 @@ final class AppModel: ObservableObject {
         await start()
     }
 
+    func tryAgain() async {
+        lastProblem = nil
+        await start()
+    }
+
     func start() async {
         cached = await cache.cachedPaths()
         loadPersistedState()
@@ -117,7 +122,7 @@ final class AppModel: ObservableObject {
         do {
             try connect(token: token)
         } catch {
-            phase = .failed(error.localizedDescription)
+            fail(error)
             return
         }
         if journalDirty { Task { await syncWithCloud() } }
@@ -131,7 +136,7 @@ final class AppModel: ObservableObject {
                 }
                 settings.libraryPath = found
             } catch {
-                phase = .failed(error.localizedDescription)
+                fail(error)
                 return
             }
         }
@@ -193,6 +198,11 @@ final class AppModel: ObservableObject {
     func logout() {
         UserDefaults.standard.removeObject(forKey: Self.journalUploadedKey)
         askForLogin(saying: nil)
+    }
+
+    private func fail(_ error: Error) {
+        lastProblem = error.localizedDescription
+        phase = .failed
     }
 
     private func loginRanOut() {
@@ -312,7 +322,7 @@ final class AppModel: ObservableObject {
             }
         } catch {
             if catalog == nil {
-                phase = .failed(error.localizedDescription)
+                fail(error)
             } else {
                 flash("Couldn't refresh the library from pCloud", favorite: false)
             }
