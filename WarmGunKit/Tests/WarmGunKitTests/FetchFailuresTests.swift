@@ -12,3 +12,15 @@ import Testing
         #expect(afterAVideoLands == .skip)
     }
 }
+
+extension FetchFailuresTests {
+    @Test func theRunIsHeldFromTheFirstHoldUntilAVideoLands() {
+        var failures = FetchFailures()
+        for _ in 0..<5 { _ = failures.failed(attempts: 3) }
+        #expect(!failures.holding)
+        _ = failures.failed(attempts: 3)
+        #expect(failures.holding)
+        failures.fetched()
+        #expect(!failures.holding)
+    }
+}
