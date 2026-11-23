@@ -105,7 +105,7 @@ not alone.
 - **The controls appear over the picture** at a center tap, or when a
   pointer moves, and go six seconds after the last touch. The type buttons
   Genau, Clips and Full sit top left (Clips takes the shorts and the carved
-  scenes in and out together); Shuffle, Latest and Favs top right; the Loop
+  scenes in and out together); Shuffle, Latest and Favorites top right; the Loop
   control lower left; the action buttons lower right; the four gestures as
   buttons at the edges where their zones are; pause in the center, with the
   video's file name under it. The login screen appears by itself when a

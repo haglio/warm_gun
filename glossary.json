@@ -60,7 +60,7 @@
       "his_word": null,
       "code_word": "filters",
       "id": "filters",
-      "thing": "the buttons on the controls that narrow what plays: Genau, Clips, Full, Favs, the action buttons",
+      "thing": "the buttons on the controls that narrow what plays: Genau, Clips, Full, Favorites, the action buttons",
       "code_today": [
         "filters"
       ],
@@ -97,7 +97,7 @@
         "Full",
         "Shuffle",
         "Latest",
-        "Favs",
+        "Favorites",
         "All",
         "Action",
         "Seed"
