@@ -156,15 +156,20 @@ final class AppModel: ObservableObject {
     func login(username: String, password: String, code: String) async -> Bool {
         settings.username = username
         Keychain.storePending(password: password)
+        let attempt = loginForm.attempt(code: code)
         do {
             let response: LoginResponse
-            switch loginForm.attempt(code: code) {
+            switch attempt {
             case .secondFactor(let token, let code, let isRecovery):
                 response = try await PCloudClient.tfaLogin(apiHost: apiHost, token: token,
                                                            code: code, isRecovery: isRecovery)
-            case .password(let code):
+            case .emailedCode(let code):
+                try await checkEmailedLoginCode(email: username, code: code)
                 response = try await PCloudClient.login(apiHost: apiHost, username: username,
                                                         password: password, code: code)
+            case .password:
+                response = try await PCloudClient.login(apiHost: apiHost, username: username,
+                                                        password: password)
             }
             Keychain.store(token: response.auth)
             guard Keychain.token() != nil else {
@@ -177,11 +182,34 @@ final class AppModel: ObservableObject {
             await start()
             return true
         } catch let refusal as PCloudError {
-            lastProblem = loginForm.refused(by: refusal)
+            switch loginForm.refused(by: refusal, to: attempt) {
+            case .say(let problem):
+                lastProblem = problem
+            case .emailCode:
+                await emailLoginCode(to: username)
+            }
             return false
         } catch {
             lastProblem = error.localizedDescription
             return false
+        }
+    }
+
+    private func checkEmailedLoginCode(email: String, code: String) async throws {
+        do {
+            try await PCloudClient.checkEmailedLoginCode(apiHost: apiHost, email: email, code: code)
+        } catch let check as PCloudError where !LoginState.stopsTheLogin(check) {
+        }
+    }
+
+    private func emailLoginCode(to email: String) async {
+        do {
+            try await PCloudClient.emailLoginCode(apiHost: apiHost, email: email)
+            lastProblem = LoginState.emailed(to: email)
+        } catch let answer as PCloudError where LoginState.sentTheEmail(despite: answer) {
+            lastProblem = LoginState.emailed(to: email)
+        } catch {
+            lastProblem = error.localizedDescription
         }
     }
 

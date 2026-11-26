@@ -7,11 +7,11 @@ import Testing
 
     @Test func thePasswordLogsInUntilAChallengeHandsTheCodeATokenToGoWith() {
         var form = LoginState()
-        #expect(form.attempt(code: "") == .password(code: nil))
-        #expect(form.attempt(code: " 123456 ") == .password(code: "123456"))
+        #expect(form.attempt(code: "") == .password)
+        #expect(form.attempt(code: " 123456 ") == .emailedCode("123456"))
 
-        let shown = form.refused(by: Self.challenge)
-        #expect(shown == "pCloud wants a second factor. Enter a code from your authenticator app, or use a send button below.")
+        let shown = form.refused(by: Self.challenge, to: .password)
+        #expect(shown == .say("pCloud wants a second factor. Enter a code from your authenticator app, or use a send button below."))
         #expect(form.wantsCode)
         #expect(form.challengeToken == "tfa-tok-1")
         #expect(form.canSendCodeToOtherApps)
@@ -21,28 +21,55 @@ import Testing
                 == .secondFactor(token: "tfa-tok-1", code: "abcd-efgh-ijkl-", isRecovery: false))
         #expect(form.attempt(code: "abcd-efgh-ijkl-m")
                 == .secondFactor(token: "tfa-tok-1", code: "abcd-efgh-ijkl-m", isRecovery: true))
-        #expect(form.attempt(code: "") == .password(code: nil))
+        #expect(form.attempt(code: "") == .password)
     }
 }
 
 extension LoginStateTests {
-    @Test func aCodeAskedForOrRefusedShowsTheFieldAnExpiredChallengeStartsOverAndAnythingElseIsJustSaid() {
-        var form = LoginState()
-        let asked = form.refused(by: PCloudError(code: 1022, message: "Please provide 'code'."))
-        #expect(asked == "This account wants a verification code — check your authenticator app (or email/SMS from pCloud) and enter it below.")
-        #expect(form.wantsCode && form.challengeToken == nil)
-        let wrong = form.refused(by: PCloudError(code: 2012, message: "Invalid code."))
-        #expect(wrong == "pCloud refused that verification code — try a fresh one.")
-        #expect(form.wantsCode)
+    static let codeWanted = PCloudError(code: 1022, message: "Please provide 'code'.")
 
-        _ = form.refused(by: Self.challenge)
-        let expired = form.refused(by: PCloudError(code: 2064, message: "Expired."))
-        #expect(expired == "That code session expired — log in with the password again.")
+    @Test func aPasswordAskedForACodeHasPCloudEmailOneAndTheFieldWaitsForIt() {
+        var form = LoginState()
+        #expect(form.refused(by: Self.codeWanted, to: .password) == .emailCode)
+        #expect(form.wantsCode && form.challengeToken == nil)
+        #expect(LoginState.emailed(to: "gunner@example.test")
+                == "pCloud emailed a verification code to gunner@example.test. Enter it below.")
+    }
+
+    @Test func aCodeStillAskedForIsOneItRefusedAndAnEmptyBoxEmailsAFreshOne() {
+        var form = LoginState()
+        _ = form.refused(by: Self.codeWanted, to: .password)
+        let refusedCode = LoginState.Refusal.say(
+            "pCloud refused that verification code. To have it email a new one, empty the code box and log in again.")
+        #expect(form.refused(by: Self.codeWanted, to: .emailedCode("123456")) == refusedCode)
+        #expect(form.refused(by: PCloudError(code: 2012, message: "Invalid code."), to: .emailedCode("1")) == refusedCode)
+        #expect(form.wantsCode)
+        #expect(form.attempt(code: "") == .password)
+        #expect(form.refused(by: Self.codeWanted, to: .password) == .emailCode)
+    }
+
+    @Test func onlyABadCodeFromTheCodeCheckStopsTheLogin() {
+        #expect(LoginState.stopsTheLogin(PCloudError(code: 2012, message: "Invalid code.")))
+        #expect(LoginState.stopsTheLogin(PCloudError(code: 2092, message: "Invalid code.")))
+        #expect(!LoginState.stopsTheLogin(Self.codeWanted))
+        #expect(!LoginState.stopsTheLogin(PCloudError(code: 1000, message: "Log in required.")))
+    }
+
+    @Test func pCloudsEmailRequestCanAnswer2360AndStillHaveSentTheEmail() {
+        #expect(LoginState.sentTheEmail(despite: PCloudError(code: 2360, message: "")))
+        #expect(!LoginState.sentTheEmail(despite: PCloudError(code: 2000, message: "Log in failed.")))
+    }
+
+    @Test func anExpiredChallengeStartsOverAndAnythingElseIsJustSaid() {
+        var form = LoginState()
+        _ = form.refused(by: Self.challenge, to: .password)
+        let expired = form.refused(by: PCloudError(code: 2064, message: "Expired."), to: .password)
+        #expect(expired == .say("That code session expired — log in with the password again."))
         #expect(!form.wantsCode && form.challengeToken == nil)
 
         let before = form
-        let other = form.refused(by: PCloudError(code: 2000, message: "Log in failed."))
-        #expect(other == "pCloud: Log in failed. (code 2000)")
+        let other = form.refused(by: PCloudError(code: 2000, message: "Log in failed."), to: .password)
+        #expect(other == .say("pCloud: Log in failed. (code 2000)"))
         #expect(form == before)
     }
 }

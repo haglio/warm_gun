@@ -319,8 +319,41 @@ extension PCloudAPITests {
         let plain = PCloudAPI.login(username: "gunner@example.test", password: "pw")
         #expect(plain == PCloudAPI.login(username: "gunner@example.test", password: "pw", code: nil))
         let coded = PCloudAPI.login(username: "gunner@example.test", password: "pw", code: "123456")
-        #expect(coded.query.contains(URLQueryItem(name: "code", value: "123456")))
         #expect(coded.method == "login")
+        #expect(Array(coded.query.suffix(4)) == [
+            URLQueryItem(name: "emailtfacode", value: "123456"),
+            URLQueryItem(name: "code", value: "123456"),
+            URLQueryItem(name: "trusted", value: "1"),
+            URLQueryItem(name: "trustdevice", value: "1"),
+        ])
+    }
+
+    @Test func aLoginIsPostedSoThePasswordAndCodeRideInTheBodyAndNeverInTheAddress() throws {
+        let login = PCloudAPI.login(username: "gunner@example.test", password: "a&b+c d", code: "123456")
+        #expect(login.isPosted)
+        #expect(PCloudAPI.tfaLogin(token: "t", code: "c", trustDevice: true, isRecovery: false).isPosted)
+        #expect(!PCloudAPI.listFolder(path: "/", auth: "token-abc").isPosted)
+        let origin = try #require(URL(string: "https://api.pcloud.com"))
+        #expect(login.url(origin: origin).query == nil)
+        let body = String(decoding: login.formBody, as: UTF8.self)
+        #expect(body.contains("password=a%26b%2Bc%20d"))
+        #expect(body.hasSuffix("&trustdevice=1"))
+    }
+
+    @Test func asksPCloudToEmailTheLoginCodeAndToCheckItTheWayItsWebsiteDoes() {
+        let send = PCloudAPI.emailLoginCode(email: "gunner@example.test")
+        #expect(send.method == "user/sendemailtfamail")
+        #expect(send.query == [
+            URLQueryItem(name: "email", value: "gunner@example.test"),
+            URLQueryItem(name: "language", value: "en"),
+            URLQueryItem(name: "os", value: "4"),
+        ])
+        let check = PCloudAPI.checkEmailedLoginCode(email: "gunner@example.test", code: "123456")
+        #expect(check.method == "user/checkemailtfacode")
+        #expect(check.query == [
+            URLQueryItem(name: "email", value: "gunner@example.test"),
+            URLQueryItem(name: "code", value: "123456"),
+        ])
     }
 }
 

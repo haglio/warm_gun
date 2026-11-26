@@ -37,6 +37,16 @@ actor PCloudClient {
         return try await client.call(PCloudAPI.login(username: username, password: password, code: code), as: LoginResponse.self)
     }
 
+    static func emailLoginCode(apiHost: String, email: String) async throws {
+        let client = try PCloudClient(apiHost: apiHost, auth: "")
+        _ = try await client.call(PCloudAPI.emailLoginCode(email: email), as: Acknowledged.self)
+    }
+
+    static func checkEmailedLoginCode(apiHost: String, email: String, code: String) async throws {
+        let client = try PCloudClient(apiHost: apiHost, auth: "")
+        _ = try await client.call(PCloudAPI.checkEmailedLoginCode(email: email, code: code), as: Acknowledged.self)
+    }
+
     static func tfaLogin(apiHost: String, token: String, code: String, isRecovery: Bool) async throws -> LoginResponse {
         let client = try PCloudClient(apiHost: apiHost, auth: "")
         return try await client.call(PCloudAPI.tfaLogin(token: token, code: code, trustDevice: true, isRecovery: isRecovery), as: LoginResponse.self)
@@ -108,7 +118,13 @@ actor PCloudClient {
     }
 
     private func call<T: Decodable>(_ request: PCloudRequest, as type: T.Type) async throws -> T {
-        let (data, response) = try await session.data(from: request.url(origin: origin))
+        var urlRequest = URLRequest(url: request.url(origin: origin))
+        if request.isPosted {
+            urlRequest.httpMethod = "POST"
+            urlRequest.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpBody = request.formBody
+        }
+        let (data, response) = try await session.data(for: urlRequest)
         try Self.check(response)
         return try PCloudAPI.decode(type, from: data)
     }
