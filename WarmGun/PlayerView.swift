@@ -325,10 +325,7 @@ private struct KeyboardShortcuts: View {
             Button("Landscape") { model.pickShape(.landscape) }
                 .keyboardShortcut("l", modifiers: [])
         }
-        .opacity(0)
-        .frame(width: 0, height: 0)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        .unseen()
     }
 
     @ViewBuilder
@@ -427,5 +424,14 @@ private struct TrailingWrap: Layout {
         }
         if !row.items.isEmpty { rows.append(row) }
         return rows
+    }
+}
+
+extension View {
+    func unseen() -> some View {
+        opacity(0)
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
