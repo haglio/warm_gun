@@ -3,10 +3,12 @@ import Foundation
 public struct PCloudRequest: Equatable, Sendable {
     public let method: String
     public let query: [URLQueryItem]
+    public let isPosted: Bool
 
-    public init(method: String, query: [URLQueryItem]) {
+    public init(method: String, query: [URLQueryItem], isPosted: Bool = false) {
         self.method = method
         self.query = query
+        self.isPosted = isPosted
     }
 
     public func url(origin: URL) -> URL {
@@ -15,13 +17,19 @@ public struct PCloudRequest: Equatable, Sendable {
         components.host = origin.host
         components.port = origin.port
         components.path = "/" + method
-        // URLComponents leaves "+" unescaped, and pCloud reads a raw "+" in a value as a space.
-        components.percentEncodedQuery = query.isEmpty ? nil : query.map { item in
+        components.percentEncodedQuery = isPosted || query.isEmpty ? nil : encodedQuery
+        return components.url!
+    }
+
+    public var formBody: Data { Data(encodedQuery.utf8) }
+
+    // URLComponents leaves "+" unescaped, and pCloud reads a raw "+" in a value as a space.
+    private var encodedQuery: String {
+        query.map { item in
             let name = Self.escape(item.name)
             guard let value = item.value else { return name }
             return "\(name)=\(Self.escape(value))"
         }.joined(separator: "&")
-        return components.url!
     }
 
     private static let valueAllowed: CharacterSet = {
@@ -37,8 +45,6 @@ public struct PCloudRequest: Equatable, Sendable {
 
 /// `timeformat=timestamp` rides along because pCloud's default date is an RFC-1123 string.
 public enum PCloudAPI {
-    /// pCloud's new-device protection answers a bare `userinfo` login with 1022 and never sends the
-    /// code; a `login` naming device, deviceid and os is let through.
     public static func login(username: String, password: String, code: String? = nil) -> PCloudRequest {
         var query = [
             URLQueryItem(name: "getauth", value: "1"),
@@ -48,14 +54,37 @@ public enum PCloudAPI {
             URLQueryItem(name: "authexpire", value: "63072000"),
             URLQueryItem(name: "device", value: "WarmGun"),
             URLQueryItem(name: "deviceid", value: "warmgun-phone"),
-            URLQueryItem(name: "os", value: "4"),
+            URLQueryItem(name: "os", value: webClient),
             URLQueryItem(name: "timeformat", value: "timestamp"),
         ]
         if let code {
-            query.append(URLQueryItem(name: "code", value: code))
+            query += [
+                URLQueryItem(name: "emailtfacode", value: code),
+                URLQueryItem(name: "code", value: code),
+                URLQueryItem(name: "trusted", value: "1"),
+                URLQueryItem(name: "trustdevice", value: "1"),
+            ]
         }
-        return PCloudRequest(method: "login", query: query)
+        return PCloudRequest(method: "login", query: query, isPosted: true)
     }
+
+    /// pCloud's website names these methods; its API documentation does not.
+    public static func emailLoginCode(email: String) -> PCloudRequest {
+        PCloudRequest(method: "user/sendemailtfamail", query: [
+            URLQueryItem(name: "email", value: email),
+            URLQueryItem(name: "language", value: "en"),
+            URLQueryItem(name: "os", value: webClient),
+        ])
+    }
+
+    public static func checkEmailedLoginCode(email: String, code: String) -> PCloudRequest {
+        PCloudRequest(method: "user/checkemailtfacode", query: [
+            URLQueryItem(name: "email", value: email),
+            URLQueryItem(name: "code", value: code),
+        ])
+    }
+
+    private static let webClient = "4"
 
     public static func tfaLogin(token: String, code: String, trustDevice: Bool, isRecovery: Bool) -> PCloudRequest {
         PCloudRequest(method: isRecovery ? "tfa_loginwithrecoverycode" : "tfa_login", query: [
@@ -66,7 +95,7 @@ public enum PCloudAPI {
             URLQueryItem(name: "authexpire", value: "63072000"),
             URLQueryItem(name: "device", value: "WarmGun"),
             URLQueryItem(name: "timeformat", value: "timestamp"),
-        ])
+        ], isPosted: true)
     }
 
     public static func tfaSendCodeViaSMS(token: String) -> PCloudRequest {
