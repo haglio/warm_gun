@@ -29,11 +29,20 @@ struct RootView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        switch model.phase {
-        case .ready, .indexing:
-            PlayerView()
-        case .needsLogin, .needsLibrary, .failed:
-            SetupView()
+        Group {
+            switch model.phase {
+            case .ready, .indexing:
+                PlayerView()
+            case .needsLogin, .needsLibrary, .failed:
+                SetupView()
+            }
+        }
+        .background {
+            if Platform.quits {
+                Button("Quit") { Platform.quit() }
+                    .keyboardShortcut("q", modifiers: [.control, .option])
+                    .unseen()
+            }
         }
     }
 }

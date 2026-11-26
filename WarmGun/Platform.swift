@@ -61,6 +61,14 @@ enum Platform {
     #endif
 
     #if os(iOS)
+    static let quits = false
+    @MainActor static func quit() {}
+    #else
+    static let quits = true
+    @MainActor static func quit() { NSApplication.shared.terminate(nil) }
+    #endif
+
+    #if os(iOS)
     static let journalFileName = "warm-gun-journal.jsonl"
     #else
     static let journalFileName = "warm-gun-journal-mac.jsonl"
