@@ -59,8 +59,9 @@ never verify around its absence when the change is about device behavior.
 - Every fixture value is fabricated — the same law as every sibling repo, and
   the same guard: `app_support.sanitize`, run by the git hooks that
   `core.hooksPath` points at. Run `python3 tools/githooks/install.py` once
-  per clone. The blocklist is one file beside the twelve checkouts, in no
-  repository at all, so there is nothing to copy here.
+  per clone. Every computer reads the one blocklist at
+  `app_data/sanitize/blocklist.txt` in the library its `~/.haglio/settings.json`
+  names, in no repository at all, so there is nothing to copy here.
 
 ## Landing
 

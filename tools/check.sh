@@ -20,5 +20,6 @@ python=${python:-$(command -v python3 || command -v python || echo python3)}
 (cd WarmGunKit && swift test)
 python3 -m unittest -q tools.test_gates
 python3 tools/gates.py
+"$python" -m unittest -q tools.test_sanitize_tree
 "$python" tools/sanitize_tree.py
 echo "all checks green"
