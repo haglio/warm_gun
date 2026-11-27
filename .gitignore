@@ -44,7 +44,7 @@ xcuserdata/
 # committed content.example.json documents its shape. The non-AI lane folder
 # names are library content, so the real file is bundled into the app at
 # build time and never committed. The sanitize blocklist is not listed here
-# at all: it sits beside the checkouts, in no repository, which is a stronger
+# at all: it sits in the library, in no repository, which is a stronger
 # promise than a .gitignore line.
 /WarmGun/content.local.json
 

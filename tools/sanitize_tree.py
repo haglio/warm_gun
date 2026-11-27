@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from app_support.sanitize.guard import blocklist_path, load_blocklist, scan_files
+from app_support.sanitize import ListUnreadable, scan_files, the_computers_terms
 
 
 def _files(repo: Path) -> list[str]:
@@ -24,10 +24,13 @@ def main() -> int:
         print(f"not a git checkout: {here}", file=sys.stderr)
         return 2
     repo = Path(found.stdout.strip())
-    blocklist = blocklist_path(repo)
-    terms = load_blocklist(blocklist) if blocklist.exists() else []
-    if not terms:
-        print(f"the tree was NOT scanned: no blocklist terms resolved at {blocklist}",
+    try:
+        terms = the_computers_terms()
+    except ListUnreadable as unreadable:
+        print(f"the tree was NOT scanned: {unreadable}", file=sys.stderr)
+        return 2
+    if terms is None:
+        print("the tree was NOT scanned: this computer keeps no blocklist, since it has no Haglio settings",
               file=sys.stderr)
         return 2
 
