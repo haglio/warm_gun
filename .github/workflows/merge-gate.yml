@@ -25,7 +25,7 @@ jobs:
       - name: No commit of the branch holds a merge conflict's markers
         run: |
           python3 -m venv "$RUNNER_TEMP/checks"
-          "$RUNNER_TEMP/checks/bin/pip" install --quiet "app-support @ git+https://github.com/haglio/app_support@v0.1.490"
+          "$RUNNER_TEMP/checks/bin/pip" install --quiet "app-support @ git+https://github.com/haglio/app_support@v0.1.567"
           "$RUNNER_TEMP/checks/bin/python" -m app_support.conflict_markers
       - name: Sanitize tool tests
         run: '"$RUNNER_TEMP/checks/bin/python" -m unittest tools.test_sanitize_tree'
